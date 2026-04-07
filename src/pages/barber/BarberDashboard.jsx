@@ -54,7 +54,7 @@ export default function BarberDashboard() {
   // Auto-refresh every 60 seconds
   useEffect(() => {
     if (!barber) return
-    refreshRef.current = setInterval(() => loadData(barber.id), 60000)
+    refreshRef.current = setInterval(() => loadData(barber.id), 20000)
     return () => clearInterval(refreshRef.current)
   }, [barber])
 

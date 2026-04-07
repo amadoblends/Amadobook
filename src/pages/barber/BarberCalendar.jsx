@@ -31,7 +31,7 @@ export default function BarberCalendar() {
 
   useEffect(() => {
     if (!barber) return
-    const interval = setInterval(() => loadAppointments(barber.id), 60000)
+    const interval = setInterval(() => loadAppointments(barber.id), 20000)
     return () => clearInterval(interval)
   }, [barber])
 
