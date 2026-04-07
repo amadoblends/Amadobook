@@ -86,22 +86,20 @@ export default function BarberLayout({ children }) {
       </aside>
 
       {/* Mobile header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3"
-        style={{background:'var(--surface)',borderBottom:'1px solid var(--border)'}}>
-        <div className="flex items-center gap-2">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center px-4 py-3"
+        style={{background:'var(--surface)',borderBottom:'1px solid var(--border)',position:'relative'}}>
+        <button onClick={() => setOpen(!open)} style={{color:'var(--text-pri)',background:'none',border:'none',cursor:'pointer',padding:'2px',flexShrink:0}}>
+          {open ? <X size={22}/> : <Menu size={22}/>}
+        </button>
+        <div className="flex items-center gap-2" style={{position:'absolute',left:'50%',transform:'translateX(-50%)'}}>
           <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:'var(--accent)'}}>
             <Scissors size={13} className="text-white"/>
           </div>
           <span className="font-bold" style={{color:'var(--text-pri)',fontFamily:'Syne,sans-serif'}}>AmadoBook</span>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={cycleTheme} className="p-2 rounded-xl" style={{color:'var(--text-sec)'}}>
-            <ThemeIcon size={18}/>
-          </button>
-          <button onClick={() => setOpen(!open)} style={{color:'var(--text-pri)'}}>
-            {open ? <X size={22}/> : <Menu size={22}/>}
-          </button>
-        </div>
+        <button onClick={cycleTheme} className="p-2 rounded-xl" style={{color:'var(--text-sec)',marginLeft:'auto'}}>
+          <ThemeIcon size={18}/>
+        </button>
       </div>
 
       {/* Mobile drawer */}
