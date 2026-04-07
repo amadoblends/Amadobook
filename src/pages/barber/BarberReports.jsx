@@ -69,7 +69,6 @@ export default function BarberReports() {
     svcMap[s.name].revenue += s.price||0
   }))
   const topServices = Object.entries(svcMap).sort((a,b) => b[1].count-a[1].count).slice(0,5)
-  const maxSvcCount = topServices.length > 0 ? topServices[0][1].count : 1
 
   // Top clients
   const clientMap = {}
@@ -83,93 +82,114 @@ export default function BarberReports() {
 
   return (
     <BarberLayout>
-      <div className="p-4 max-w-4xl mx-auto w-full overflow-x-hidden">
-        <h1 className="text-2xl font-bold mb-1" style={{fontFamily:'Syne,sans-serif',color:'var(--text-pri)'}}>Reports</h1>
-        <p className="text-sm mb-6" style={{color:'var(--text-sec)'}}>Business overview</p>
+      <div className="p-4 max-w-xl mx-auto w-full overflow-x-hidden">
+        <h1 className="text-xl font-bold mb-1" style={{fontFamily:'Syne,sans-serif',color:'var(--text-pri)'}}>Reports</h1>
+        <p className="text-xs mb-4" style={{color:'var(--text-sec)'}}>Business overview</p>
 
         {/* Period selector */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2" style={{WebkitOverflowScrolling:'touch',scrollbarWidth:'none'}}>
+        <div className="flex gap-2 mb-5 overflow-x-auto pb-1" style={{WebkitOverflowScrolling:'touch',scrollbarWidth:'none'}}>
           {PERIODS.map(p => (
             <button key={p} onClick={() => setPeriod(p)}
-              className="flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all"
+              className="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold"
               style={{
                 background: period===p ? 'var(--accent)' : 'var(--surface)',
                 color: period===p ? 'white' : 'var(--text-sec)',
-                border: `1px solid ${period===p ? 'var(--accent)' : 'var(--border)'}`,
+                border: `1.5px solid ${period===p ? 'var(--accent)' : 'var(--border)'}`,
+                minHeight:36,
               }}>
               {p}
             </button>
           ))}
         </div>
 
-        {/* Stats grid - Arreglado para móviles y PC */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-          <StatCard icon={<DollarSign size={20}/>}  label="Revenue" value={formatCurrency(revenue)} color="#4ade80" bg="#16A34A15"/>
-          <StatCard icon={<Calendar size={20}/>}    label="Appointments" value={filtered.length} color="#60a5fa" bg="#3b82f615"/>
-          <StatCard icon={<TrendingUp size={20}/>}  label="Pending" value={formatCurrency(pending)} color="#fbbf24" bg="#f59e0b15"/>
-          <StatCard icon={<Star size={20}/>}        label="All-Time" value={formatCurrency(totalAll)} color="var(--accent)" bg="var(--accent)15"/>
+        {/* Stats grid */}
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          <StatCard icon={<DollarSign size={18}/>}  label="Revenue" value={formatCurrency(revenue)} color="#4ade80" bg="#16A34A15"/>
+          <StatCard icon={<Calendar size={18}/>}    label="Appointments" value={filtered.length} color="#60a5fa" bg="#3b82f615"/>
+          <StatCard icon={<TrendingUp size={18}/>}  label="Pending" value={formatCurrency(pending)} color="#fbbf24" bg="#f59e0b15"/>
+          <StatCard icon={<Star size={18}/>}        label="All-Time" value={formatCurrency(totalAll)} color="var(--accent)" bg="var(--accent)15"/>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Top services - Diseño limpio */}
-          {topServices.length > 0 && (
-            <div className="card p-5">
-              <p className="font-bold text-base mb-4" style={{color:'var(--text-pri)'}}>Top Services</p>
-              <div className="space-y-4">
-                {topServices.map(([name,data],i) => (
-                  <div key={name} className="relative">
-                    <div className="flex justify-between items-center mb-2 relative z-10">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-bold w-5 text-center" style={{color:'var(--text-sec)'}}>{i+1}</span>
-                        <span className="text-sm font-semibold" style={{color:'var(--text-pri)'}}>{name}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-sm font-bold" style={{color:'var(--accent)'}}>{formatCurrency(data.revenue)}</span>
-                        <span className="text-xs ml-2" style={{color:'var(--text-sec)'}}>{data.count}x</span>
-                      </div>
+        {/* Top services */}
+        {topServices.length > 0 && (
+          <div className="card mb-4">
+            <p className="font-bold text-sm mb-3" style={{color:'var(--text-pri)'}}>Top Services</p>
+            <div className="space-y-2">
+              {topServices.map(([name,data],i) => (
+                <div key={name} className="flex items-center gap-3">
+                  <span className="text-xs font-bold w-5 text-center" style={{color:'var(--text-sec)'}}>{i+1}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm font-semibold truncate" style={{color:'var(--text-pri)'}}>{name}</span>
+                      <span className="text-xs ml-2 flex-shrink-0" style={{color:'var(--text-sec)'}}>{data.count}x · {formatCurrency(data.revenue)}</span>
                     </div>
-                    {/* Barra de progreso sutil */}
-                    <div className="h-1 w-full rounded-full overflow-hidden ml-8" style={{background:'var(--border)'}}>
-                      <div className="h-full rounded-full transition-all duration-500" style={{background:'var(--accent)',width:`${(data.count/maxSvcCount)*100}%`}}/>
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{background:'var(--border)'}}>
+                      <div className="h-full rounded-full" style={{background:'var(--accent)',width:`${Math.min(100,(data.count/topServices[0][1].count)*100)}%`}}/>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
-          )}
-
-          {/* Top clients */}
-          {topClients.length > 0 && (
-            <div className="card p-5">
-              <p className="font-bold text-base mb-4" style={{color:'var(--text-pri)'}}>Top Clients</p>
-              <div className="space-y-4">
-                {topClients.map(([name,data],i) => (
-                  <div key={name} className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold w-5 text-center" style={{color:'var(--text-sec)'}}>{i+1}</span>
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                        style={{background: data.isGuest ? '#8b5cf622' : 'var(--accent)22', color: data.isGuest ? '#a78bfa' : 'var(--accent)'}}>
-                        {name[0].toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold" style={{color:'var(--text-pri)'}}>{name}</p>
-                        <p className="text-xs" style={{color:'var(--text-sec)'}}>{data.count} visit{data.count!==1?'s':''}</p>
-                      </div>
-                    </div>
-                    <p className="font-bold text-sm" style={{color:'var(--accent)'}}>{formatCurrency(data.revenue)}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {filtered.length === 0 && (
-          <div className="card text-center py-12 mt-4">
-            <TrendingUp size={32} className="mx-auto mb-3 opacity-30" style={{color:'var(--text-sec)'}}/>
-            <p className="text-base font-medium" style={{color:'var(--text-sec)'}}>No data for this period</p>
           </div>
         )}
+
+        {/* Top clients */}
+        {topClients.length > 0 && (
+          <div className="card">
+            <p className="font-bold text-sm mb-3" style={{color:'var(--text-pri)'}}>Top Clients</p>
+            <div className="space-y-2">
+              {topClients.map(([name,data],i) => (
+                <div key={name} className="flex items-center justify-between gap-3 py-1">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold w-5 text-center" style={{color:'var(--text-sec)'}}>{i+1}</span>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                      style={{background: data.isGuest ? '#8b5cf622' : 'var(--accent)22', color: data.isGuest ? '#a78bfa' : 'var(--accent)'}}>
+                      {name[0]}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold" style={{color:'var(--text-pri)'}}>{name}</p>
+                      <p className="text-xs" style={{color:'var(--text-sec)'}}>{data.count} visit{data.count!==1?'s':''}</p>
+                    </div>
+                  </div>
+                  <p className="font-bold text-sm" style={{color:'var(--accent)'}}>{formatCurrency(data.revenue)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {filtered.length === 0 && (
+          <div className="card text-center py-10">
+            <TrendingUp size={28} className="mx-auto mb-2 opacity-30" style={{color:'var(--text-sec)'}}/>
+            <p className="text-sm" style={{color:'var(--text-sec)'}}>No data for this period</p>
+          </div>
+        )}
+
+        {/* Cancelled appointments section */}
+        {(() => {
+          const cancelled = appointments.filter(a => a.bookingStatus === 'cancelled')
+          if (cancelled.length === 0) return null
+          return (
+            <div className="card mt-4">
+              <p className="font-bold text-sm mb-3 flex items-center gap-2" style={{color:'var(--text-pri)'}}>
+                <span style={{width:10,height:10,borderRadius:'50%',background:'#f87171',display:'inline-block'}}/>
+                Cancelled Appointments ({cancelled.length})
+              </p>
+              <div className="space-y-2">
+                {cancelled.map(a => (
+                  <div key={a.id} className="flex items-center justify-between gap-3 p-2 rounded-xl" style={{background:'var(--surface)',opacity:0.7}}>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate" style={{color:'var(--text-pri)'}}>{a.clientName}</p>
+                      <p className="text-xs" style={{color:'var(--text-sec)'}}>{a.date} · {a.startTime}</p>
+                      {a.cancelReason && <p className="text-xs" style={{color:'#f87171'}}>Reason: {a.cancelReason}</p>}
+                    </div>
+                    <p className="text-sm font-bold flex-shrink-0" style={{color:'#f87171'}}>{formatCurrency(a.totalPrice)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
       </div>
     </BarberLayout>
   )
@@ -177,12 +197,12 @@ export default function BarberReports() {
 
 function StatCard({ icon, label, value, color, bg }) {
   return (
-    <div className="card p-4 hover:scale-[1.02] transition-transform">
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{background:bg,color}}>
+    <div className="card">
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-2" style={{background:bg,color}}>
         {icon}
       </div>
-      <p className="text-2xl font-bold tracking-tight" style={{fontFamily:'Syne,sans-serif',color}}>{value}</p>
-      <p className="text-xs font-medium mt-1 uppercase tracking-wider" style={{color:'var(--text-sec)'}}>{label}</p>
+      <p className="text-xl font-bold" style={{fontFamily:'Syne,sans-serif',color}}>{value}</p>
+      <p className="text-xs mt-0.5" style={{color:'var(--text-sec)'}}>{label}</p>
     </div>
   )
 }
