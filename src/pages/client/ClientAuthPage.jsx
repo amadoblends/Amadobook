@@ -47,7 +47,8 @@ export default function ClientAuthPage() {
     try {
       await signIn(email, password)
       toast.success('Welcome back!')
-      navigate(`/b/${barberSlug}`)
+      // Redirigir directo al dashboard (Pantalla Verde)
+      navigate(`/b/${barberSlug}/dashboard`)
     } catch { toast.error('Invalid email or password') }
     finally { setLoading(false) }
   }
@@ -61,7 +62,8 @@ export default function ClientAuthPage() {
     try {
       await signUpClient({ firstName, lastName, email, phone, password })
       toast.success('Account created! 🎉')
-      navigate(`/b/${barberSlug}`)
+      // Redirigir directo al dashboard (Pantalla Verde)
+      navigate(`/b/${barberSlug}/dashboard`)
     } catch (err) {
       toast.error(err.code === 'auth/email-already-in-use' ? 'Email already registered' : err.message)
     } finally { setLoading(false) }
@@ -71,7 +73,8 @@ export default function ClientAuthPage() {
     setLoading(true)
     try {
       await signInWithGoogle('client')
-      navigate(`/b/${barberSlug}`)
+      // Redirigir directo al dashboard (Pantalla Verde)
+      navigate(`/b/${barberSlug}/dashboard`)
     } catch { toast.error('Google sign-in failed') }
     finally { setLoading(false) }
   }
