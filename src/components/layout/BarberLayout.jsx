@@ -85,26 +85,29 @@ export default function BarberLayout({ children }) {
         </div>
       </aside>
 
-      {/* Mobile header */}
+{/* Mobile header */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40"
-        style={{background:'var(--surface)',borderBottom:'1px solid var(--border)',height:52,display:'flex',alignItems:'center',padding:'0 16px'}}>
+        style={{background:'var(--surface)',borderBottom:'1px solid var(--border)',height:60,display:'flex',alignItems:'center',padding:'0 16px', justifyContent: 'space-between'}}>
+        
         {/* Hamburger - LEFT */}
-        <button onClick={() => setOpen(!open)}
-          style={{color:'var(--text-pri)',background:'none',border:'none',cursor:'pointer',padding:4,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,width:36,height:36}}>
-          {open ? <X size={20}/> : <Menu size={20}/>}
+        <button onClick={() => setOpen(!open)} className="relative z-10"
+          style={{color:'var(--text-pri)',background:'none',border:'none',cursor:'pointer',padding:4,display:'flex',alignItems:'center',justifyContent:'center',width:40,height:40}}>
+          {open ? <X size={24}/> : <Menu size={24}/>}
         </button>
-        {/* Title - CENTER (absolute) */}
-        <div style={{position:'absolute',left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}>
-          <div style={{display:'flex',alignItems:'center',gap:7}}>
-            <div style={{width:26,height:26,borderRadius:8,background:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-              <Scissors size={13} color="white"/>
+
+        {/* Title - CENTER (absolute for perfect centering) */}
+        <div style={{position:'absolute',left:0,right:0,top:0,bottom:0,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <div style={{width:28,height:28,borderRadius:8,background:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 15px var(--accent)40'}}>
+              <Scissors size={14} color="white"/>
             </div>
-            <span style={{fontWeight:800,fontSize:16,color:'var(--text-pri)',fontFamily:'Syne,sans-serif',letterSpacing:'-0.01em'}}>AmadoBook</span>
+            <span style={{fontWeight:800,fontSize:18,color:'var(--text-pri)',fontFamily:'Syne,sans-serif',letterSpacing:'-0.02em'}}>AmadoBook</span>
           </div>
         </div>
+
         {/* Theme toggle - RIGHT */}
-        <button onClick={cycleTheme} style={{color:'var(--text-sec)',background:'none',border:'none',cursor:'pointer',padding:4,marginLeft:'auto',display:'flex',alignItems:'center',justifyContent:'center',width:36,height:36}}>
-          <ThemeIcon size={18}/>
+        <button onClick={cycleTheme} className="relative z-10" style={{color:'var(--text-sec)',background:'none',border:'none',cursor:'pointer',padding:4,display:'flex',alignItems:'center',justifyContent:'center',width:40,height:40}}>
+          <ThemeIcon size={20}/>
         </button>
       </div>
 
