@@ -102,7 +102,10 @@ export default function BarberCalendar() {
 
   const countForDay = d => appointments.filter(a => a.date === format(d,'yyyy-MM-dd') && a.bookingStatus !== 'cancelled').length
   const apptsForDay = d => appointments
-    .filter(a => a.date === format(d,'yyyy-MM-dd'))
+    .filter(a => a.date === format(d,'yyyy-MM-dd') && a.bookingStatus !== 'cancelled')
+    .sort((a,b) => a.startTime.localeCompare(b.startTime))
+  const cancelledForDay = d => appointments
+    .filter(a => a.date === format(d,'yyyy-MM-dd') && a.bookingStatus === 'cancelled')
     .sort((a,b) => a.startTime.localeCompare(b.startTime))
   const dayAppointments = apptsForDay(selectedDay)
 

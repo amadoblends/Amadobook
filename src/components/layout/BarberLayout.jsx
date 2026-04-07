@@ -86,18 +86,24 @@ export default function BarberLayout({ children }) {
       </aside>
 
       {/* Mobile header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center px-4 py-3"
-        style={{background:'var(--surface)',borderBottom:'1px solid var(--border)',position:'relative'}}>
-        <button onClick={() => setOpen(!open)} style={{color:'var(--text-pri)',background:'none',border:'none',cursor:'pointer',padding:'2px',flexShrink:0}}>
-          {open ? <X size={22}/> : <Menu size={22}/>}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40"
+        style={{background:'var(--surface)',borderBottom:'1px solid var(--border)',height:52,display:'flex',alignItems:'center',padding:'0 16px'}}>
+        {/* Hamburger - LEFT */}
+        <button onClick={() => setOpen(!open)}
+          style={{color:'var(--text-pri)',background:'none',border:'none',cursor:'pointer',padding:4,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,width:36,height:36}}>
+          {open ? <X size={20}/> : <Menu size={20}/>}
         </button>
-        <div className="flex items-center gap-2" style={{position:'absolute',left:'50%',transform:'translateX(-50%)'}}>
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:'var(--accent)'}}>
-            <Scissors size={13} className="text-white"/>
+        {/* Title - CENTER (absolute) */}
+        <div style={{position:'absolute',left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}>
+          <div style={{display:'flex',alignItems:'center',gap:7}}>
+            <div style={{width:26,height:26,borderRadius:8,background:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <Scissors size={13} color="white"/>
+            </div>
+            <span style={{fontWeight:800,fontSize:16,color:'var(--text-pri)',fontFamily:'Syne,sans-serif',letterSpacing:'-0.01em'}}>AmadoBook</span>
           </div>
-          <span className="font-bold" style={{color:'var(--text-pri)',fontFamily:'Syne,sans-serif'}}>AmadoBook</span>
         </div>
-        <button onClick={cycleTheme} className="p-2 rounded-xl" style={{color:'var(--text-sec)',marginLeft:'auto'}}>
+        {/* Theme toggle - RIGHT */}
+        <button onClick={cycleTheme} style={{color:'var(--text-sec)',background:'none',border:'none',cursor:'pointer',padding:4,marginLeft:'auto',display:'flex',alignItems:'center',justifyContent:'center',width:36,height:36}}>
           <ThemeIcon size={18}/>
         </button>
       </div>

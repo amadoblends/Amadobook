@@ -164,6 +164,32 @@ export default function BarberReports() {
             <p className="text-sm" style={{color:'var(--text-sec)'}}>No data for this period</p>
           </div>
         )}
+
+        {/* Cancelled appointments section */}
+        {(() => {
+          const cancelled = appointments.filter(a => a.bookingStatus === 'cancelled')
+          if (cancelled.length === 0) return null
+          return (
+            <div className="card mt-4">
+              <p className="font-bold text-sm mb-3 flex items-center gap-2" style={{color:'var(--text-pri)'}}>
+                <span style={{width:10,height:10,borderRadius:'50%',background:'#f87171',display:'inline-block'}}/>
+                Cancelled Appointments ({cancelled.length})
+              </p>
+              <div className="space-y-2">
+                {cancelled.map(a => (
+                  <div key={a.id} className="flex items-center justify-between gap-3 p-2 rounded-xl" style={{background:'var(--surface)',opacity:0.7}}>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate" style={{color:'var(--text-pri)'}}>{a.clientName}</p>
+                      <p className="text-xs" style={{color:'var(--text-sec)'}}>{a.date} · {a.startTime}</p>
+                      {a.cancelReason && <p className="text-xs" style={{color:'#f87171'}}>Reason: {a.cancelReason}</p>}
+                    </div>
+                    <p className="text-sm font-bold flex-shrink-0" style={{color:'#f87171'}}>{formatCurrency(a.totalPrice)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
       </div>
     </BarberLayout>
   )
