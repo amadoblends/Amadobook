@@ -24,6 +24,23 @@ export default function BarberDashboard() {
   const refreshRef = useRef(null)
   const todayStr = format(new Date(), 'yyyy-MM-dd')
 
+  // Auto-complete appointments that are past their end time
+  async function autoCompletePastAppointments(barberId, appts) {
+    const now = new Date()
+    const toComplete = appts.filter(a => {
+      if (a.bookingStatus !== 'confirmed' && a.bookingStatus !== 'pending') return false
+      const [y, m, d] = a.date.split('-').map(Number)
+      const [eh, em] = (a.endTime || '00:00').split(':').map(Number)
+      const endDt = new Date(y, m - 1, d, eh, em, 0, 0)
+      return endDt < now
+    })
+    for (const a of toComplete) {
+      try {
+        await updateDoc(doc(db, 'appointments', a.id), { bookingStatus: 'completed' })
+      } catch {}
+    }
+  }
+
   async function loadData(barberId) {
     const [tSnap, aSnap] = await Promise.all([
       getDocs(query(collection(db, 'appointments'), where('barberId', '==', barberId), where('date', '==', todayStr))),
@@ -33,6 +50,8 @@ export default function BarberDashboard() {
     all.sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))
     setTodayAppts(tSnap.docs.map(d => ({ id: d.id, ...d.data() })))
     setAllAppts(all)
+    // Auto-complete past appointments in background
+    autoCompletePastAppointments(barberId, all).catch(() => {})
   }
 
   useEffect(() => {
@@ -45,6 +64,8 @@ export default function BarberDashboard() {
         setBarber(b)
         setProfileForm({ name: b.name, bio: b.bio||'', address: b.address||'', phone: b.phone||'', photoURL: b.photoURL||'' })
         await loadData(b.id)
+        // Ensure barber state is set after data loads (fixes mobile timing issue)
+        setBarber(b)
       } catch (e) { console.error(e); toast.error('Failed to load') }
       finally { setLoading(false) }
     }

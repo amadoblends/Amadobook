@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { collection, query, where, getDocs, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useAuth'
-import { formatCurrency, formatDuration, generateTimeSlots } from '../../utils/helpers'
+import { formatCurrency, formatDuration, generateTimeSlots, parseLocalDate } from '../../utils/helpers'
 import { format, isFuture, isPast, differenceInDays, addDays, startOfDay, isToday, isSameDay } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -189,7 +189,7 @@ export default function ClientDashboard() {
                         {barberInfo?.photoURL && <img src={barberInfo.photoURL} style={{width:28,height:28,borderRadius:8,objectFit:'cover'}} alt=""/>}
                         <p style={{color:'#fff',fontWeight:700,fontSize:15,margin:0}}>{next.barberName}</p>
                       </div>
-                      <p style={{color:'#FF5C00',fontSize:14,fontWeight:600,margin:'0 0 2px'}}>{format(new Date(next.date),'EEE, MMM d')} · {next.startTime}</p>
+                      <p style={{color:'#FF5C00',fontSize:14,fontWeight:600,margin:'0 0 2px'}}>{format(parseLocalDate(next.date),'EEE, MMM d')} · {next.startTime}</p>
                       <p style={{color:'#666',fontSize:12,margin:0}}>{formatDuration(next.totalDuration)}</p>
                     </div>
                     <div style={{textAlign:'right'}}>
@@ -401,7 +401,7 @@ function ApptCard({ appt, barberInfo, onCancel, onReschedule, onMap, muted }) {
             {barberInfo?.photoURL&&<img src={barberInfo.photoURL} style={{width:22,height:22,borderRadius:6,objectFit:'cover'}} alt=""/>}
             <p style={{color:'#fff',fontWeight:700,fontSize:14,margin:0}}>{appt.barberName}</p>
           </div>
-          <p style={{color:'#888',fontSize:12,margin:0}}>{format(new Date(appt.date),'MMM d, yyyy')} · {appt.startTime}</p>
+          <p style={{color:'#888',fontSize:12,margin:0}}>{format(parseLocalDate(appt.date),'MMM d, yyyy')} · {appt.startTime}</p>
         </div>
         <div style={{textAlign:'right'}}>
           <p style={{fontFamily:'Syne,sans-serif',color:'#FF5C00',fontWeight:900,fontSize:15,margin:'0 0 2px'}}>{formatCurrency(appt.totalPrice)}</p>
@@ -426,7 +426,7 @@ function MiniCard({ appt }) {
     <div style={{background:'#141414',border:'1px solid #252525',borderRadius:12,padding:'12px 14px',marginBottom:8,borderLeft:`2px solid ${statusColor[appt.bookingStatus]||'#555'}`}}>
       <div style={{display:'flex',justifyContent:'space-between'}}>
         <div>
-          <p style={{color:'#fff',fontWeight:600,fontSize:13,margin:'0 0 2px'}}>{format(new Date(appt.date),'MMM d, yyyy')}</p>
+          <p style={{color:'#fff',fontWeight:600,fontSize:13,margin:'0 0 2px'}}>{format(parseLocalDate(appt.date),'MMM d, yyyy')}</p>
           <p style={{color:'#666',fontSize:12,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:180}}>{appt.services?.map(s=>s.name).join(', ')}</p>
         </div>
         <div style={{textAlign:'right'}}>

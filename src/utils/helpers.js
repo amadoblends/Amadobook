@@ -1,8 +1,10 @@
 import { format, addMinutes, parse, isAfter, isBefore, isEqual } from 'date-fns'
 
-export const formatCurrency = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+export const formatCurrency = (n) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n ?? 0)
 
 export function formatDuration(minutes) {
+  if (!minutes) return '—'
   if (minutes < 60) return `${minutes} min`
   const h = Math.floor(minutes / 60), m = minutes % 60
   return m > 0 ? `${h}h ${m}min` : `${h}h`
@@ -19,6 +21,42 @@ export function getInitials(name) {
 
 export const getDayName  = (i) => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][i]
 export const getDayShort = (i) => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][i]
+
+/**
+ * Parse a date string "yyyy-MM-dd" without timezone shift.
+ * Using new Date("2024-01-15") is UTC midnight → shows Jan 14 in US timezones.
+ * This fixes it by parsing as local time.
+ */
+export function parseLocalDate(dateStr) {
+  if (!dateStr) return new Date()
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+/**
+ * Format a stored dateStr "yyyy-MM-dd" for display — no timezone shift.
+ */
+export function formatLocalDate(dateStr, fmt = 'MMM d, yyyy') {
+  return format(parseLocalDate(dateStr), fmt)
+}
+
+/**
+ * Check if an appointment's date+time is in the past.
+ */
+export function isAppointmentPast(date, startTime) {
+  if (!date || !startTime) return false
+  const d = parseLocalDate(date)
+  const [h, m] = startTime.split(':').map(Number)
+  d.setHours(h, m, 0, 0)
+  return d < new Date()
+}
+
+/**
+ * Get today as "yyyy-MM-dd" string in LOCAL timezone (no UTC shift).
+ */
+export function todayStr() {
+  return format(new Date(), 'yyyy-MM-dd')
+}
 
 export function generateTimeSlots(startTime, endTime, durationMinutes, breaks = [], existingBookings = []) {
   const slots = []

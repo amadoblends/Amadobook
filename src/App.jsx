@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -7,7 +7,6 @@ import { useEffect } from 'react'
 import { useTheme } from './context/ThemeContext'
 import { PageLoader } from './components/ui/Spinner'
 
-// Barber auth + dashboard pages
 import BarberLoginPage    from './pages/auth/BarberLoginPage'
 import BarberSignupPage   from './pages/auth/BarberSignupPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
@@ -18,12 +17,17 @@ import BarberCalendar     from './pages/barber/BarberCalendar'
 import BarberReports      from './pages/barber/BarberReports'
 import BarberSuggestions  from './pages/barber/BarberSuggestions'
 
-// Client public pages - open to everyone via barber link
-import BarberLandingPage  from './pages/client/BarberLandingPage'
-import ClientAuthPage     from './pages/client/ClientAuthPage'
-import BookingPage        from './pages/client/BookingPage'
+import BarberLandingPage    from './pages/client/BarberLandingPage'
+import ClientAuthPage       from './pages/client/ClientAuthPage'
+import BookingPage          from './pages/client/BookingPage'
 import BookingConfirmedPage from './pages/client/BookingConfirmedPage'
-import ClientDashboard    from './pages/client/ClientDashboard'
+import ClientDashboard      from './pages/client/ClientDashboard'
+
+// Redirects that preserve the actual slug
+function SlugRedirect({ to }) {
+  const { barberSlug } = useParams()
+  return <Navigate to={`/b/${barberSlug}/${to}`} replace />
+}
 
 function ThemeSync() {
   const { user } = useAuth()
@@ -48,12 +52,9 @@ function AppRoutes() {
     <>
       <ThemeSync />
       <Routes>
-        {/* ── Barber login/signup ── */}
         <Route path="/barber/login"           element={<BarberLoginPage />} />
         <Route path="/barber/signup"          element={<BarberSignupPage />} />
         <Route path="/barber/forgot-password" element={<ForgotPasswordPage backTo="/barber/login" />} />
-
-        {/* ── Barber dashboard (protected) ── */}
         <Route path="/barber/dashboard"    element={<BarberRoute><BarberDashboard /></BarberRoute>} />
         <Route path="/barber/services"     element={<BarberRoute><BarberServices /></BarberRoute>} />
         <Route path="/barber/availability" element={<BarberRoute><BarberAvailability /></BarberRoute>} />
@@ -61,17 +62,15 @@ function AppRoutes() {
         <Route path="/barber/reports"      element={<BarberRoute><BarberReports /></BarberRoute>} />
         <Route path="/barber/suggestions"  element={<BarberRoute><BarberSuggestions /></BarberRoute>} />
 
-        {/* ── Public client routes ── anyone with the link */}
-        <Route path="/b/:barberSlug"              element={<BarberLandingPage />} />
-        <Route path="/b/:barberSlug/auth"         element={<ClientAuthPage />} />
-        <Route path="/b/:barberSlug/book"         element={<BookingPage />} />
-        <Route path="/b/:barberSlug/confirmed"    element={<BookingConfirmedPage />} />
-        <Route path="/b/:barberSlug/dashboard"    element={<ClientDashboard />} />
+        <Route path="/b/:barberSlug"           element={<BarberLandingPage />} />
+        <Route path="/b/:barberSlug/auth"      element={<ClientAuthPage />} />
+        <Route path="/b/:barberSlug/book"      element={<BookingPage />} />
+        <Route path="/b/:barberSlug/confirmed" element={<BookingConfirmedPage />} />
+        <Route path="/b/:barberSlug/dashboard" element={<ClientDashboard />} />
 
-        {/* Legacy redirects */}
-        <Route path="/b/:barberSlug/login"    element={<Navigate to="/b/:barberSlug/auth" replace />} />
-        <Route path="/b/:barberSlug/signup"   element={<Navigate to="/b/:barberSlug/auth" replace />} />
-        <Route path="/client/dashboard"       element={<Navigate to="/" replace />} />
+        {/* Fixed legacy redirects — was using literal ":barberSlug" */}
+        <Route path="/b/:barberSlug/login"     element={<SlugRedirect to="auth" />} />
+        <Route path="/b/:barberSlug/signup"    element={<SlugRedirect to="auth" />} />
 
         <Route path="/" element={<Navigate to="/barber/login" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -86,10 +85,10 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <Toaster position="top-center" toastOptions={{
-            style: { background:'#1a1a1a', color:'#E5E5E5', border:'1px solid #2a2a2a', borderRadius:'14px', fontSize:'14px' },
-            success: { iconTheme: { primary:'#16A34A', secondary:'#fff' } },
-            error:   { iconTheme: { primary:'#ef4444', secondary:'#fff' } },
-          }}/>
+            style: { background: '#1a1a1a', color: '#E5E5E5', border: '1px solid #2a2a2a', borderRadius: '14px', fontSize: '14px', fontFamily: 'Inter, sans-serif' },
+            success: { iconTheme: { primary: '#16A34A', secondary: '#fff' } },
+            error:   { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
+          }} />
           <AppRoutes />
         </AuthProvider>
       </ThemeProvider>

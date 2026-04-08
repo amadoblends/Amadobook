@@ -5,6 +5,7 @@ import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useAuth'
 import { formatCurrency, formatDuration, generateTimeSlots } from '../../utils/helpers'
 import { format, addDays, startOfDay, isAfter, isSameDay, isToday } from 'date-fns'
+import { parseLocalDate, formatLocalDate } from '../../utils/helpers'
 import toast from 'react-hot-toast'
 import { ChevronLeft, ChevronRight, Check, Scissors, Clock, UserX } from 'lucide-react'
 
