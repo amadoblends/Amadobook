@@ -144,12 +144,23 @@ export default function ClientDashboard() {
     finally { setSaving(false) }
   }
 
-  const upcoming = appointments.filter(a =>
-    a.bookingStatus !== 'cancelled' && isFuture(new Date(`${a.date}T${a.startTime}`))
-  )
-  const history = appointments.filter(a =>
-    a.bookingStatus === 'cancelled' || isPast(new Date(`${a.date}T${a.startTime}`))
-  )
+  // Upcoming: future date+time, not cancelled
+  // History: past date+time OR cancelled
+  // Uses local time to avoid timezone date shift
+  const upcoming = appointments.filter(a => {
+    if (a.bookingStatus === 'cancelled') return false
+    const [y, m, d] = (a.date || '').split('-').map(Number)
+    const [h, mn] = (a.startTime || '00:00').split(':').map(Number)
+    const apptTime = new Date(y, m - 1, d, h, mn, 0, 0)
+    return apptTime > new Date()
+  })
+  const history = appointments.filter(a => {
+    if (a.bookingStatus === 'cancelled') return true
+    const [y, m, d] = (a.date || '').split('-').map(Number)
+    const [h, mn] = (a.startTime || '00:00').split(':').map(Number)
+    const apptTime = new Date(y, m - 1, d, h, mn, 0, 0)
+    return apptTime <= new Date()
+  })
   const next = upcoming.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime))[0]
 
   // Monthly spending chart
@@ -331,12 +342,34 @@ export default function ClientDashboard() {
               </div>
             </div>
             <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: 16, padding: '16px', marginBottom: 12 }}>
-              {[['PHOTO URL', 'photoURL', 'text', 'https://...'], ['FIRST NAME', 'firstName', 'text', 'Angelo'], ['LAST NAME', 'lastName', 'text', 'Ferreras'], ['PHONE', 'phone', 'tel', '(315) 000-0000']].map(([lbl, key, type, ph]) => (
+              {/* Photo upload — tap avatar to open camera/gallery */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
+                <label htmlFor="photo-upload" style={{ cursor: 'pointer', position: 'relative' }}>
+                  <div style={{ width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', background: '#FF5C0022', border: '3px solid #FF5C0044', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 26, color: '#FF5C00' }}>
+                    {form.photoURL ? <img src={form.photoURL} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : `${form.firstName?.[0] || ''}${form.lastName?.[0] || ''}`}
+                  </div>
+                  <div style={{ position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: '50%', background: '#FF5C00', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #141414' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M20 5h-3.2L15 3H9L7.2 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-8 13c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5z"/><circle cx="12" cy="13" r="3" fill="white"/></svg>
+                  </div>
+                </label>
+                <p style={{ color: '#555', fontSize: 12, marginTop: 8, marginBottom: 0 }}>Tap to change photo</p>
+                <input id="photo-upload" type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+                  onChange={async e => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    // Read as data URL for immediate preview (no storage needed)
+                    const reader = new FileReader()
+                    reader.onload = ev => setForm(p => ({ ...p, photoURL: ev.target.result }))
+                    reader.readAsDataURL(file)
+                  }} />
+              </div>
+
+            {[['FIRST NAME', 'firstName', 'text', 'Angelo'], ['LAST NAME', 'lastName', 'text', 'Ferreras'], ['PHONE', 'phone', 'tel', '(315) 000-0000']].map(([lbl, key, type, ph]) => (
                 <div key={key} style={{ marginBottom: 16 }}>
                   <p style={{ color: '#555', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', marginBottom: 7 }}>{lbl}</p>
                   <div style={{ borderBottom: '1.5px solid #1e1e1e', paddingBottom: 8 }}>
                     <input type={type} value={form[key] || ''} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))} placeholder={ph}
-                      style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 16, ...F }} />
+                      style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 16, fontFamily: 'Monda, sans-serif' }} />
                   </div>
                 </div>
               ))}
