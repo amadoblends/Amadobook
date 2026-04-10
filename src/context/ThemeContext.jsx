@@ -4,14 +4,31 @@ import { db } from '../lib/firebase'
 
 const ThemeContext = createContext(null)
 
-const THEMES = {
-  night:   { bg:'#000000', surface:'#111111', card:'#1a1a1a', border:'#2a2a2a', textPri:'#E5E5E5', textSec:'#6B6B6B', name:'Night'   },
-  evening: { bg:'#1a1208', surface:'#241a0e', card:'#2e2010', border:'#3d2d18', textPri:'#F0E0C8', textSec:'#8a7060', name:'Evening' },
-  day:     { bg:'#f5f5f0', surface:'#ffffff', card:'#ffffff', border:'#e0e0e0', textPri:'#1a1a1a', textSec:'#888888', name:'Day'     },
+export const THEMES = {
+  light: {
+    bg:      '#F7F7F5',
+    surface: '#FFFFFF',
+    card:    '#FFFFFF',
+    border:  '#E8E8E4',
+    textPri: '#111111',
+    textSec: '#888888',
+    name:    'Light',
+    shadow:  '0 2px 12px rgba(0,0,0,0.08)',
+  },
+  dark: {
+    bg:      '#0C0C0C',
+    surface: '#141414',
+    card:    '#1A1A1A',
+    border:  '#2A2A2A',
+    textPri: '#E8E8E8',
+    textSec: '#666666',
+    name:    'Dark',
+    shadow:  '0 2px 12px rgba(0,0,0,0.4)',
+  },
 }
 
-function applyTheme(theme, accent) {
-  const t = THEMES[theme]
+function applyTheme(themeKey, accent) {
+  const t = THEMES[themeKey] || THEMES.light
   const r = document.documentElement
   r.style.setProperty('--bg',       t.bg)
   r.style.setProperty('--surface',  t.surface)
@@ -20,33 +37,32 @@ function applyTheme(theme, accent) {
   r.style.setProperty('--text-pri', t.textPri)
   r.style.setProperty('--text-sec', t.textSec)
   r.style.setProperty('--accent',   accent)
-  r.style.setProperty('--accent-hover', accent + 'cc')
+  r.style.setProperty('--shadow',   t.shadow)
   document.body.style.background = t.bg
-  document.body.style.color = t.textPri
+  document.body.style.color      = t.textPri
 }
 
 export function ThemeProvider({ children }) {
-  const [theme, setThemeState]   = useState('night')
+  const [theme, setThemeState]   = useState('light')   // light by default
   const [accent, setAccentState] = useState('#FF5C00')
   const [uid, setUid]            = useState(null)
 
-  // Load prefs from Firestore when user logs in
   async function loadPrefs(userId) {
     try {
       const snap = await getDoc(doc(db, 'userPrefs', userId))
       if (snap.exists()) {
         const d = snap.data()
-        if (d.theme)  setThemeState(d.theme)
-        if (d.accent) setAccentState(d.accent)
-        applyTheme(d.theme || 'night', d.accent || '#FF5C00')
+        const t = d.theme  || 'light'
+        const a = d.accent || '#FF5C00'
+        setThemeState(t); setAccentState(a)
+        applyTheme(t, a)
       }
     } catch {}
   }
 
   async function savePrefs(t, a) {
     if (!uid) return
-    try { await setDoc(doc(db,'userPrefs',uid), { theme:t, accent:a }, { merge:true }) }
-    catch {}
+    try { await setDoc(doc(db, 'userPrefs', uid), { theme: t, accent: a }, { merge: true }) } catch {}
   }
 
   function setTheme(t) {
@@ -63,22 +79,19 @@ export function ThemeProvider({ children }) {
     localStorage.setItem('ab_accent', a)
   }
 
-  function cycleTheme() {
-    const order = ['night','evening','day']
-    setTheme(order[(order.indexOf(theme)+1) % order.length])
+  function toggleTheme() {
+    setTheme(theme === 'light' ? 'dark' : 'light')
   }
 
-  // Init from localStorage first (fast), then Firestore
   useEffect(() => {
-    const t = localStorage.getItem('ab_theme') || 'night'
+    const t = localStorage.getItem('ab_theme') || 'light'
     const a = localStorage.getItem('ab_accent') || '#FF5C00'
-    setThemeState(t)
-    setAccentState(a)
+    setThemeState(t); setAccentState(a)
     applyTheme(t, a)
   }, [])
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, accent, setAccent, themes:THEMES, cycleTheme, setUid, loadPrefs }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, accent, setAccent, themes: THEMES, setUid, loadPrefs }}>
       {children}
     </ThemeContext.Provider>
   )

@@ -1,298 +1,210 @@
 import { useEffect, useState, useRef } from 'react'
-import { collection, query, where, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore'
+import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useAuth'
-import { formatCurrency, formatDuration, getInitials } from '../../utils/helpers'
-import { format } from 'date-fns'
-import toast from 'react-hot-toast'
+import { formatCurrency, formatDuration, getInitials, parseLocalDate } from '../../utils/helpers'
+import { format, isToday, isTomorrow, differenceInMinutes } from 'date-fns'
 import BarberLayout from '../../components/layout/BarberLayout'
-import Modal from '../../components/ui/Modal'
-import { DollarSign, Calendar, Clock, XCircle, TrendingUp, Copy, ExternalLink, CheckCircle, User, Edit2, Save, X } from 'lucide-react'
 import { PageLoader } from '../../components/ui/Spinner'
+import { Calendar, DollarSign, Users, TrendingUp, Clock, CheckCircle } from 'lucide-react'
+import toast from 'react-hot-toast'
+
+const F = { fontFamily:'Monda,sans-serif' }
+const SC = { pending:'#f59e0b', confirmed:'#16A34A', completed:'#3b82f6', cancelled:'#ef4444' }
 
 export default function BarberDashboard() {
   const { user } = useAuth()
-  const [barber, setBarber]         = useState(null)
-  const [todayAppts, setTodayAppts] = useState([])
-  const [allAppts, setAllAppts]     = useState([])
-  const [loading, setLoading]       = useState(true)
-  const [actionAppt, setActionAppt] = useState(null)
-  const [updating, setUpdating]     = useState(false)
-  const [editProfile, setEditProfile] = useState(false)
-  const [profileForm, setProfileForm] = useState({})
-  const [savingProfile, setSavingProfile] = useState(false)
+  const [barber, setBarber]     = useState(null)
+  const [allAppts, setAllAppts] = useState([])
+  const [loading, setLoading]   = useState(true)
   const refreshRef = useRef(null)
-  const todayStr = format(new Date(), 'yyyy-MM-dd')
 
-  // Auto-complete appointments that are past their end time
   async function autoCompletePastAppointments(barberId, appts) {
     const now = new Date()
     const toComplete = appts.filter(a => {
       if (a.bookingStatus !== 'confirmed' && a.bookingStatus !== 'pending') return false
-      const [y, m, d] = a.date.split('-').map(Number)
-      const [eh, em] = (a.endTime || '00:00').split(':').map(Number)
-      const endDt = new Date(y, m - 1, d, eh, em, 0, 0)
-      return endDt < now
+      const [y,m,d] = (a.date||'').split('-').map(Number)
+      const [eh,em] = (a.endTime||'00:00').split(':').map(Number)
+      return new Date(y,m-1,d,eh,em,0) < now
     })
     for (const a of toComplete) {
-      try {
-        await updateDoc(doc(db, 'appointments', a.id), { bookingStatus: 'completed' })
-      } catch {}
+      try { await updateDoc(doc(db,'appointments',a.id), { bookingStatus:'completed' }) } catch {}
+    }
+    if (toComplete.length > 0) {
+      setAllAppts(p => p.map(a => toComplete.find(t=>t.id===a.id) ? {...a, bookingStatus:'completed'} : a))
     }
   }
 
   async function loadData(barberId) {
-    const [tSnap, aSnap] = await Promise.all([
-      getDocs(query(collection(db, 'appointments'), where('barberId', '==', barberId), where('date', '==', todayStr))),
-      getDocs(query(collection(db, 'appointments'), where('barberId', '==', barberId))),
-    ])
-    const all = aSnap.docs.map(d => ({ id: d.id, ...d.data() }))
-    all.sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))
-    setTodayAppts(tSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+    const snap = await getDocs(query(collection(db,'appointments'), where('barberId','==',barberId)))
+    const all  = snap.docs.map(d=>({id:d.id,...d.data()}))
     setAllAppts(all)
-    // Auto-complete past appointments in background
-    autoCompletePastAppointments(barberId, all).catch(() => {})
+    setLoading(false)
+    autoCompletePastAppointments(barberId, all)
   }
 
   useEffect(() => {
     if (!user) return
-    async function load() {
-      try {
-        const bSnap = await getDocs(query(collection(db, 'barbers'), where('userId', '==', user.uid)))
-        if (bSnap.empty) { setLoading(false); return }
-        const b = { id: bSnap.docs[0].id, ...bSnap.docs[0].data() }
-        setBarber(b)
-        setProfileForm({ name: b.name, bio: b.bio||'', address: b.address||'', phone: b.phone||'', photoURL: b.photoURL||'' })
-        await loadData(b.id)
-        // Ensure barber state is set after data loads (fixes mobile timing issue)
-        setBarber(b)
-      } catch (e) { console.error(e); toast.error('Failed to load') }
-      finally { setLoading(false) }
+    async function init() {
+      const bSnap = await getDocs(query(collection(db,'barbers'), where('userId','==',user.uid)))
+      if (bSnap.empty) { setLoading(false); return }
+      const b = { id:bSnap.docs[0].id, ...bSnap.docs[0].data() }
+      setBarber(b)
+      await loadData(b.id)
     }
-    load()
+    init()
+    refreshRef.current = setInterval(() => { if (barber) loadData(barber.id) }, 20000)
+    return () => clearInterval(refreshRef.current)
   }, [user])
 
-  // Auto-refresh every 60 seconds
   useEffect(() => {
-    if (!barber) return
-    refreshRef.current = setInterval(() => loadData(barber.id), 20000)
+    if (barber) {
+      clearInterval(refreshRef.current)
+      refreshRef.current = setInterval(() => loadData(barber.id), 20000)
+    }
     return () => clearInterval(refreshRef.current)
   }, [barber])
 
-  async function updateAppt(id, updates) {
-    setUpdating(true)
-    try {
-      await updateDoc(doc(db, 'appointments', id), updates)
-      const patch = a => a.id===id ? {...a,...updates} : a
-      setTodayAppts(p => p.map(patch))
-      setAllAppts(p => p.map(patch))
-      setActionAppt(null)
-      toast.success('Updated!')
-    } catch { toast.error('Could not update') }
-    finally { setUpdating(false) }
-  }
-
-  async function saveProfile() {
-    if (!barber || !profileForm.name?.trim()) return toast.error('Name is required')
-    setSavingProfile(true)
-    try {
-      await updateDoc(doc(db, 'barbers', barber.id), {
-        name: profileForm.name.trim(),
-        bio: profileForm.bio.trim(),
-        address: profileForm.address.trim(),
-        phone: profileForm.phone.trim(),
-        photoURL: profileForm.photoURL.trim(),
-      })
-      setBarber(p => ({ ...p, ...profileForm }))
-      setEditProfile(false)
-      toast.success('Profile updated!')
-    } catch { toast.error('Could not save') }
-    finally { setSavingProfile(false) }
-  }
-
   if (loading) return <BarberLayout><PageLoader /></BarberLayout>
 
-  const todayActive  = todayAppts.filter(a => a.bookingStatus !== 'cancelled')
-  const todayRevenue = todayAppts.filter(a => a.paymentStatus === 'paid').reduce((s,a) => s+(a.totalPrice||0), 0)
-  const todayPending = todayAppts.filter(a => a.paymentStatus === 'pending' && a.bookingStatus !== 'cancelled').reduce((s,a) => s+(a.totalPrice||0), 0)
-  const totalRevenue = allAppts.filter(a => a.paymentStatus === 'paid').reduce((s,a) => s+(a.totalPrice||0), 0)
-  const publicLink   = `${window.location.origin}/b/${barber?.slug}`
+  const today = format(new Date(),'yyyy-MM-dd')
+  const active = allAppts.filter(a => a.bookingStatus !== 'cancelled')
+  const todayAppts = active
+    .filter(a => a.date === today)
+    .sort((a,b) => a.startTime.localeCompare(b.startTime))
+  const upcoming = active
+    .filter(a => a.date > today)
+    .sort((a,b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime))
+    .slice(0,5)
 
-  if (!barber) return (
-    <BarberLayout>
-      <div className="p-6 max-w-xl mx-auto">
-        <div className="card text-center py-12">
-          <User size={40} style={{color:'var(--text-sec)'}} className="mx-auto mb-3"/>
-          <h2 className="font-bold text-lg mb-2" style={{color:'var(--text-pri)'}}>Profile not set up</h2>
-          <p className="text-sm" style={{color:'var(--text-sec)'}}>Sign out and sign up again.</p>
-        </div>
-      </div>
-    </BarberLayout>
-  )
+  const thisMonthKey = format(new Date(),'yyyy-MM')
+  const monthRevenue = active
+    .filter(a => a.date?.startsWith(thisMonthKey) && a.paymentStatus==='paid')
+    .reduce((s,a) => s+(a.totalWithTip||a.totalPrice||0), 0)
+  const pendingPay = active
+    .filter(a => a.paymentStatus!=='paid' && a.bookingStatus!=='cancelled')
+    .reduce((s,a) => s+(a.totalPrice||0), 0)
+  const totalClients = new Set(active.map(a=>a.clientEmail||a.clientName)).size
+
+  const now = new Date()
+  const currentAppt = todayAppts.find(a => {
+    const [y,m,d] = a.date.split('-').map(Number)
+    const [sh,sm] = a.startTime.split(':').map(Number)
+    const [eh,em] = a.endTime.split(':').map(Number)
+    const start = new Date(y,m-1,d,sh,sm)
+    const end   = new Date(y,m-1,d,eh,em)
+    return now >= start && now <= end
+  })
 
   return (
     <BarberLayout>
-      <div className="p-4 max-w-4xl mx-auto">
-        {/* Profile card */}
-        <div className="card mb-4 flex items-start gap-4">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden flex-shrink-0"
-            style={{background:'var(--accent)22',border:'2px solid var(--accent)44'}}>
-            {barber.photoURL
-              ? <img src={barber.photoURL} alt="" className="w-full h-full object-cover"/>
-              : <span className="font-bold text-lg" style={{color:'var(--accent)'}}>{getInitials(barber.name)}</span>}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h1 className="text-xl font-bold" style={{fontFamily:'Syne,sans-serif',color:'var(--text-pri)'}}>{barber.name}</h1>
-                {barber.address && <p className="text-xs mt-0.5" style={{color:'var(--text-sec)'}}>{barber.address}</p>}
-                {barber.bio && <p className="text-xs mt-1 leading-relaxed" style={{color:'var(--text-sec)'}}>{barber.bio}</p>}
-              </div>
-              <button onClick={() => setEditProfile(true)} className="btn-ghost p-2 flex-shrink-0" style={{minHeight:'auto'}}>
-                <Edit2 size={16} style={{color:'var(--text-sec)'}}/>
-              </button>
-            </div>
-            <p className="text-xs mt-1" style={{color:'var(--text-sec)'}}>{format(new Date(),'EEEE, MMMM d, yyyy')}</p>
-          </div>
+      <div style={{ padding:'20px', maxWidth:640, margin:'0 auto', ...F }}>
+
+        {/* Greeting */}
+        <div style={{ marginBottom:20 }}>
+          <p style={{ color:'var(--text-sec)', fontSize:13, margin:'0 0 2px' }}>
+            {new Date().getHours()<12?'Good morning':new Date().getHours()<17?'Good afternoon':'Good evening'} 👋
+          </p>
+          <h1 style={{ fontFamily:'Syne,sans-serif', color:'var(--text-pri)', fontSize:24, fontWeight:900, margin:0 }}>
+            {barber?.name || 'Dashboard'}
+          </h1>
         </div>
 
-        {/* Booking link */}
-        <div className="mb-4 p-4 rounded-2xl flex items-center justify-between gap-3" style={{background:'var(--accent)12',border:'1px solid var(--accent)33'}}>
-          <div className="min-w-0">
-            <p className="text-xs font-bold mb-0.5" style={{color:'var(--accent)'}}>Your Client Booking Link</p>
-            <p className="text-sm truncate" style={{color:'var(--text-pri)'}}>{publicLink}</p>
+        {/* Currently serving */}
+        {currentAppt && (
+          <div style={{ background:'var(--accent)', borderRadius:16, padding:'16px', marginBottom:16, color:'white' }}>
+            <p style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', margin:'0 0 6px', opacity:0.8 }}>NOW SERVING</p>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <p style={{ fontWeight:800, fontSize:18, margin:'0 0 2px' }}>{currentAppt.clientName}</p>
+                <p style={{ opacity:0.8, fontSize:13, margin:0 }}>{currentAppt.services?.map(s=>s.name).join(', ')}</p>
+              </div>
+              <div style={{ textAlign:'right' }}>
+                <p style={{ fontWeight:900, fontSize:16, margin:'0 0 2px' }}>{formatCurrency(currentAppt.totalPrice)}</p>
+                <p style={{ opacity:0.8, fontSize:12, margin:0 }}>{currentAppt.startTime} – {currentAppt.endTime}</p>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-1 flex-shrink-0">
-            <button onClick={() => { navigator.clipboard.writeText(publicLink); toast.success('Copied!') }} className="btn-ghost p-2" style={{color:'var(--accent)',minHeight:'auto'}}><Copy size={16}/></button>
-            <a href={publicLink} target="_blank" rel="noreferrer" className="btn-ghost p-2" style={{color:'var(--accent)',minHeight:'auto'}}><ExternalLink size={16}/></a>
-          </div>
-        </div>
+        )}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <StatCard icon={<Calendar size={18}/>}    label="Today"         value={todayActive.length}          color="#60a5fa" bg="#3b82f615"/>
-          <StatCard icon={<DollarSign size={18}/>}  label="Revenue Today" value={formatCurrency(todayRevenue)} color="#4ade80" bg="#16A34A15"/>
-          <StatCard icon={<Clock size={18}/>}        label="Pending"       value={formatCurrency(todayPending)} color="#fbbf24" bg="#f59e0b15"/>
-          <StatCard icon={<XCircle size={18}/>}      label="Cancelled"     value={todayAppts.filter(a=>a.bookingStatus==='cancelled').length} color="#f87171" bg="#ef444415"/>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
+          {[
+            { icon:<DollarSign size={18}/>, label:'This Month', value:formatCurrency(monthRevenue), color:'#16A34A', bg:'#16A34A18' },
+            { icon:<Clock size={18}/>, label:'Today', value:todayAppts.length, color:'var(--accent)', bg:'var(--accent)18' },
+            { icon:<TrendingUp size={18}/>, label:'Pending Pay', value:formatCurrency(pendingPay), color:'#f59e0b', bg:'#f59e0b18' },
+            { icon:<Users size={18}/>, label:'Total Clients', value:totalClients, color:'#3b82f6', bg:'#3b82f618' },
+          ].map(s => (
+            <div key={s.label} style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'14px', boxShadow:'var(--shadow)' }}>
+              <div style={{ width:36, height:36, borderRadius:10, background:s.bg, color:s.color, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:8 }}>{s.icon}</div>
+              <p style={{ fontFamily:'Syne,sans-serif', color:s.color, fontSize:22, fontWeight:900, margin:'0 0 2px' }}>{s.value}</p>
+              <p style={{ color:'var(--text-sec)', fontSize:11, margin:0 }}>{s.label}</p>
+            </div>
+          ))}
         </div>
 
-        <div className="card mb-4">
-          <div className="flex items-center gap-2 mb-1"><TrendingUp size={14} style={{color:'var(--accent)'}}/><span className="text-xs font-bold uppercase tracking-wider" style={{color:'var(--text-sec)'}}>All-Time Revenue</span></div>
-          <p className="text-3xl font-bold" style={{fontFamily:'Syne,sans-serif',color:'var(--accent)'}}>{formatCurrency(totalRevenue)}</p>
-          <p className="text-xs mt-1" style={{color:'var(--text-sec)'}}>{allAppts.filter(a=>a.paymentStatus==='paid').length} paid appointments</p>
-        </div>
-
-        <h2 className="text-lg font-bold mb-3" style={{fontFamily:'Syne,sans-serif',color:'var(--text-pri)'}}>Today's Appointments</h2>
-        {todayAppts.length === 0 ? (
-          <div className="card text-center py-10"><Calendar size={28} className="mx-auto mb-2 opacity-40" style={{color:'var(--text-sec)'}}/><p className="text-sm" style={{color:'var(--text-sec)'}}>No appointments today</p></div>
-        ) : (
-          <div className="space-y-2">
-            {todayAppts.sort((a,b)=>a.startTime.localeCompare(b.startTime)).map(appt => (
-              <button key={appt.id} onClick={() => setActionAppt(appt)} className="w-full text-left card flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 text-white"
-                  style={{background: appt.isGuest ? '#8b5cf6' : 'var(--accent)'}}>
-                  {getInitials(appt.clientName)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-sm" style={{color:'var(--text-pri)'}}>{appt.clientName}</p>
-                    {appt.isGuest && <span className="badge-guest">Guest</span>}
-                    <span className={appt.bookingStatus==='completed'?'badge-success':appt.bookingStatus==='cancelled'?'badge-danger':'badge-info'}>{appt.bookingStatus}</span>
-                    <span className={appt.paymentStatus==='paid'?'badge-success':'badge-warning'}>{appt.paymentStatus}</span>
+        {/* Today's schedule */}
+        <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'16px', marginBottom:16, boxShadow:'var(--shadow)' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+            <p style={{ fontFamily:'Syne,sans-serif', color:'var(--text-pri)', fontWeight:800, fontSize:16, margin:0 }}>Today</p>
+            <span style={{ background:'var(--accent)20', color:'var(--accent)', fontSize:12, fontWeight:700, padding:'3px 10px', borderRadius:20 }}>
+              {todayAppts.length} appt{todayAppts.length!==1?'s':''}
+            </span>
+          </div>
+          {todayAppts.length === 0 ? (
+            <p style={{ color:'var(--text-sec)', fontSize:13, textAlign:'center', padding:'16px 0' }}>No appointments today</p>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {todayAppts.map(a => (
+                <div key={a.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 12px', borderRadius:12, background:'var(--bg)', border:'1px solid var(--border)' }}>
+                  <div style={{ flexShrink:0, textAlign:'center', minWidth:44 }}>
+                    <p style={{ color:'var(--accent)', fontWeight:700, fontSize:13, margin:0 }}>{a.startTime}</p>
+                    <p style={{ color:'var(--text-sec)', fontSize:11, margin:0 }}>{a.endTime}</p>
                   </div>
-                  <p className="text-xs mt-0.5" style={{color:'var(--text-sec)'}}>{appt.startTime} · {formatDuration(appt.totalDuration)} · {appt.services?.map(s=>s.name).join(', ')}</p>
+                  <div style={{ width:1, height:32, background:'var(--border)', flexShrink:0 }}/>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:14, margin:0 }}>{a.clientName}</p>
+                      {a.isGuest && <span style={{ background:'#8b5cf622', color:'#7c3aed', fontSize:10, padding:'1px 6px', borderRadius:10, fontWeight:700 }}>Guest</span>}
+                    </div>
+                    <p style={{ color:'var(--text-sec)', fontSize:12, margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      {a.services?.map(s=>s.name).join(', ')}
+                    </p>
+                  </div>
+                  <div style={{ flexShrink:0, textAlign:'right' }}>
+                    <p style={{ color:'var(--accent)', fontWeight:800, fontSize:13, margin:'0 0 2px' }}>{formatCurrency(a.totalPrice)}</p>
+                    <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:10, background:SC[a.bookingStatus]+'22', color:SC[a.bookingStatus] }}>
+                      {a.bookingStatus}
+                    </span>
+                  </div>
                 </div>
-                <p className="font-bold text-sm flex-shrink-0" style={{color:'var(--accent)'}}>{formatCurrency(appt.totalPrice)}</p>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Action Modal */}
-      <Modal isOpen={!!actionAppt} onClose={() => setActionAppt(null)} title="Update Appointment">
-        {actionAppt && (
-          <div>
-            <div className="mb-4 p-3 rounded-2xl" style={{background:'var(--surface)'}}>
-              <div className="flex items-center gap-2 mb-1">
-                <p className="font-bold" style={{color:'var(--text-pri)'}}>{actionAppt.clientName}</p>
-                {actionAppt.isGuest && <span className="badge-guest">Guest</span>}
-              </div>
-              <p className="text-xs" style={{color:'var(--text-sec)'}}>{actionAppt.clientEmail}</p>
-              <p className="font-bold mt-1" style={{color:'var(--accent)'}}>{formatCurrency(actionAppt.totalPrice)}</p>
+              ))}
             </div>
-            <div className="space-y-2">
-              {actionAppt.bookingStatus !== 'completed' && (
-                <button disabled={updating} onClick={() => updateAppt(actionAppt.id,{bookingStatus:'completed'})}
-                  className="w-full flex items-center gap-3 p-3 rounded-2xl font-semibold text-sm"
-                  style={{background:'#16A34A15',color:'#4ade80',border:'1px solid #16A34A33'}}>
-                  <CheckCircle size={16}/> Mark Completed
-                </button>
-              )}
-              {actionAppt.paymentStatus !== 'paid' && actionAppt.bookingStatus !== 'cancelled' && (
-                <button disabled={updating} onClick={() => updateAppt(actionAppt.id,{paymentStatus:'paid'})}
-                  className="w-full flex items-center gap-3 p-3 rounded-2xl font-semibold text-sm"
-                  style={{background:'#3b82f615',color:'#60a5fa',border:'1px solid #3b82f633'}}>
-                  <DollarSign size={16}/> Mark Paid
-                </button>
-              )}
-              {actionAppt.bookingStatus !== 'cancelled' && (
-                <button disabled={updating} onClick={() => updateAppt(actionAppt.id,{bookingStatus:'cancelled',paymentStatus:'cancelled'})}
-                  className="w-full flex items-center gap-3 p-3 rounded-2xl font-semibold text-sm"
-                  style={{background:'#ef444415',color:'#f87171',border:'1px solid #ef444433'}}>
-                  <XCircle size={16}/> Cancel
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* Edit Profile Modal */}
-      <Modal isOpen={editProfile} onClose={() => setEditProfile(false)} title="Edit Profile">
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider block mb-1.5" style={{color:'var(--text-sec)'}}>Photo URL</label>
-            <input value={profileForm.photoURL||''} onChange={e => setProfileForm(p=>({...p,photoURL:e.target.value}))} placeholder="https://..." className="input"/>
-            {profileForm.photoURL && <img src={profileForm.photoURL} alt="" className="w-16 h-16 rounded-2xl object-cover mt-2"/>}
-          </div>
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider block mb-1.5" style={{color:'var(--text-sec)'}}>Shop Name</label>
-            <input value={profileForm.name||''} onChange={e => setProfileForm(p=>({...p,name:e.target.value}))} className="input"/>
-          </div>
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider block mb-1.5" style={{color:'var(--text-sec)'}}>Bio</label>
-            <textarea value={profileForm.bio||''} onChange={e => setProfileForm(p=>({...p,bio:e.target.value}))} rows={2} className="input resize-none"/>
-          </div>
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider block mb-1.5" style={{color:'var(--text-sec)'}}>Address</label>
-            <input value={profileForm.address||''} onChange={e => setProfileForm(p=>({...p,address:e.target.value}))} className="input"/>
-          </div>
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider block mb-1.5" style={{color:'var(--text-sec)'}}>Phone</label>
-            <input value={profileForm.phone||''} onChange={e => setProfileForm(p=>({...p,phone:e.target.value}))} className="input" type="tel"/>
-          </div>
-          <div className="flex gap-3 pt-2">
-            <button onClick={() => setEditProfile(false)} className="btn-secondary flex-1">Cancel</button>
-            <button onClick={saveProfile} disabled={savingProfile} className="btn-primary flex-1 gap-2">
-              {savingProfile && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>}
-              {savingProfile ? 'Saving...' : 'Save Profile'}
-            </button>
-          </div>
+          )}
         </div>
-      </Modal>
-    </BarberLayout>
-  )
-}
 
-function StatCard({ icon, label, value, color, bg }) {
-  return (
-    <div className="card">
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-2" style={{background:bg,color}}>
-        {icon}
+        {/* Upcoming */}
+        {upcoming.length > 0 && (
+          <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'16px', boxShadow:'var(--shadow)' }}>
+            <p style={{ fontFamily:'Syne,sans-serif', color:'var(--text-pri)', fontWeight:800, fontSize:16, marginBottom:12 }}>Upcoming</p>
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {upcoming.map(a => {
+                const d = parseLocalDate(a.date)
+                const label = isToday(d)?'Today':isTomorrow(d)?'Tomorrow':format(d,'MMM d')
+                return (
+                  <div key={a.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 12px', borderRadius:12, background:'var(--bg)', border:'1px solid var(--border)' }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:13, margin:'0 0 1px' }}>{a.clientName}</p>
+                      <p style={{ color:'var(--text-sec)', fontSize:12, margin:0 }}>{label} · {a.startTime}</p>
+                    </div>
+                    <p style={{ color:'var(--accent)', fontWeight:800, fontSize:13, flexShrink:0 }}>{formatCurrency(a.totalPrice)}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
-      <p className="text-xl font-bold" style={{fontFamily:'Syne,sans-serif',color}}>{value}</p>
-      <p className="text-xs mt-0.5" style={{color:'var(--text-sec)'}}>{label}</p>
-    </div>
+    </BarberLayout>
   )
 }

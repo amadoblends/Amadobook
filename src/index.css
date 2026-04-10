@@ -2,33 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Variables ───────────────────────────────────────────── */
+/* ── CSS Variables (set by ThemeContext) ──────────────── */
 :root {
-  --bg:       #000000;
-  --surface:  #111111;
-  --card:     #1a1a1a;
-  --border:   #2a2a2a;
-  --text-pri: #E5E5E5;
-  --text-sec: #6B6B6B;
+  --bg:       #F7F7F5;
+  --surface:  #FFFFFF;
+  --card:     #FFFFFF;
+  --border:   #E8E8E4;
+  --text-pri: #111111;
+  --text-sec: #888888;
   --accent:   #FF5C00;
-  --accent-hover: #FF9000;
-
-  --max-content: 520px;
-  --sidebar-w:   220px;
+  --shadow:   0 2px 12px rgba(0,0,0,0.08);
 }
 
-/* ── Reset ───────────────────────────────────────────────── */
+/* ── Reset ─────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
 }
-
-html {
-  overflow-x: hidden;
-  scroll-behavior: smooth;
-}
-
+html { overflow-x: hidden; scroll-behavior: smooth; }
 body {
   margin: 0;
   background: var(--bg);
@@ -36,190 +28,71 @@ body {
   font-family: 'Monda', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
-  /* iPhone safe areas */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
+  transition: background 0.2s, color 0.2s;
 }
-
-h1, h2, h3, h4, h5 {
-  font-family: 'Syne', system-ui, sans-serif;
-  margin: 0;
-}
-
-button {
-  cursor: pointer;
-  touch-action: manipulation;
-  font-family: inherit;
-}
-
-input, textarea, select {
-  font-family: inherit;
-  font-size: 16px; /* prevents iOS zoom */
-}
-
+h1,h2,h3,h4,h5 { font-family: 'Syne', system-ui, sans-serif; margin: 0; }
+button { cursor: pointer; touch-action: manipulation; font-family: inherit; }
+input, textarea, select { font-family: inherit; font-size: 16px; }
 img { max-width: 100%; }
 
-/* ── Scrollbar ───────────────────────────────────────────── */
+/* ── Scrollbar ──────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
 
-/* ── Tailwind utility classes ────────────────────────────── */
+/* ── Core components ───────────────────────────────────── */
 @layer components {
-
-  /* Cards */
   .card {
-    @apply rounded-2xl p-4;
     background: var(--card);
     border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: var(--shadow);
   }
 
-  /* Inputs */
-  .input {
-    @apply w-full rounded-xl px-4 outline-none transition-colors;
-    background: var(--surface);
-    border: 1.5px solid var(--border);
-    color: var(--text-pri);
-    min-height: 52px;
-    font-size: 16px;
-  }
-  .input:focus { border-color: var(--accent); }
-  .input::placeholder { color: var(--text-sec); }
-
-  /* Buttons */
   .btn-primary {
-    @apply w-full flex items-center justify-center gap-2 rounded-2xl font-bold transition-all active:scale-95 disabled:opacity-50;
+    @apply flex items-center justify-center gap-2 rounded-2xl font-bold transition-all active:scale-95 disabled:opacity-50;
     background: var(--accent);
-    color: white;
-    min-height: 52px;
-    font-size: 16px;
-    border: none;
+    color: white; min-height: 50px; font-size: 15px; border: none;
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 40%, transparent);
   }
-  .btn-primary:hover { background: var(--accent-hover); }
-
   .btn-secondary {
-    @apply w-full flex items-center justify-center gap-2 rounded-2xl font-semibold transition-all active:scale-95;
-    background: var(--surface);
-    color: var(--text-pri);
-    border: 1.5px solid var(--border);
-    min-height: 52px;
-    font-size: 15px;
+    @apply flex items-center justify-center gap-2 rounded-2xl font-semibold transition-all active:scale-95;
+    background: var(--surface); color: var(--text-pri);
+    border: 1.5px solid var(--border); min-height: 50px; font-size: 15px;
   }
-
   .btn-ghost {
     @apply flex items-center gap-2 rounded-xl font-medium transition-all;
-    background: transparent;
-    color: var(--text-sec);
-    border: none;
-    min-height: 44px;
+    background: transparent; color: var(--text-sec); border: none; min-height: 40px;
   }
   .btn-ghost:hover { background: var(--card); color: var(--text-pri); }
 
-  /* Badges */
-  .badge-success { @apply text-xs font-bold px-2.5 py-1 rounded-full; background:#16A34A22;color:#4ade80; }
-  .badge-warning { @apply text-xs font-bold px-2.5 py-1 rounded-full; background:#eab30822;color:#fbbf24; }
-  .badge-danger  { @apply text-xs font-bold px-2.5 py-1 rounded-full; background:#ef444422;color:#f87171; }
-  .badge-info    { @apply text-xs font-bold px-2.5 py-1 rounded-full; background:#3b82f622;color:#60a5fa; }
-  .badge-muted   { @apply text-xs font-bold px-2.5 py-1 rounded-full; background:#ffffff12;color:#888; }
-  .badge-guest   { @apply text-xs font-bold px-2.5 py-1 rounded-full; background:#8b5cf622;color:#a78bfa; }
-}
-
-/* ── Layout containers ───────────────────────────────────── */
-
-/* Barber dashboard layout */
-.barber-layout-main {
-  min-height: 100vh;
-  display: flex;
-}
-
-/* Client pages — centered, max-width, full height */
-.client-page {
-  min-height: 100vh;
-  background: var(--bg);
-  display: flex;
-  flex-direction: column;
-}
-
-.client-content {
-  width: 100%;
-  max-width: var(--max-content);
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-/* ── Safe area bottom for fixed elements ─────────────────── */
-.safe-bottom {
-  padding-bottom: max(16px, env(safe-area-inset-bottom));
-}
-
-/* ── Responsive: iPhone (default, < 640px) ───────────────── */
-/* Already handled by mobile-first defaults above */
-
-/* ── Responsive: iPad (640px – 1023px) ──────────────────── */
-@media (min-width: 640px) {
-  :root { --max-content: 560px; }
-
-  .client-content { padding: 0 32px; }
-
-  /* Barber sidebar shows at 768px */
-}
-
-/* ── Responsive: Desktop (1024px+) ──────────────────────── */
-@media (min-width: 1024px) {
-  :root { --max-content: 600px; }
-
-  /* Barber dashboard: sidebar is always visible */
-  .barber-sidebar {
-    display: flex !important;
+  .input {
+    @apply w-full rounded-xl outline-none transition-colors;
+    background: var(--surface); border: 1.5px solid var(--border);
+    color: var(--text-pri); padding: 12px 14px; font-size: 16px;
   }
-  .barber-mobile-header {
-    display: none !important;
-  }
-  .barber-main {
-    margin-left: var(--sidebar-w);
-  }
+  .input:focus { border-color: var(--accent); }
+  .input::placeholder { color: var(--text-sec); opacity: 0.6; }
 
-  /* Client pages: center with card effect */
-  .client-page-centered {
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 40px 20px;
-    background: #050505;
-  }
-
-  .client-page-card {
-    width: 100%;
-    max-width: 480px;
-    background: var(--bg);
-    border-radius: 24px;
-    border: 1px solid var(--border);
-    overflow: hidden;
-    min-height: 600px;
-  }
+  .badge-success { @apply text-xs font-bold px-2 py-0.5 rounded-full; background:#16A34A22; color:#16A34A; }
+  .badge-warning { @apply text-xs font-bold px-2 py-0.5 rounded-full; background:#f59e0b22; color:#d97706; }
+  .badge-danger  { @apply text-xs font-bold px-2 py-0.5 rounded-full; background:#ef444422; color:#dc2626; }
+  .badge-info    { @apply text-xs font-bold px-2 py-0.5 rounded-full; background:#3b82f622; color:#2563eb; }
+  .badge-purple  { @apply text-xs font-bold px-2 py-0.5 rounded-full; background:#8b5cf622; color:#7c3aed; }
 }
 
-/* ── Animations ──────────────────────────────────────────── */
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+/* ── Animations ─────────────────────────────────────────── */
+@keyframes spin    { to { transform: rotate(360deg); } }
+@keyframes fadeIn  { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+@keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:none; } }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+.animate-fadein  { animation: fadeIn  0.2s ease-out; }
+.animate-slideup { animation: slideUp 0.25s ease-out; }
 
-.animate-fadein {
-  animation: fadeIn 0.2s ease-out;
-}
-
-/* ── Misc ────────────────────────────────────────────────── */
+/* ── Utilities ──────────────────────────────────────────── */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* colorScheme dark for date/time inputs on iOS */
-input[type="date"],
-input[type="time"] {
-  color-scheme: dark;
-}
+input[type="date"], input[type="time"] { color-scheme: light dark; }
