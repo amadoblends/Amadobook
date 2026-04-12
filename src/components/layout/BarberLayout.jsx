@@ -29,7 +29,7 @@ export default function BarberLayout({ children }) {
 
   const [menuOpen, setMenuOpen]         = useState(false)
   const [panelView, setPanelView]       = useState(null) // null | 'main' | 'edit' | 'settings' | 'share'
-  const [barnerName, setBarberName]     = useState('')
+  const [barberName, setBarberName]     = useState('')
   const [barberSlug, setBarberSlug]     = useState('')
   const [barberId, setBarberId]         = useState('')
   const [copied, setCopied]             = useState(false)
@@ -51,7 +51,7 @@ export default function BarberLayout({ children }) {
     if (userData) setEditForm({ firstName:userData.firstName||'', lastName:userData.lastName||'', phone:userData.phone||'', photoURL:userData.photoURL||'' })
   }, [user, userData])
 
-  const displayName = barnerName || userData?.firstName || 'Dashboard'
+  const displayName = barberName || userData?.firstName || 'Dashboard'
   const bookingLink = barberSlug ? `${window.location.origin}/b/${barberSlug}` : ''
 
   async function handleSignOut() {
@@ -207,11 +207,13 @@ export default function BarberLayout({ children }) {
           { icon:Edit3,    label:'Edit Profile', sub:'Name, photo, phone',        view:'edit' },
           { icon:Settings, label:'Settings',     sub:'Dark mode, colors, sign out', view:'settings' },
           { icon:QrCode,   label:'QR & Share',   sub:'Booking link & QR code',    view:'share' },
-        ].map(item => (
+        ].map(item => {
+          const ItemIcon = item.icon
+          return (
           <button key={item.view} onClick={() => setPanelView(item.view)}
             style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:14, background:'var(--card)', border:'1px solid var(--border)', cursor:'pointer', marginBottom:8, textAlign:'left', fontFamily:'Monda,sans-serif' }}>
             <div style={{ width:38, height:38, borderRadius:10, background:'var(--accent)15', color:'var(--accent)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <item.icon size={17}/>
+              <ItemIcon size={17}/>
             </div>
             <div style={{ flex:1 }}>
               <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:14, margin:'0 0 1px' }}>{item.label}</p>
@@ -219,7 +221,8 @@ export default function BarberLayout({ children }) {
             </div>
             <ChevronRight size={14} style={{ color:'var(--text-sec)', flexShrink:0 }}/>
           </button>
-        ))}
+          )
+        })}
       </div>
     )
   }
