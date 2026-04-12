@@ -183,31 +183,27 @@ export default function BarberCalendar() {
               const inMonth = isSameMonth(date, currentMonth)
               const sel     = isSameDay(date, selectedDay)
               const tod     = isToday(date)
+              const isPast = date < startOfDay(new Date())
+              const isDisabled = !inMonth
               return (
-                {(() => {
-                  const isPast = date < startOfDay(new Date())
-                  const isDisabled = !inMonth
-                  return (
-                    <button key={i} onClick={() => setSelectedDay(date)}
-                      style={{
-                        padding: '8px 2px', borderRadius: 10, border: 'none',
-                        cursor: isDisabled ? 'default' : 'pointer',
-                        opacity: isDisabled ? 0.15 : isPast ? 0.35 : 1,
-                        background: sel ? 'var(--accent)' : tod ? 'var(--accent)22' : 'transparent',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                        filter: isPast && !sel ? 'grayscale(0.8)' : 'none',
-                      }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: sel ? 'white' : tod ? 'var(--accent)' : isPast ? 'var(--text-sec)' : 'var(--text-pri)' }}>
-                        {date.getDate()}
-                      </span>
-                      {count > 0 && inMonth && (
-                        <span style={{ fontSize: 9, fontWeight: 700, color: sel ? 'rgba(255,255,255,0.8)' : isPast ? 'var(--text-sec)' : 'var(--accent)' }}>
-                          {count}
-                        </span>
-                      )}
-                    </button>
-                  )
-                })()}
+                <button key={i} onClick={() => setSelectedDay(date)}
+                  style={{
+                    padding: '8px 2px', borderRadius: 10, border: 'none',
+                    cursor: isDisabled ? 'default' : 'pointer',
+                    opacity: isDisabled ? 0.15 : isPast ? 0.35 : 1,
+                    background: sel ? 'var(--accent)' : tod ? 'var(--accent)22' : 'transparent',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                    filter: isPast && !sel ? 'grayscale(0.8)' : 'none',
+                  }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: sel ? 'white' : tod ? 'var(--accent)' : isPast ? 'var(--text-sec)' : 'var(--text-pri)' }}>
+                    {date.getDate()}
+                  </span>
+                  {count > 0 && inMonth && (
+                    <span style={{ fontSize: 9, fontWeight: 700, color: sel ? 'rgba(255,255,255,0.8)' : isPast ? 'var(--text-sec)' : 'var(--accent)' }}>
+                      {count}
+                    </span>
+                  )}
+                </button>
               )
             })}
           </div>
