@@ -31,10 +31,14 @@ function SlugRedirect({ to }) {
 
 function ThemeSync() {
   const { user } = useAuth()
-  const { setUid, loadPrefs } = useTheme()
+  const { setUid, loadPrefs, resetToDefaults } = useTheme()
   useEffect(() => {
-    if (user) { setUid(user.uid); loadPrefs(user.uid) }
-    else setUid(null)
+    if (user?.uid) {
+      setUid(user.uid)
+      loadPrefs(user.uid)
+    } else {
+      resetToDefaults()
+    }
   }, [user?.uid])
   return null
 }

@@ -187,8 +187,7 @@ function VisitHistory({ appointments, onBack }) {
 
 // ── Profile view ───────────────────────────────────────────────────────────
 function ProfileView({ user, userData, onSave, onSignOut }) {
-  const { theme, toggleTheme, timeFormat, setTimeFormat, accent, setAccent } = useTheme()
-  const ACCENTS = ['#FF5C00','#3b82f6','#8b5cf6','#16A34A','#ec4899','#f59e0b']
+  const { theme, toggleTheme, timeFormat, setTimeFormat, accent, setAccent, accents } = useTheme()
   const [form, setForm]     = useState({ firstName:userData?.firstName||'', lastName:userData?.lastName||'', phone:userData?.phone||'', photoURL:userData?.photoURL||'' })
   const [saving, setSaving] = useState(false)
   const photoRef = useRef(null)
@@ -256,8 +255,14 @@ function ProfileView({ user, userData, onSave, onSignOut }) {
           ))}
         </div>
         <p style={{ color:'var(--text-sec)', fontSize:11, fontWeight:700, letterSpacing:'0.08em', marginBottom:10 }}>ACCENT COLOR</p>
-        <div style={{ display:'flex', gap:8 }}>
-          {ACCENTS.map(c => <button key={c} onClick={()=>setAccent(c)} style={{ width:28, height:28, borderRadius:'50%', background:c, border:`2.5px solid ${accent===c?'var(--text-pri)':'transparent'}`, cursor:'pointer', transform:accent===c?'scale(1.15)':'scale(1)', transition:'transform 0.1s' }}/>)}
+        <div style={{ display:'flex', gap:10 }}>
+          {accents.map(a => (
+            <button key={a.id} onClick={()=>setAccent(a.color)}
+              style={{ flex:1, padding:'10px 4px', borderRadius:12, border:`2px solid ${accent===a.color?a.color:'var(--border)'}`, background:accent===a.color?a.color+'22':'var(--card)', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+              <div style={{ width:24, height:24, borderRadius:'50%', background:a.color, border:`3px solid ${accent===a.color?'white':'transparent'}`, boxShadow:accent===a.color?`0 0 0 2px ${a.color}`:'none' }}/>
+              <span style={{ color:accent===a.color?a.color:'var(--text-sec)', fontSize:10, fontWeight:700, fontFamily:'Monda,sans-serif' }}>{a.label}</span>
+            </button>
+          ))}
         </div>
       </div>
 

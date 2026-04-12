@@ -26,6 +26,7 @@ export default function BarberSuggestions() {
   const [message, setMessage]   = useState('')
   const [sending, setSending]   = useState(false)
   const [sent, setSent]         = useState(false)
+  const [broadcastResult, setBroadcastResult] = useState(null)
 
   // Client detail view
   const [selectedClient, setSelectedClient] = useState(null)
@@ -92,12 +93,13 @@ export default function BarberSuggestions() {
       })
       // Create in-app notifications for each registered client
       const clientsWithIds = clients.filter(cl => cl.id)
-      await createBroadcastNotifications(
+      const notifCount = await createBroadcastNotifications(
         clientsWithIds.map(cl => cl.id),
         { barberName: barber.name || 'Your barber', subject: subject.trim(), message: message.trim() }
       )
       setSent(true)
-      toast.success(`Message sent to ${clients.length} client${clients.length!==1?'s':''}!`)
+      setBroadcastResult({ sent: clients.length, notified: notifCount })
+      toast.success(`Broadcast sent! ${notifCount} notifications delivered.`)
       setSubject(''); setMessage('')
       setTimeout(() => setSent(false), 3000)
     } catch(err) {

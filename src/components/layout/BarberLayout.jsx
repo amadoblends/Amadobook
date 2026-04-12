@@ -120,7 +120,7 @@ function SettingsPanel({ onBack, onSignOut }) {
     <div>
       <button onClick={onBack} style={{ color:'var(--accent)', fontWeight:700, fontSize:13, background:'none', border:'none', cursor:'pointer', marginBottom:16, fontFamily:'Monda,sans-serif' }}>← Back</button>
       <h3 style={{ fontFamily:'Monda,sans-serif', color:'var(--text-pri)', fontWeight:800, fontSize:17, marginBottom:20 }}>Settings</h3>
-      <ThemeToggle showAccents/>
+      <ThemeToggle showAccents={true}/>
       <div style={{ height:1, background:'var(--border)', margin:'20px 0' }}/>
       <button onClick={onSignOut}
         style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 0', background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontWeight:600, fontSize:14, fontFamily:'Monda,sans-serif', width:'100%' }}>
