@@ -6,6 +6,7 @@ import { formatCurrency, formatDuration, getInitials, parseLocalDate } from '../
 import { format, isToday, isTomorrow, differenceInMinutes } from 'date-fns'
 import BarberLayout from '../../components/layout/BarberLayout'
 import { PageLoader } from '../../components/ui/Spinner'
+import { useTheme } from '../../context/ThemeContext'
 import { Calendar, DollarSign, Users, TrendingUp, Clock, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -14,6 +15,7 @@ const SC = { pending:'#f59e0b', confirmed:'#16A34A', completed:'#3b82f6', cancel
 
 export default function BarberDashboard() {
   const { user } = useAuth()
+  const { formatTime } = useTheme()
   const [barber, setBarber]     = useState(null)
   const [allAppts, setAllAppts] = useState([])
   const [loading, setLoading]   = useState(true)
@@ -158,7 +160,7 @@ export default function BarberDashboard() {
               {todayAppts.map(a => (
                 <div key={a.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 12px', borderRadius:12, background:'var(--bg)', border:'1px solid var(--border)' }}>
                   <div style={{ flexShrink:0, textAlign:'center', minWidth:44 }}>
-                    <p style={{ color:'var(--accent)', fontWeight:700, fontSize:13, margin:0 }}>{a.startTime}</p>
+                    <p style={{ color:'var(--accent)', fontWeight:700, fontSize:13, margin:0 }}>{formatTime(a.startTime)}</p>
                     <p style={{ color:'var(--text-sec)', fontSize:11, margin:0 }}>{a.endTime}</p>
                   </div>
                   <div style={{ width:1, height:32, background:'var(--border)', flexShrink:0 }}/>

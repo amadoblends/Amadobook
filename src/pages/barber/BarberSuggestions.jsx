@@ -214,7 +214,75 @@ export default function BarberSuggestions() {
     )
   }
 
-  // ── Main View ───────────────────────────────────────────────────────────
+  
+// ── Client dropdown with search ─────────────────────────────────────────────
+function ClientDropdown({ clients, onSelect }) {
+  const [open, setOpen]     = useState(false)
+  const [search, setSearch] = useState('')
+
+  const filtered = clients.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    c.email.toLowerCase().includes(search.toLowerCase()) ||
+    (c.phone || '').toLowerCase().includes(search.toLowerCase())
+  )
+
+  return (
+    <div style={{ position:'relative', marginTop:8 }}>
+      {/* Trigger */}
+      <button onClick={() => setOpen(o => !o)}
+        style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', background:'var(--bg)', border:'none', borderTop:'1px solid var(--border)', cursor:'pointer', fontFamily:'Monda,sans-serif' }}>
+        <span style={{ color:'var(--text-sec)', fontSize:13, fontWeight:600 }}>
+          {open ? 'Hide client list ↑' : `View ${clients.length} clients ↓`}
+        </span>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'0 0 14px 14px', maxHeight:340, display:'flex', flexDirection:'column' }}>
+          {/* Search bar */}
+          <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search by name, email or phone…"
+              autoComplete="off"
+              style={{ width:'100%', background:'var(--card)', border:'1.5px solid var(--border)', borderRadius:10, padding:'9px 12px', color:'var(--text-pri)', fontSize:14, outline:'none', fontFamily:'Monda,sans-serif', boxSizing:'border-box' }}
+            />
+          </div>
+          {/* List */}
+          <div style={{ overflowY:'auto', flex:1 }}>
+            {filtered.length === 0
+              ? <p style={{ color:'var(--text-sec)', fontSize:13, textAlign:'center', padding:'20px' }}>No clients found</p>
+              : filtered.map(c => {
+                  const done   = c.appts.filter(a=>a.bookingStatus==='completed').length
+                  const lastApt = c.appts[0]
+                  return (
+                    <button key={c.id}
+                      onClick={() => { onSelect(c); setOpen(false); setSearch('') }}
+                      style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'none', border:'none', borderBottom:'1px solid var(--border)', cursor:'pointer', textAlign:'left', fontFamily:'Monda,sans-serif' }}>
+                      <div style={{ width:36, height:36, borderRadius:'50%', background:'var(--accent)22', color:'var(--accent)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:13, flexShrink:0 }}>
+                        {c.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2)}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:13, margin:'0 0 1px' }}>{c.name}</p>
+                        <p style={{ color:'var(--text-sec)', fontSize:11, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.email}</p>
+                      </div>
+                      <div style={{ textAlign:'right', flexShrink:0 }}>
+                        <p style={{ color:'var(--accent)', fontWeight:700, fontSize:11, margin:'0 0 1px' }}>{done} visit{done!==1?'s':''}</p>
+                        {lastApt?.date && <p style={{ color:'var(--text-sec)', fontSize:10, margin:0 }}>Last: {format(parseLocalDate(lastApt.date),'MMM d')}</p>}
+                      </div>
+                    </button>
+                  )
+                })
+            }
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main View ───────────────────────────────────────────────────────────
   return (
     <BarberLayout>
       <div style={{ padding:'20px', maxWidth:580, margin:'0 auto', ...F }}>
@@ -273,27 +341,8 @@ export default function BarberSuggestions() {
                 </div>
               </div>
 
-              {/* Client list */}
-              {clients.map(c => {
-                const done    = c.appts.filter(a=>a.bookingStatus==='completed').length
-                const lastApt = c.appts[0]
-                return (
-                  <button key={c.id} onClick={() => setSelectedClient(c)}
-                    style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'none', border:'none', borderBottom:'1px solid var(--border)', cursor:'pointer', textAlign:'left', ...F }}>
-                    <div style={{ width:38, height:38, borderRadius:'50%', background:'var(--accent)22', color:'var(--accent)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:14, flexShrink:0 }}>
-                      {c.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2)}
-                    </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:14, margin:'0 0 2px' }}>{c.name}</p>
-                      <p style={{ color:'var(--text-sec)', fontSize:11, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.email}</p>
-                    </div>
-                    <div style={{ textAlign:'right', flexShrink:0 }}>
-                      <p style={{ color:'var(--accent)', fontWeight:700, fontSize:12, margin:'0 0 2px' }}>{done} visit{done!==1?'s':''}</p>
-                      {lastApt && <p style={{ color:'var(--text-sec)', fontSize:10, margin:0 }}>Last: {format(parseLocalDate(lastApt.date),'MMM d')}</p>}
-                    </div>
-                  </button>
-                )
-              })}
+              {/* Dropdown client list with search */}
+              <ClientDropdown clients={clients} onSelect={setSelectedClient} />
             </div>
 
             {clients.length === 0

@@ -10,6 +10,7 @@ import {
 } from 'date-fns'
 import toast from 'react-hot-toast'
 import BarberLayout from '../../components/layout/BarberLayout'
+import { useTheme } from '../../context/ThemeContext'
 import Modal from '../../components/ui/Modal'
 import {
   ChevronLeft, ChevronRight, CheckCircle, DollarSign,
@@ -230,6 +231,7 @@ function RescheduleModal({ appt, appointments, availability, onClose, onSave, up
 // ── Main Calendar ──────────────────────────────────────────────────────────
 export default function BarberCalendar() {
   const { user } = useAuth()
+  const { formatTime } = useTheme()
   const [barber, setBarber]             = useState(null)
   const [appointments, setAppointments] = useState([])
   const [availability, setAvailability] = useState(null)
@@ -418,8 +420,8 @@ export default function BarberCalendar() {
               display:'flex', alignItems:'center', gap:12, textAlign:'left', marginBottom:8, ...F,
             }}>
             <div style={{ flexShrink:0, minWidth:44 }}>
-              <p style={{ color:'var(--accent)', fontWeight:700, fontSize:13, margin:0 }}>{appt.startTime}</p>
-              <p style={{ color:'var(--text-sec)', fontSize:11, margin:0 }}>{appt.endTime}</p>
+              <p style={{ color:'var(--accent)', fontWeight:700, fontSize:13, margin:0 }}>{formatTime(appt.startTime)}</p>
+              <p style={{ color:'var(--text-sec)', fontSize:11, margin:0 }}>{formatTime(appt.endTime)}</p>
             </div>
             <div style={{ width:1, height:36, background:'var(--border)', flexShrink:0 }}/>
             <div style={{ flex:1, minWidth:0 }}>
@@ -456,7 +458,7 @@ export default function BarberCalendar() {
             <div style={{ background:'var(--surface)', borderRadius:12, padding:12 }}>
               {[
                 ['Date',    format(parseLocalDate(detailAppt.date),'MMM d, yyyy')],
-                ['Time',    `${detailAppt.startTime} – ${detailAppt.endTime}`],
+                ['Time',    `${formatTime(detailAppt.startTime)} – ${formatTime(detailAppt.endTime)}`],
                 ['Duration',formatDuration(detailAppt.totalDuration)],
                 ['Total',   formatCurrency(detailAppt.totalPrice)],
                 ['Payment', detailAppt.paymentStatus],

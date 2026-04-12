@@ -5,26 +5,8 @@ import { db } from '../lib/firebase'
 const ThemeContext = createContext(null)
 
 export const THEMES = {
-  light: {
-    bg:      '#F7F7F5',
-    surface: '#FFFFFF',
-    card:    '#FFFFFF',
-    border:  '#E8E8E4',
-    textPri: '#111111',
-    textSec: '#888888',
-    name:    'Light',
-    shadow:  '0 2px 12px rgba(0,0,0,0.08)',
-  },
-  dark: {
-    bg:      '#0C0C0C',
-    surface: '#141414',
-    card:    '#1A1A1A',
-    border:  '#2A2A2A',
-    textPri: '#E8E8E8',
-    textSec: '#666666',
-    name:    'Dark',
-    shadow:  '0 2px 12px rgba(0,0,0,0.4)',
-  },
+  light: { bg:'#F7F7F5', surface:'#FFFFFF', card:'#FFFFFF', border:'#E8E8E4', textPri:'#111111', textSec:'#888888', name:'Light', shadow:'0 2px 12px rgba(0,0,0,0.08)' },
+  dark:  { bg:'#0C0C0C', surface:'#141414', card:'#1A1A1A', border:'#2A2A2A', textPri:'#E8E8E8', textSec:'#666666', name:'Dark',  shadow:'0 2px 12px rgba(0,0,0,0.4)' },
 }
 
 function applyTheme(themeKey, accent) {
@@ -43,55 +25,70 @@ function applyTheme(themeKey, accent) {
 }
 
 export function ThemeProvider({ children }) {
-  const [theme, setThemeState]   = useState('light')   // light by default
-  const [accent, setAccentState] = useState('#FF5C00')
-  const [uid, setUid]            = useState(null)
+  const [theme, setThemeState]       = useState('light')
+  const [accent, setAccentState]     = useState('#FF5C00')
+  const [timeFormat, setTimeFormatState] = useState('12h') // '12h' | '24h'
+  const [uid, setUid]                = useState(null)
 
   async function loadPrefs(userId) {
     try {
       const snap = await getDoc(doc(db, 'userPrefs', userId))
       if (snap.exists()) {
         const d = snap.data()
-        const t = d.theme  || 'light'
-        const a = d.accent || '#FF5C00'
-        setThemeState(t); setAccentState(a)
+        const t  = d.theme      || 'light'
+        const a  = d.accent     || '#FF5C00'
+        const tf = d.timeFormat || '12h'
+        setThemeState(t); setAccentState(a); setTimeFormatState(tf)
         applyTheme(t, a)
       }
     } catch {}
   }
 
-  async function savePrefs(t, a) {
+  async function savePrefs(t, a, tf) {
     if (!uid) return
-    try { await setDoc(doc(db, 'userPrefs', uid), { theme: t, accent: a }, { merge: true }) } catch {}
+    try { await setDoc(doc(db, 'userPrefs', uid), { theme:t, accent:a, timeFormat:tf }, { merge:true }) } catch {}
   }
 
   function setTheme(t) {
-    setThemeState(t)
-    applyTheme(t, accent)
-    savePrefs(t, accent)
+    setThemeState(t); applyTheme(t, accent)
+    savePrefs(t, accent, timeFormat)
     localStorage.setItem('ab_theme', t)
   }
 
   function setAccent(a) {
-    setAccentState(a)
-    applyTheme(theme, a)
-    savePrefs(theme, a)
+    setAccentState(a); applyTheme(theme, a)
+    savePrefs(theme, a, timeFormat)
     localStorage.setItem('ab_accent', a)
   }
 
-  function toggleTheme() {
-    setTheme(theme === 'light' ? 'dark' : 'light')
+  function setTimeFormat(tf) {
+    setTimeFormatState(tf)
+    savePrefs(theme, accent, tf)
+    localStorage.setItem('ab_timefmt', tf)
+  }
+
+  function toggleTheme() { setTheme(theme === 'light' ? 'dark' : 'light') }
+
+  // Format a time string "HH:MM" according to preference
+  function formatTime(timeStr) {
+    if (!timeStr) return ''
+    const [h, m] = timeStr.split(':').map(Number)
+    if (timeFormat === '24h') return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`
+    const period = h >= 12 ? 'PM' : 'AM'
+    const hour   = h % 12 || 12
+    return `${hour}:${String(m).padStart(2,'0')} ${period}`
   }
 
   useEffect(() => {
-    const t = localStorage.getItem('ab_theme') || 'light'
-    const a = localStorage.getItem('ab_accent') || '#FF5C00'
-    setThemeState(t); setAccentState(a)
+    const t  = localStorage.getItem('ab_theme')   || 'light'
+    const a  = localStorage.getItem('ab_accent')  || '#FF5C00'
+    const tf = localStorage.getItem('ab_timefmt') || '12h'
+    setThemeState(t); setAccentState(a); setTimeFormatState(tf)
     applyTheme(t, a)
   }, [])
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, accent, setAccent, themes: THEMES, setUid, loadPrefs }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, accent, setAccent, themes:THEMES, timeFormat, setTimeFormat, formatTime, setUid, loadPrefs }}>
       {children}
     </ThemeContext.Provider>
   )

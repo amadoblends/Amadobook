@@ -74,17 +74,12 @@ export default function BarberLandingPage() {
           Choose how to continue
         </p>
 
-        <button onClick={() => navigate(`/b/${barberSlug}/auth?mode=signup`)}
-          style={{ width: '100%', background: 'linear-gradient(135deg,#FF5C00,#FF9000)', border: 'none', borderRadius: 16, padding: '17px', color: '#fff', fontWeight: 700, fontSize: 16, cursor: 'pointer', marginBottom: 10, boxShadow: '0 8px 24px rgba(255,92,0,0.35)', ...F }}>
-          Create Account
+        <button onClick={() => navigate(`/b/${barberSlug}/auth`)}
+          style={{ width: '100%', background: 'linear-gradient(135deg,#FF5C00,#FF9000)', border: 'none', borderRadius: 16, padding: '17px', color: '#fff', fontWeight: 700, fontSize: 16, cursor: 'pointer', marginBottom: 12, boxShadow: '0 8px 24px rgba(255,92,0,0.35)', ...F }}>
+          Log In / Create Account
         </button>
 
-        <button onClick={() => navigate(`/b/${barberSlug}/auth?mode=login`)}
-          style={{ width: '100%', background: '#141414', border: '1.5px solid #252525', borderRadius: 16, padding: '16px', color: '#E5E5E5', fontWeight: 600, fontSize: 16, cursor: 'pointer', marginBottom: 20, ...F }}>
-          Log In
-        </button>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
           <div style={{ flex: 1, height: 1, background: '#1e1e1e' }} />
           <span style={{ color: '#444', fontSize: 12 }}>or</span>
           <div style={{ flex: 1, height: 1, background: '#1e1e1e' }} />
