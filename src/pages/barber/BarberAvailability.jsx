@@ -155,7 +155,7 @@ export default function BarberAvailability() {
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h1 className="text-xl font-bold" style={{fontFamily:'Syne,sans-serif',color:'var(--text-pri)'}}>Availability</h1>
+            <h1 className="text-xl font-bold" style={{fontFamily:"'Space Grotesk','Monda',sans-serif",color:'var(--text-pri)'}}>Availability</h1>
             <p className="text-xs" style={{color:'var(--text-sec)'}}>Set your hours per day</p>
           </div>
           <div className="flex gap-2">

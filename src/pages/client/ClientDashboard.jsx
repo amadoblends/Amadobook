@@ -199,7 +199,7 @@ export default function ClientDashboard() {
               <div style={{ position: 'absolute', inset: 0, opacity: 0.05, backgroundImage: 'radial-gradient(circle,#FF5C00 1px,transparent 1px)', backgroundSize: '18px 18px' }} />
               <div style={{ position: 'relative', zIndex: 1 }}>
                 <p style={{ color: '#FF8C00', fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{greetText} {greetEmoji}</p>
-                <h2 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 900, color: '#fff', fontSize: 26, lineHeight: 1.1, marginBottom: 8, textTransform: 'lowercase' }}>{userData?.firstName}!</h2>
+                <h2 style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", fontWeight: 900, color: '#fff', fontSize: 26, lineHeight: 1.1, marginBottom: 8, textTransform: 'lowercase' }}>{userData?.firstName}!</h2>
                 <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 14 }}>
                   {upcoming.length > 0 ? `${upcoming.length} upcoming appointment${upcoming.length !== 1 ? 's' : ''}` : 'No upcoming appointments.'}
                 </p>
@@ -218,7 +218,7 @@ export default function ClientDashboard() {
                 { label: 'Spent', value: `$${(totalSpent || 0).toFixed(0)}` },
               ].map(s => (
                 <div key={s.label} style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: 14, padding: '14px 10px', textAlign: 'center' }}>
-                  <p style={{ fontFamily: 'Syne, sans-serif', color: '#FF5C00', fontSize: 20, fontWeight: 900, margin: '0 0 4px' }}>{s.value}</p>
+                  <p style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: '#FF5C00', fontSize: 20, fontWeight: 900, margin: '0 0 4px' }}>{s.value}</p>
                   <p style={{ color: '#555', fontSize: 11, fontWeight: 600, margin: 0 }}>{s.label}</p>
                 </div>
               ))}
@@ -258,7 +258,7 @@ export default function ClientDashboard() {
                       <p style={{ color: '#555', fontSize: 12, margin: 0 }}>{formatDuration(next.totalDuration)}</p>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontFamily: 'Syne, sans-serif', color: '#FF5C00', fontWeight: 900, fontSize: 17, margin: '0 0 4px' }}>{formatCurrency(next.totalPrice)}</p>
+                      <p style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: '#FF5C00', fontWeight: 900, fontSize: 17, margin: '0 0 4px' }}>{formatCurrency(next.totalPrice)}</p>
                       <p style={{ color: '#4ade80', fontSize: 11, fontWeight: 700 }}>
                         {differenceInDays(new Date(`${next.date}T${next.startTime}`), new Date()) === 0 ? 'Today!' : `In ${differenceInDays(new Date(`${next.date}T${next.startTime}`), new Date())} day${differenceInDays(new Date(`${next.date}T${next.startTime}`), new Date()) !== 1 ? 's' : ''}`}
                       </p>
@@ -304,7 +304,7 @@ export default function ClientDashboard() {
         {/* BOOKINGS */}
         {tab === 'bookings' && (
           <div>
-            <h2 style={{ fontFamily: 'Syne, sans-serif', color: '#fff', fontSize: 22, fontWeight: 900, marginBottom: 14 }}>Upcoming</h2>
+            <h2 style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: '#fff', fontSize: 22, fontWeight: 900, marginBottom: 14 }}>Upcoming</h2>
             {upcoming.length === 0
               ? <Empty icon={<Calendar size={30} />} title="No upcoming appointments" desc="Book your next cut!" action={() => navigate(`/b/${barberSlug}/book`)} actionLabel="Book Now" />
               : upcoming.map(a => (
@@ -320,7 +320,7 @@ export default function ClientDashboard() {
         {/* HISTORY */}
         {tab === 'history' && (
           <div>
-            <h2 style={{ fontFamily: 'Syne, sans-serif', color: '#fff', fontSize: 22, fontWeight: 900, marginBottom: 14 }}>History</h2>
+            <h2 style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: '#fff', fontSize: 22, fontWeight: 900, marginBottom: 14 }}>History</h2>
             {history.length === 0
               ? <Empty icon={<History size={30} />} title="No history yet" desc="Your past appointments will appear here." />
               : history.map(a => <ApptCard key={a.id} appt={a} barberInfo={barberInfo} muted />)
@@ -331,7 +331,7 @@ export default function ClientDashboard() {
         {/* PROFILE */}
         {tab === 'profile' && (
           <div>
-            <h2 style={{ fontFamily: 'Syne, sans-serif', color: '#fff', fontSize: 22, fontWeight: 900, marginBottom: 14 }}>My Profile</h2>
+            <h2 style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: '#fff', fontSize: 22, fontWeight: 900, marginBottom: 14 }}>My Profile</h2>
             <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: 16, padding: '16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 52, height: 52, borderRadius: 14, overflow: 'hidden', background: '#FF5C0022', border: '2px solid #FF5C0033', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 20, color: '#FF5C00', flexShrink: 0 }}>
                 {form.photoURL ? <img src={form.photoURL} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : `${form.firstName?.[0] || ''}${form.lastName?.[0] || ''}`}
@@ -404,7 +404,7 @@ export default function ClientDashboard() {
       {/* Cancel Confirmation Modal */}
       {confirmCancel && (
         <Overlay>
-          <p style={{ fontFamily: 'Syne, sans-serif', color: '#fff', fontSize: 17, fontWeight: 900, marginBottom: 8 }}>Cancel appointment?</p>
+          <p style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: '#fff', fontSize: 17, fontWeight: 900, marginBottom: 8 }}>Cancel appointment?</p>
           <p style={{ color: '#666', fontSize: 14, marginBottom: 6 }}>Are you sure? This cannot be undone.</p>
           <p style={{ color: '#888', fontSize: 13, marginBottom: 18 }}>Would you prefer to reschedule instead?</p>
           <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
@@ -429,7 +429,7 @@ export default function ClientDashboard() {
       {/* Reschedule Modal */}
       {reschedAppt && !confirmResched && (
         <Overlay onClose={() => setReschedAppt(null)}>
-          <p style={{ fontFamily: 'Syne, sans-serif', color: '#fff', fontSize: 17, fontWeight: 900, marginBottom: 6 }}>Reschedule</p>
+          <p style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: '#fff', fontSize: 17, fontWeight: 900, marginBottom: 6 }}>Reschedule</p>
           <p style={{ color: '#666', fontSize: 13, marginBottom: 14 }}>{reschedAppt.services?.map(s => s.name).join(', ')} · {formatDuration(reschedAppt.totalDuration || 0)}</p>
 
           {/* Date picker - scrollable 7-day windows */}
@@ -503,7 +503,7 @@ export default function ClientDashboard() {
       {/* Reschedule Confirmation */}
       {reschedAppt && confirmResched && reschedSlot && (
         <Overlay>
-          <p style={{ fontFamily: 'Syne, sans-serif', color: '#fff', fontSize: 17, fontWeight: 900, marginBottom: 12 }}>Confirm Reschedule?</p>
+          <p style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: '#fff', fontSize: 17, fontWeight: 900, marginBottom: 12 }}>Confirm Reschedule?</p>
           <div style={{ background: '#1a1a1a', borderRadius: 12, padding: '12px 14px', marginBottom: 14 }}>
             <p style={{ color: '#888', fontSize: 12, margin: '0 0 4px' }}>New date & time</p>
             <p style={{ color: '#FF5C00', fontWeight: 700, fontSize: 15, margin: 0 }}>{reschedDate && format(reschedDate, 'EEE, MMM d')} · {reschedSlot.startTime}</p>
@@ -548,7 +548,7 @@ function ApptCard({ appt, barberInfo, onCancel, onReschedule, onMap, muted }) {
           <p style={{ color: '#888', fontSize: 12, margin: 0 }}>{format(parseLocalDate(appt.date), 'MMM d, yyyy')} · {appt.startTime}</p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <p style={{ fontFamily: 'Syne, sans-serif', color: '#FF5C00', fontWeight: 900, fontSize: 15, margin: '0 0 2px' }}>{formatCurrency(appt.totalPrice)}</p>
+          <p style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: '#FF5C00', fontWeight: 900, fontSize: 15, margin: '0 0 2px' }}>{formatCurrency(appt.totalPrice)}</p>
           <p style={{ color: SC[appt.bookingStatus], fontSize: 10, fontWeight: 700, textTransform: 'uppercase', margin: 0 }}>{appt.bookingStatus}</p>
         </div>
       </div>

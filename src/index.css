@@ -32,7 +32,7 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
   transition: background 0.2s, color 0.2s;
 }
-h1,h2,h3,h4,h5 { font-family: 'Syne', system-ui, sans-serif; margin: 0; }
+h1,h2,h3,h4,h5 { font-family: 'Space Grotesk', 'Monda', system-ui, sans-serif; margin: 0; font-weight: 700; }
 button { cursor: pointer; touch-action: manipulation; font-family: inherit; }
 input, textarea, select { font-family: inherit; font-size: 16px; }
 img { max-width: 100%; }

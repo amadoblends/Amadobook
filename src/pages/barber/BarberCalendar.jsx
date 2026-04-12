@@ -5,7 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { formatCurrency, formatDuration, getInitials, parseLocalDate } from '../../utils/helpers'
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth,
-  isSameDay, startOfWeek, endOfWeek, isToday, addMonths, subMonths
+  isSameDay, startOfWeek, endOfWeek, isToday, addMonths, subMonths, startOfDay
 } from 'date-fns'
 import toast from 'react-hot-toast'
 import BarberLayout from '../../components/layout/BarberLayout'
@@ -161,7 +161,7 @@ export default function BarberCalendar() {
             style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-pri)' }}>
             <ChevronLeft size={18} />
           </button>
-          <h2 style={{ fontFamily: 'Syne, sans-serif', color: 'var(--text-pri)', fontSize: 18, fontWeight: 800, margin: 0 }}>
+          <h2 style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: 'var(--text-pri)', fontSize: 18, fontWeight: 800, margin: 0 }}>
             {format(currentMonth, 'MMMM yyyy')}
           </h2>
           <button onClick={() => setCurrentMonth(m => addMonths(m, 1))}
@@ -210,7 +210,7 @@ export default function BarberCalendar() {
         </div>
 
         {/* Day appointments */}
-        <h3 style={{ fontFamily: 'Syne, sans-serif', color: 'var(--text-pri)', fontSize: 16, marginBottom: 12 }}>
+        <h3 style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: 'var(--text-pri)', fontSize: 16, marginBottom: 12 }}>
           {isToday(selectedDay) ? 'Today' : format(selectedDay, 'EEE, MMM d')}
           {dayAppointments.length > 0 && (
             <span style={{ color: 'var(--accent)', fontWeight: 600, fontSize: 13, marginLeft: 8 }}>

@@ -92,7 +92,7 @@ export default function BarberReports() {
   return (
     <BarberLayout>
       <div style={{ padding: '16px', maxWidth: 600, margin: '0 auto', ...F }}>
-        <h1 style={{ fontFamily: 'Syne, sans-serif', color: 'var(--text-pri)', fontSize: 20, marginBottom: 4 }}>Reports</h1>
+        <h1 style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: 'var(--text-pri)', fontSize: 20, marginBottom: 4 }}>Reports</h1>
         <p style={{ color: 'var(--text-sec)', fontSize: 13, marginBottom: 16 }}>Business overview</p>
 
         {/* View toggle */}
@@ -127,7 +127,7 @@ export default function BarberReports() {
               ].map(s => (
                 <div key={s.label} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '14px 12px' }}>
                   <div style={{ width: 36, height: 36, borderRadius: 10, background: s.bg, color: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>{s.icon}</div>
-                  <p style={{ fontFamily: 'Syne, sans-serif', color: s.color, fontSize: 20, fontWeight: 900, margin: '0 0 2px' }}>{s.value}</p>
+                  <p style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: s.color, fontSize: 20, fontWeight: 900, margin: '0 0 2px' }}>{s.value}</p>
                   <p style={{ color: 'var(--text-sec)', fontSize: 11, margin: 0 }}>{s.label}</p>
                 </div>
               ))}
@@ -136,7 +136,7 @@ export default function BarberReports() {
             {/* All-time */}
             <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '14px 16px', marginBottom: 16 }}>
               <p style={{ color: 'var(--text-sec)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', marginBottom: 6 }}>ALL-TIME REVENUE</p>
-              <p style={{ fontFamily: 'Syne, sans-serif', color: 'var(--accent)', fontSize: 28, fontWeight: 900, margin: 0 }}>{formatCurrency(allRevenue)}</p>
+              <p style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: 'var(--accent)', fontSize: 28, fontWeight: 900, margin: 0 }}>{formatCurrency(allRevenue)}</p>
             </div>
 
             {/* Monthly chart */}

@@ -16,7 +16,7 @@ const s = {
   header:  { position:'sticky', top:0, background:'rgba(10,10,10,0.97)', backdropFilter:'blur(10px)', borderBottom:'1px solid #1a1a1a', padding:'12px 20px', display:'flex', alignItems:'center', gap:12, zIndex:10 },
   back:    { background:'#141414', border:'1px solid #252525', borderRadius:10, width:36, height:36, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#fff', flexShrink:0 },
   body:    { padding:'24px 20px', maxWidth:480, margin:'0 auto', width:'100%' },
-  h2:      { color:'#fff', fontSize:20, fontWeight:800, margin:'0 0 6px', fontFamily:'Syne,sans-serif' },
+  h2:      { color:'#fff', fontSize:20, fontWeight:800, margin:'0 0 6px', fontFamily:"'Space Grotesk','Monda',sans-serif" },
   sub:     { color:'#666', fontSize:14, margin:'0 0 20px' },
   label:   { color:'#666', fontSize:11, fontWeight:700, letterSpacing:'0.08em', marginBottom:8, display:'block' },
   input:   { width:'100%', background:'#141414', border:'1.5px solid #252525', borderRadius:12, padding:'14px 16px', color:'#fff', fontSize:16, outline:'none', boxSizing:'border-box', ...F, transition:'border-color 0.15s' },
@@ -112,7 +112,7 @@ function SvcRow({ svc, selected, onClick, disabled }) {
         <p style={{color:'#666',fontSize:12,margin:0,display:'flex',alignItems:'center',gap:4}}><Clock size={10}/>{formatDuration(svc.duration)}</p>
       </div>
       <div style={{display:'flex',alignItems:'center',gap:10}}>
-        <span style={{color:'#FF5C00',fontWeight:800,fontSize:15,fontFamily:'Syne,sans-serif'}}>{formatCurrency(svc.price)}</span>
+        <span style={{color:'#FF5C00',fontWeight:800,fontSize:15,fontFamily:"'Space Grotesk','Monda',sans-serif"}}>{formatCurrency(svc.price)}</span>
         <div style={{width:20,height:20,borderRadius:'50%',border:`2px solid ${selected?'#FF5C00':'#333'}`,background:selected?'#FF5C00':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
           {selected && <Check size={11} color="white"/>}
         </div>
@@ -370,7 +370,7 @@ export default function BookingPage() {
                 <div key={sv.id} style={s.row}><span style={{color:'#E5E5E5',fontSize:14}}>{sv.name}</span><span style={{color:'#FF5C00',fontWeight:700}}>{formatCurrency(sv.price)}</span></div>
               ))}
               <div style={{height:1,background:'#1a1a1a',margin:'4px 0'}}/>
-              <div style={{...s.row,border:'none'}}><span style={{color:'#fff',fontWeight:800,fontSize:15}}>Total</span><span style={{color:'#FF5C00',fontWeight:900,fontSize:18,fontFamily:'Syne,sans-serif'}}>{formatCurrency(totalPrice)}</span></div>
+              <div style={{...s.row,border:'none'}}><span style={{color:'#fff',fontWeight:800,fontSize:15}}>Total</span><span style={{color:'#FF5C00',fontWeight:900,fontSize:18,fontFamily:"'Space Grotesk','Monda',sans-serif"}}>{formatCurrency(totalPrice)}</span></div>
               <div style={{...s.row,border:'none',paddingTop:4}}><span style={{color:'#666',fontSize:14}}>Payment</span><span style={{color:'#fff',fontWeight:600,textTransform:'capitalize'}}>{payMethod}</span></div>
             </div>
             <div style={s.card}>

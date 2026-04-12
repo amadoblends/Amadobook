@@ -52,7 +52,7 @@ export default function BarberLandingPage() {
             : <div style={{ width: 84, height: 84, borderRadius: 20, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                 <Scissors size={34} color="white" />
               </div>}
-          <h1 style={{ fontFamily: 'Syne, sans-serif', color: '#fff', fontSize: 28, fontWeight: 900, margin: '0 0 8px' }}>{barber.name}</h1>
+          <h1 style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: '#fff', fontSize: 28, fontWeight: 900, margin: '0 0 8px' }}>{barber.name}</h1>
           {barber.bio && <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, margin: '0 0 12px', lineHeight: 1.5, maxWidth: 300, marginLeft: 'auto', marginRight: 'auto' }}>{barber.bio}</p>}
           {barber.address && (
             <button onClick={openMaps} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'rgba(255,255,255,0.65)', fontSize: 12, padding: '5px 14px', borderRadius: 20, display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', ...F }}>
@@ -67,7 +67,7 @@ export default function BarberLandingPage() {
 
       {/* Auth choices — the ONLY content shown before a decision is made */}
       <div style={{ padding: '32px 24px', maxWidth: 420, margin: '0 auto' }}>
-        <h2 style={{ fontFamily: 'Syne, sans-serif', color: '#fff', fontSize: 22, fontWeight: 900, margin: '0 0 4px', textAlign: 'center' }}>
+        <h2 style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: '#fff', fontSize: 22, fontWeight: 900, margin: '0 0 4px', textAlign: 'center' }}>
           Book your appointment
         </h2>
         <p style={{ color: '#555', fontSize: 14, textAlign: 'center', margin: '0 0 28px' }}>

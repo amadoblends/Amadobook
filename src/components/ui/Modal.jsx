@@ -28,7 +28,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
         {/* Header */}
         {title && (
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
-            <h3 style={{ fontFamily:'Syne,sans-serif', color:'var(--text-pri)', fontWeight:800, fontSize:17, margin:0 }}>{title}</h3>
+            <h3 style={{ fontFamily:"'Space Grotesk','Monda',sans-serif", color:'var(--text-pri)', fontWeight:800, fontSize:17, margin:0 }}>{title}</h3>
             <button onClick={onClose} style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:8, width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-sec)' }}>
               <X size={16}/>
             </button>

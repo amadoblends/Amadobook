@@ -105,7 +105,7 @@ export default function BarberDashboard() {
           <p style={{ color:'var(--text-sec)', fontSize:13, margin:'0 0 2px' }}>
             {new Date().getHours()<12?'Good morning':new Date().getHours()<17?'Good afternoon':'Good evening'} 👋
           </p>
-          <h1 style={{ fontFamily:'Syne,sans-serif', color:'var(--text-pri)', fontSize:24, fontWeight:900, margin:0 }}>
+          <h1 style={{ fontFamily:"'Space Grotesk','Monda',sans-serif", color:'var(--text-pri)', fontSize:24, fontWeight:900, margin:0 }}>
             {barber?.name || 'Dashboard'}
           </h1>
         </div>
@@ -137,7 +137,7 @@ export default function BarberDashboard() {
           ].map(s => (
             <div key={s.label} style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'14px', boxShadow:'var(--shadow)' }}>
               <div style={{ width:36, height:36, borderRadius:10, background:s.bg, color:s.color, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:8 }}>{s.icon}</div>
-              <p style={{ fontFamily:'Syne,sans-serif', color:s.color, fontSize:22, fontWeight:900, margin:'0 0 2px' }}>{s.value}</p>
+              <p style={{ fontFamily:"'Space Grotesk','Monda',sans-serif", color:s.color, fontSize:22, fontWeight:900, margin:'0 0 2px' }}>{s.value}</p>
               <p style={{ color:'var(--text-sec)', fontSize:11, margin:0 }}>{s.label}</p>
             </div>
           ))}
@@ -146,7 +146,7 @@ export default function BarberDashboard() {
         {/* Today's schedule */}
         <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'16px', marginBottom:16, boxShadow:'var(--shadow)' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-            <p style={{ fontFamily:'Syne,sans-serif', color:'var(--text-pri)', fontWeight:800, fontSize:16, margin:0 }}>Today</p>
+            <p style={{ fontFamily:"'Space Grotesk','Monda',sans-serif", color:'var(--text-pri)', fontWeight:800, fontSize:16, margin:0 }}>Today</p>
             <span style={{ background:'var(--accent)20', color:'var(--accent)', fontSize:12, fontWeight:700, padding:'3px 10px', borderRadius:20 }}>
               {todayAppts.length} appt{todayAppts.length!==1?'s':''}
             </span>
@@ -186,7 +186,7 @@ export default function BarberDashboard() {
         {/* Upcoming */}
         {upcoming.length > 0 && (
           <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'16px', boxShadow:'var(--shadow)' }}>
-            <p style={{ fontFamily:'Syne,sans-serif', color:'var(--text-pri)', fontWeight:800, fontSize:16, marginBottom:12 }}>Upcoming</p>
+            <p style={{ fontFamily:"'Space Grotesk','Monda',sans-serif", color:'var(--text-pri)', fontWeight:800, fontSize:16, marginBottom:12 }}>Upcoming</p>
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {upcoming.map(a => {
                 const d = parseLocalDate(a.date)

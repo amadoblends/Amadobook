@@ -99,7 +99,7 @@ export default function BarberServices() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl font-bold" style={{fontFamily:'Syne,sans-serif',color:'var(--text-pri)'}}>Services</h1>
+            <h1 className="text-xl font-bold" style={{fontFamily:"'Space Grotesk','Monda',sans-serif",color:'var(--text-pri)'}}>Services</h1>
             <p className="text-xs" style={{color:'var(--text-sec)'}}>{services.filter(s=>s.isActive).length} active · {services.length} total</p>
           </div>
           <button onClick={openAdd} className="btn-primary gap-1.5 px-4" style={{minHeight:40,fontSize:14}}>

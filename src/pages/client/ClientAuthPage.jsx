@@ -102,7 +102,7 @@ export default function ClientAuthPage() {
           <ArrowLeft size={14} /> Back
         </button>
         <div style={{ position: 'relative', zIndex: 1, padding: '14px 24px 28px', textAlign: 'center' }}>
-          <p style={{ fontFamily: 'Syne, sans-serif', fontWeight: 900, color: '#fff', fontSize: 20, margin: '0 0 2px' }}>AmadoBook</p>
+          <p style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", fontWeight: 900, color: '#fff', fontSize: 20, margin: '0 0 2px' }}>AmadoBook</p>
           <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, margin: 0 }}>Your barber, your schedule</p>
         </div>
         <svg viewBox="0 0 390 22" preserveAspectRatio="none" style={{ display: 'block', height: 22, width: '100%' }}>
@@ -123,7 +123,7 @@ export default function ClientAuthPage() {
 
         {mode === 'login' ? (
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <h2 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 900, color: '#fff', fontSize: 22, margin: '0 0 4px' }}>Welcome back 👋</h2>
+            <h2 style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", fontWeight: 900, color: '#fff', fontSize: 22, margin: '0 0 4px' }}>Welcome back 👋</h2>
             <Input label="EMAIL" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@email.com" />
             <Input label="PASSWORD" type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" right={PwToggle} />
             <button type="submit" disabled={busy} style={btnStyle(busy)}>
@@ -132,7 +132,7 @@ export default function ClientAuthPage() {
           </form>
         ) : (
           <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <h2 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 900, color: '#fff', fontSize: 22, margin: '0 0 4px' }}>Create account ✨</h2>
+            <h2 style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", fontWeight: 900, color: '#fff', fontSize: 22, margin: '0 0 4px' }}>Create account ✨</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <Input label="FIRST NAME *" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Angelo" />
               <Input label="LAST NAME *"  value={lastName}  onChange={e => setLastName(e.target.value)}  placeholder="Ferreras" />

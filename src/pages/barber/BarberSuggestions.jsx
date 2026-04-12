@@ -71,7 +71,7 @@ export default function BarberSuggestions() {
       toast.success(`Message sent to ${clients.length} client${clients.length!==1?'s':''}!`)
       setSubject(''); setMessage('')
       setTimeout(() => setSent(false), 3000)
-    } catch { toast.error('Failed to send') }
+    } catch(err) { console.error('Broadcast error:', err); toast.error('Failed to send: ' + (err.message || err)) }
     finally { setSending(false) }
   }
 
@@ -80,7 +80,7 @@ export default function BarberSuggestions() {
   return (
     <BarberLayout>
       <div style={{ padding:'20px', maxWidth:580, margin:'0 auto', ...F }}>
-        <h1 style={{ fontFamily:'Syne,sans-serif', color:'var(--text-pri)', fontSize:22, fontWeight:900, margin:'0 0 4px' }}>Messages</h1>
+        <h1 style={{ fontFamily:"'Space Grotesk','Monda',sans-serif", color:'var(--text-pri)', fontSize:22, fontWeight:900, margin:'0 0 4px' }}>Messages</h1>
         <p style={{ color:'var(--text-sec)', fontSize:13, margin:'0 0 20px' }}>Client suggestions & mass broadcast</p>
 
         {/* Tab toggle */}
@@ -153,7 +153,7 @@ export default function BarberSuggestions() {
                 <div style={{ marginBottom:14 }}>
                   <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', marginBottom:6 }}>SUBJECT (optional)</p>
                   <input value={subject} onChange={e=>setSubject(e.target.value)} placeholder="e.g. Special offer this week!"
-                    style={{ width:'100%', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:12, padding:'13px 14px', color:'var(--text-pri)', fontSize:15, outline:'none', ...F, boxSizing:'border-box' }}/>
+                    style={{ width:'100%', background:'var(--surface)', border:'1.5px solid var(--border)', borderRadius:12, padding:'13px 14px', color:'var(--text-pri)', fontSize:15, outline:'none', ...F, boxSizing:'border-box' }} autoComplete='off'/>
                 </div>
 
                 {/* Message */}
