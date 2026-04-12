@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useTheme } from '../../context/ThemeContext'
 import {
   LayoutDashboard, Scissors, Clock, Calendar, BarChart2,
   MessageSquare, LogOut, Menu, X, UserCircle,
-  QrCode, Share2, Copy, Check
+  QrCode, Share2, Copy, Check, ChevronRight, Sun, Moon,
+  Camera, Edit3, Settings
 } from 'lucide-react'
-import { collection, query, where, getDocs } from 'firebase/firestore'
+import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import ThemeToggle from '../ui/ThemeToggle'
 import toast from 'react-hot-toast'
@@ -21,19 +22,20 @@ const NAV = [
   { to:'/barber/suggestions',  icon:MessageSquare,   label:'Suggestions'  },
 ]
 
-const F = { fontFamily:'Monda, sans-serif' }
-
 export default function BarberLayout({ children }) {
-  const { signOut, userData, user } = useAuth()
-  const { theme } = useTheme()
+  const { signOut, userData, user, refreshUserData } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
 
-  const [menuOpen, setMenuOpen]       = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
-  const [shareOpen, setShareOpen]     = useState(false)
-  const [copied, setCopied]           = useState(false)
-  const [barberName, setBarberName]   = useState('')
-  const [barberSlug, setBarberSlug]   = useState('')
+  const [menuOpen, setMenuOpen]         = useState(false)
+  const [panelView, setPanelView]       = useState(null) // null | 'main' | 'edit' | 'settings' | 'share'
+  const [barnerName, setBarberName]     = useState('')
+  const [barberSlug, setBarberSlug]     = useState('')
+  const [barberId, setBarberId]         = useState('')
+  const [copied, setCopied]             = useState(false)
+  const [editForm, setEditForm]         = useState({ firstName:'', lastName:'', phone:'', photoURL:'' })
+  const [savingProfile, setSavingProfile] = useState(false)
+  const photoInputRef = useRef(null)
 
   useEffect(() => {
     if (!user) return
@@ -43,17 +45,17 @@ export default function BarberLayout({ children }) {
           const d = snap.docs[0].data()
           setBarberName(d.name || '')
           setBarberSlug(d.slug || '')
+          setBarberId(snap.docs[0].id)
         }
       })
-  }, [user])
+    if (userData) setEditForm({ firstName:userData.firstName||'', lastName:userData.lastName||'', phone:userData.phone||'', photoURL:userData.photoURL||'' })
+  }, [user, userData])
 
-  const displayName = barberName || userData?.firstName || 'Dashboard'
+  const displayName = barnerName || userData?.firstName || 'Dashboard'
   const bookingLink = barberSlug ? `${window.location.origin}/b/${barberSlug}` : ''
 
   async function handleSignOut() {
-    await signOut()
-    toast.success('Signed out')
-    navigate('/barber/login')
+    await signOut(); toast.success('Signed out'); navigate('/barber/login')
   }
 
   function copyLink() {
@@ -66,22 +68,161 @@ export default function BarberLayout({ children }) {
 
   function share() {
     if (navigator.share && bookingLink) {
-      navigator.share({ title: barberName, text: `Book with ${barberName}`, url: bookingLink })
+      navigator.share({ title: displayName, text: `Book with ${displayName}`, url: bookingLink })
     } else copyLink()
+  }
+
+  async function saveProfile() {
+    if (!user) return
+    setSavingProfile(true)
+    try {
+      await updateDoc(doc(db,'users',user.uid), editForm)
+      await refreshUserData()
+      toast.success('Profile updated!')
+      setPanelView('main')
+    } catch { toast.error('Failed to save') }
+    finally { setSavingProfile(false) }
+  }
+
+  function handlePhotoChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setEditForm(p => ({ ...p, photoURL: ev.target.result }))
+    reader.readAsDataURL(file)
   }
 
   const NavLinks = ({ onClick }) => NAV.map(({ to, icon:Icon, label }) => (
     <NavLink key={to} to={to} onClick={onClick}
       style={({ isActive }) => ({
-        display:'flex', alignItems:'center', gap:10, padding:'11px 14px', borderRadius:12,
-        fontWeight:600, fontSize:14, textDecoration:'none', ...F,
+        display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:12,
+        fontWeight:600, fontSize:14, textDecoration:'none', fontFamily:'Monda,sans-serif',
         background: isActive ? 'var(--accent)' : 'transparent',
         color: isActive ? 'white' : 'var(--text-sec)',
         transition:'all 0.15s',
       })}>
-      <Icon size={17}/><span>{label}</span>
+      <Icon size={16}/><span>{label}</span>
     </NavLink>
   ))
+
+  // Panel content
+  const PanelContent = () => {
+    if (panelView === 'edit') return (
+      <div>
+        <button onClick={() => setPanelView('main')} style={{ color:'var(--accent)', fontWeight:700, fontSize:13, background:'none', border:'none', cursor:'pointer', marginBottom:16, fontFamily:'Monda,sans-serif' }}>← Back</button>
+        <h3 style={{ fontFamily:'Syne,sans-serif', color:'var(--text-pri)', fontWeight:800, fontSize:17, marginBottom:20 }}>Edit Profile</h3>
+
+        {/* Photo upload */}
+        <div style={{ textAlign:'center', marginBottom:20 }}>
+          <div style={{ position:'relative', display:'inline-block', cursor:'pointer' }} onClick={() => photoInputRef.current?.click()}>
+            <div style={{ width:72, height:72, borderRadius:'50%', overflow:'hidden', background:'var(--accent)22', border:'3px solid var(--accent)44', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:22, color:'var(--accent)' }}>
+              {editForm.photoURL
+                ? <img src={editForm.photoURL} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt=""/>
+                : `${editForm.firstName?.[0]||''}${editForm.lastName?.[0]||''}`}
+            </div>
+            <div style={{ position:'absolute', bottom:0, right:0, width:24, height:24, borderRadius:'50%', background:'var(--accent)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--surface)' }}>
+              <Camera size={11} color="white"/>
+            </div>
+          </div>
+          <p style={{ color:'var(--text-sec)', fontSize:12, marginTop:8 }}>Tap to change photo</p>
+          <input ref={photoInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhotoChange}/>
+        </div>
+
+        {/* Fields */}
+        {[['FIRST NAME','firstName','text'],['LAST NAME','lastName','text'],['PHONE','phone','tel']].map(([lbl,key,type]) => (
+          <div key={key} style={{ marginBottom:16 }}>
+            <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', marginBottom:6 }}>{lbl}</p>
+            <div style={{ borderBottom:'1.5px solid var(--border)', paddingBottom:8 }}>
+              <input type={type} value={editForm[key]||''} onChange={e => setEditForm(p=>({...p,[key]:e.target.value}))}
+                style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:'var(--text-pri)', fontSize:16, fontFamily:'Monda,sans-serif' }}/>
+            </div>
+          </div>
+        ))}
+        <button onClick={saveProfile} disabled={savingProfile}
+          style={{ width:'100%', background:'var(--accent)', border:'none', borderRadius:14, padding:'15px', color:'white', fontWeight:700, fontSize:15, cursor:'pointer', fontFamily:'Monda,sans-serif', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+          {savingProfile && <div style={{ width:16, height:16, border:'2px solid white', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>}
+          {savingProfile ? 'Saving...' : 'Save Changes'}
+        </button>
+      </div>
+    )
+
+    if (panelView === 'settings') return (
+      <div>
+        <button onClick={() => setPanelView('main')} style={{ color:'var(--accent)', fontWeight:700, fontSize:13, background:'none', border:'none', cursor:'pointer', marginBottom:16, fontFamily:'Monda,sans-serif' }}>← Back</button>
+        <h3 style={{ fontFamily:'Syne,sans-serif', color:'var(--text-pri)', fontWeight:800, fontSize:17, marginBottom:20 }}>Settings</h3>
+        <ThemeToggle showAccents/>
+        <div style={{ height:1, background:'var(--border)', margin:'20px 0' }}/>
+        <button onClick={handleSignOut}
+          style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 0', background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontWeight:600, fontSize:14, fontFamily:'Monda,sans-serif', width:'100%' }}>
+          <LogOut size={16}/> Sign Out
+        </button>
+      </div>
+    )
+
+    if (panelView === 'share') return (
+      <div>
+        <button onClick={() => setPanelView('main')} style={{ color:'var(--accent)', fontWeight:700, fontSize:13, background:'none', border:'none', cursor:'pointer', marginBottom:16, fontFamily:'Monda,sans-serif' }}>← Back</button>
+        <h3 style={{ fontFamily:'Syne,sans-serif', color:'var(--text-pri)', fontWeight:800, fontSize:17, marginBottom:16 }}>Share your link</h3>
+        {bookingLink && (
+          <div style={{ background:'white', borderRadius:16, padding:20, textAlign:'center', marginBottom:14 }}>
+            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(bookingLink)}&color=000000&bgcolor=FFFFFF&margin=2`}
+              style={{ width:160, height:160, display:'block', margin:'0 auto 10px' }} alt="QR"/>
+            <p style={{ color:'#888', fontSize:11, margin:0, fontFamily:'Monda,sans-serif' }}>Scan to book</p>
+          </div>
+        )}
+        <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:'10px 14px', marginBottom:12 }}>
+          <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, letterSpacing:'0.08em', marginBottom:3 }}>BOOKING LINK</p>
+          <p style={{ color:'var(--accent)', fontSize:12, fontWeight:600, margin:0, wordBreak:'break-all' }}>{bookingLink}</p>
+        </div>
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={copyLink}
+            style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'13px', borderRadius:12, background:'var(--card)', border:'1px solid var(--border)', color:'var(--text-pri)', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Monda,sans-serif' }}>
+            {copied ? <Check size={14} color="#16A34A"/> : <Copy size={14}/>}
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+          <button onClick={share}
+            style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'13px', borderRadius:12, background:'var(--accent)', border:'none', color:'white', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Monda,sans-serif' }}>
+            <Share2 size={14}/> Share
+          </button>
+        </div>
+      </div>
+    )
+
+    // Main panel
+    return (
+      <div>
+        {/* Avatar */}
+        <div style={{ textAlign:'center', marginBottom:20 }}>
+          <div style={{ width:64, height:64, borderRadius:'50%', overflow:'hidden', background:'var(--accent)22', border:'3px solid var(--accent)44', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:22, color:'var(--accent)', margin:'0 auto 8px' }}>
+            {userData?.photoURL
+              ? <img src={userData.photoURL} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt=""/>
+              : `${userData?.firstName?.[0]||''}${userData?.lastName?.[0]||''}`}
+          </div>
+          <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:15, margin:'0 0 2px' }}>{userData?.firstName} {userData?.lastName}</p>
+          <p style={{ color:'var(--text-sec)', fontSize:12, margin:0 }}>{displayName}</p>
+        </div>
+
+        {/* Menu items */}
+        {[
+          { icon:Edit3,    label:'Edit Profile', sub:'Name, photo, phone',        view:'edit' },
+          { icon:Settings, label:'Settings',     sub:'Dark mode, colors, sign out', view:'settings' },
+          { icon:QrCode,   label:'QR & Share',   sub:'Booking link & QR code',    view:'share' },
+        ].map(item => (
+          <button key={item.view} onClick={() => setPanelView(item.view)}
+            style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:14, background:'var(--card)', border:'1px solid var(--border)', cursor:'pointer', marginBottom:8, textAlign:'left', fontFamily:'Monda,sans-serif' }}>
+            <div style={{ width:38, height:38, borderRadius:10, background:'var(--accent)15', color:'var(--accent)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <item.icon size={17}/>
+            </div>
+            <div style={{ flex:1 }}>
+              <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:14, margin:'0 0 1px' }}>{item.label}</p>
+              <p style={{ color:'var(--text-sec)', fontSize:11, margin:0 }}>{item.sub}</p>
+            </div>
+            <ChevronRight size={14} style={{ color:'var(--text-sec)', flexShrink:0 }}/>
+          </button>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight:'100vh', display:'flex', background:'var(--bg)', fontFamily:'Monda,sans-serif' }}>
@@ -89,54 +230,43 @@ export default function BarberLayout({ children }) {
       {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col w-56 fixed top-0 left-0 h-full z-30 p-4"
         style={{ background:'var(--surface)', borderRight:'1px solid var(--border)' }}>
-        {/* Logo + barber name */}
         <div style={{ marginBottom:24, paddingBottom:16, borderBottom:'1px solid var(--border)' }}>
-          <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, letterSpacing:'0.12em', marginBottom:4 }}>POWERED BY AMADOBOOK</p>
-          <p style={{ color:'var(--text-pri)', fontWeight:800, fontSize:17, fontFamily:'Syne,sans-serif', margin:0, lineHeight:1.2 }}>{displayName}</p>
+          <p style={{ color:'var(--text-sec)', fontSize:9, fontWeight:700, letterSpacing:'0.14em', margin:'0 0 4px' }}>AMADOBOOK</p>
+          <p style={{ fontFamily:'Syne,sans-serif', color:'var(--text-pri)', fontWeight:900, fontSize:17, margin:0, lineHeight:1.2 }}>{displayName}</p>
         </div>
-        <nav style={{ display:'flex', flexDirection:'column', gap:2, flex:1 }}>
-          <NavLinks />
-        </nav>
-        <div style={{ borderTop:'1px solid var(--border)', paddingTop:12, display:'flex', flexDirection:'column', gap:4 }}>
-          <button onClick={() => setShareOpen(true)}
-            style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, background:'none', border:'none', cursor:'pointer', color:'var(--text-sec)', fontSize:13, fontWeight:600, ...F, transition:'all 0.15s' }}
-            onMouseEnter={e=>e.currentTarget.style.background='var(--card)'}
-            onMouseLeave={e=>e.currentTarget.style.background='none'}>
-            <QrCode size={15}/> QR & Share Link
+        <nav style={{ display:'flex', flexDirection:'column', gap:2, flex:1 }}><NavLinks/></nav>
+        <div style={{ borderTop:'1px solid var(--border)', paddingTop:10, display:'flex', flexDirection:'column', gap:2 }}>
+          <button onClick={() => { setPanelView('share'); }}
+            style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 12px', borderRadius:12, background:'none', border:'none', cursor:'pointer', color:'var(--text-sec)', fontSize:13, fontWeight:600, fontFamily:'Monda,sans-serif', width:'100%' }}>
+            <QrCode size={15}/> QR & Share
           </button>
-          <button onClick={() => setProfileOpen(true)}
-            style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, background:'none', border:'none', cursor:'pointer', color:'var(--text-sec)', fontSize:13, fontWeight:600, ...F, transition:'all 0.15s' }}
-            onMouseEnter={e=>e.currentTarget.style.background='var(--card)'}
-            onMouseLeave={e=>e.currentTarget.style.background='none'}>
+          <button onClick={() => { setPanelView('main'); }}
+            style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 12px', borderRadius:12, background:'none', border:'none', cursor:'pointer', color:'var(--text-sec)', fontSize:13, fontWeight:600, fontFamily:'Monda,sans-serif', width:'100%' }}>
             <UserCircle size={15}/> Profile & Settings
           </button>
         </div>
       </aside>
 
-      {/* Mobile header */}
+      {/* Mobile header — only barber name, no platform text */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40"
         style={{ background:'var(--surface)', borderBottom:'1px solid var(--border)', height:52, display:'flex', alignItems:'center', padding:'0 14px' }}>
-        {/* Hamburger LEFT */}
         <button onClick={() => setMenuOpen(!menuOpen)}
-          style={{ background:'none', border:'none', color:'var(--text-pri)', cursor:'pointer', padding:4, display:'flex', width:36, height:36, alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          style={{ background:'none', border:'none', color:'var(--text-pri)', cursor:'pointer', padding:4, width:36, height:36, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
           {menuOpen ? <X size={20}/> : <Menu size={20}/>}
         </button>
-        {/* Barber name CENTERED */}
+        {/* Only barber name — centered */}
         <div style={{ position:'absolute', left:0, right:0, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
-          <div>
-            <p style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:15, color:'var(--text-pri)', margin:0, textAlign:'center', lineHeight:1.1 }}>{displayName}</p>
-            <p style={{ color:'var(--text-sec)', fontSize:9, fontWeight:700, letterSpacing:'0.1em', textAlign:'center', margin:0 }}>AMADOBOOK</p>
-          </div>
+          <p style={{ fontFamily:'Syne,sans-serif', fontWeight:900, fontSize:16, color:'var(--text-pri)', margin:0 }}>{displayName}</p>
         </div>
-        {/* Icons RIGHT */}
+        {/* Right icons */}
         <div style={{ display:'flex', gap:4, marginLeft:'auto', flexShrink:0 }}>
-          <button onClick={() => setShareOpen(true)}
-            style={{ background:'none', border:'none', color:'var(--text-sec)', cursor:'pointer', padding:6, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:10 }}>
-            <QrCode size={19}/>
+          <button onClick={() => setPanelView('share')}
+            style={{ background:'none', border:'none', color:'var(--text-sec)', cursor:'pointer', padding:6, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <QrCode size={18}/>
           </button>
-          <button onClick={() => setProfileOpen(true)}
-            style={{ background:'none', border:'none', color:'var(--text-sec)', cursor:'pointer', padding:6, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:10 }}>
-            <UserCircle size={21}/>
+          <button onClick={() => setPanelView('main')}
+            style={{ background:'none', border:'none', color:'var(--text-sec)', cursor:'pointer', padding:6, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <UserCircle size={20}/>
           </button>
         </div>
       </div>
@@ -144,87 +274,34 @@ export default function BarberLayout({ children }) {
       {/* Mobile drawer */}
       {menuOpen && (
         <div className="md:hidden fixed inset-0 z-30" style={{ background:'rgba(0,0,0,0.5)' }} onClick={() => setMenuOpen(false)}>
-          <div style={{ width:240, height:'100%', background:'var(--surface)', borderRight:'1px solid var(--border)', padding:'72px 12px 20px', display:'flex', flexDirection:'column' }} onClick={e=>e.stopPropagation()}>
-            <div style={{ flex:1, display:'flex', flexDirection:'column', gap:2 }}>
+          <div style={{ width:240, height:'100%', background:'var(--surface)', borderRight:'1px solid var(--border)', padding:'68px 12px 20px', display:'flex', flexDirection:'column' }} onClick={e => e.stopPropagation()}>
+            <nav style={{ flex:1, display:'flex', flexDirection:'column', gap:2 }}>
               <NavLinks onClick={() => setMenuOpen(false)}/>
-            </div>
-            <button onClick={handleSignOut}
-              style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 14px', borderRadius:12, background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontSize:13, fontWeight:600, ...F }}>
-              <LogOut size={15}/> Sign Out
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {/* Side panel overlay */}
+      {panelView !== null && (
+        <div style={{ position:'fixed', inset:0, zIndex:50, background:'rgba(0,0,0,0.5)' }} onClick={() => setPanelView(null)}>
+          <div style={{ position:'absolute', right:0, top:0, bottom:0, width:300, background:'var(--surface)', borderLeft:'1px solid var(--border)', overflowY:'auto', padding:20 }}
+            onClick={e => e.stopPropagation()}>
+            <button onClick={() => setPanelView(null)} style={{ position:'absolute', top:16, right:16, background:'none', border:'none', color:'var(--text-sec)', cursor:'pointer' }}>
+              <X size={18}/>
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* Profile & Settings panel */}
-      {profileOpen && (
-        <div style={{ position:'fixed', inset:0, zIndex:50, background:'rgba(0,0,0,0.5)' }} onClick={() => setProfileOpen(false)}>
-          <div style={{ position:'absolute', right:0, top:0, bottom:0, width:300, background:'var(--surface)', borderLeft:'1px solid var(--border)', padding:24, display:'flex', flexDirection:'column', gap:20, overflowY:'auto' }} onClick={e=>e.stopPropagation()}>
-            {/* Avatar */}
-            <div style={{ display:'flex', alignItems:'center', gap:12, paddingBottom:16, borderBottom:'1px solid var(--border)' }}>
-              <div style={{ width:48, height:48, borderRadius:'50%', background:'var(--accent)22', border:'2px solid var(--accent)44', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--accent)', fontWeight:800, fontSize:18 }}>
-                {userData?.firstName?.[0]}{userData?.lastName?.[0]}
-              </div>
-              <div>
-                <p style={{ color:'var(--text-pri)', fontWeight:700, margin:'0 0 2px', fontSize:15 }}>{userData?.firstName} {userData?.lastName}</p>
-                <p style={{ color:'var(--text-sec)', fontSize:12, margin:0 }}>Barber</p>
-              </div>
-            </div>
-            {/* Theme */}
-            <div>
-              <p style={{ color:'var(--text-sec)', fontSize:11, fontWeight:700, letterSpacing:'0.1em', marginBottom:12 }}>APPEARANCE</p>
-              <ThemeToggle showAccents/>
-            </div>
-            <div style={{ height:1, background:'var(--border)' }}/>
-            <button onClick={handleSignOut}
-              style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 0', background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontWeight:600, fontSize:14, ...F }}>
-              <LogOut size={16}/> Sign Out
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Share / QR panel */}
-      {shareOpen && (
-        <div style={{ position:'fixed', inset:0, zIndex:50, background:'rgba(0,0,0,0.5)' }} onClick={() => setShareOpen(false)}>
-          <div style={{ position:'absolute', right:0, top:0, bottom:0, width:300, background:'var(--surface)', borderLeft:'1px solid var(--border)', padding:24, display:'flex', flexDirection:'column', gap:16 }} onClick={e=>e.stopPropagation()}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <p style={{ fontFamily:'Syne,sans-serif', color:'var(--text-pri)', fontWeight:800, fontSize:17, margin:0 }}>Share your link</p>
-              <button onClick={() => setShareOpen(false)} style={{ background:'none', border:'none', color:'var(--text-sec)', cursor:'pointer' }}><X size={20}/></button>
-            </div>
-            {/* QR Code (SVG-based, no library needed) */}
-            {bookingLink && (
-              <div style={{ background:'white', borderRadius:16, padding:20, textAlign:'center' }}>
-                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(bookingLink)}&color=FF5C00&bgcolor=FFFFFF`}
-                  style={{ width:160, height:160, display:'block', margin:'0 auto 12px' }} alt="QR Code"/>
-                <p style={{ color:'#555', fontSize:12, margin:0, fontFamily:'Monda,sans-serif' }}>Scan to book</p>
-              </div>
-            )}
-            {/* Link display */}
-            <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:'12px 14px' }}>
-              <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, letterSpacing:'0.08em', marginBottom:4 }}>YOUR BOOKING LINK</p>
-              <p style={{ color:'var(--accent)', fontSize:13, fontWeight:600, margin:0, wordBreak:'break-all' }}>{bookingLink}</p>
-            </div>
-            <div style={{ display:'flex', gap:10 }}>
-              <button onClick={copyLink}
-                style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'13px', borderRadius:12, background:'var(--card)', border:'1px solid var(--border)', color:'var(--text-pri)', fontWeight:700, fontSize:14, cursor:'pointer', ...F }}>
-                {copied ? <Check size={15} color="#16A34A"/> : <Copy size={15}/>}
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
-              <button onClick={share}
-                style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'13px', borderRadius:12, background:'var(--accent)', border:'none', color:'white', fontWeight:700, fontSize:14, cursor:'pointer', ...F }}>
-                <Share2 size={15}/> Share
-              </button>
+            <div style={{ paddingTop:8 }}>
+              <PanelContent/>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main content */}
-      <main className="flex-1 md:ml-56 pt-14 md:pt-0 min-h-screen overflow-x-hidden"
-        style={{ background:'var(--bg)' }}>
+      {/* Main */}
+      <main className="flex-1 md:ml-56 pt-14 md:pt-0 min-h-screen overflow-x-hidden" style={{ background:'var(--bg)' }}>
         {children}
       </main>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }

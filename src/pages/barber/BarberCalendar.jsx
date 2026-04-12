@@ -184,22 +184,30 @@ export default function BarberCalendar() {
               const sel     = isSameDay(date, selectedDay)
               const tod     = isToday(date)
               return (
-                <button key={i} onClick={() => setSelectedDay(date)}
-                  style={{
-                    padding: '8px 2px', borderRadius: 10, border: 'none',
-                    cursor: 'pointer', opacity: inMonth ? 1 : 0.2,
-                    background: sel ? 'var(--accent)' : tod ? 'var(--accent)22' : 'transparent',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                  }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: sel ? 'white' : tod ? 'var(--accent)' : 'var(--text-pri)' }}>
-                    {date.getDate()}
-                  </span>
-                  {count > 0 && inMonth && (
-                    <span style={{ fontSize: 9, fontWeight: 700, color: sel ? 'rgba(255,255,255,0.8)' : 'var(--accent)' }}>
-                      {count}
-                    </span>
-                  )}
-                </button>
+                {(() => {
+                  const isPast = date < startOfDay(new Date())
+                  const isDisabled = !inMonth
+                  return (
+                    <button key={i} onClick={() => setSelectedDay(date)}
+                      style={{
+                        padding: '8px 2px', borderRadius: 10, border: 'none',
+                        cursor: isDisabled ? 'default' : 'pointer',
+                        opacity: isDisabled ? 0.15 : isPast ? 0.35 : 1,
+                        background: sel ? 'var(--accent)' : tod ? 'var(--accent)22' : 'transparent',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                        filter: isPast && !sel ? 'grayscale(0.8)' : 'none',
+                      }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: sel ? 'white' : tod ? 'var(--accent)' : isPast ? 'var(--text-sec)' : 'var(--text-pri)' }}>
+                        {date.getDate()}
+                      </span>
+                      {count > 0 && inMonth && (
+                        <span style={{ fontSize: 9, fontWeight: 700, color: sel ? 'rgba(255,255,255,0.8)' : isPast ? 'var(--text-sec)' : 'var(--accent)' }}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })()}
               )
             })}
           </div>
@@ -225,8 +233,9 @@ export default function BarberCalendar() {
             {dayAppointments.map(appt => (
               <button key={appt.id} onClick={() => setDetailAppt(appt)}
                 style={{
-                  background: 'var(--card)', border: '1px solid var(--border)',
-                  borderLeft: `3px solid ${appt.isGuest ? '#8b5cf6' : 'var(--accent)'}`,
+                  background: appt.bookingStatus === 'completed' ? '#16A34A12' : 'var(--card)',
+                  border: appt.bookingStatus === 'completed' ? '1px solid #16A34A33' : '1px solid var(--border)',
+                  borderLeft: `3px solid ${appt.bookingStatus === 'completed' ? '#16A34A' : appt.isGuest ? '#8b5cf6' : 'var(--accent)'}`,
                   borderRadius: 14, padding: '12px 14px', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', ...F,
                 }}>
@@ -239,7 +248,7 @@ export default function BarberCalendar() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <p style={{ color: 'var(--text-pri)', fontWeight: 700, fontSize: 14, margin: 0 }}>{appt.clientName}</p>
                     {appt.isGuest && <span style={{ background: '#8b5cf622', color: '#a78bfa', fontSize: 10, padding: '2px 7px', borderRadius: 20, fontWeight: 700 }}>Guest</span>}
-                    {appt.bookingStatus === 'completed' && <span style={{ background: '#16A34A22', color: '#4ade80', fontSize: 10, padding: '2px 7px', borderRadius: 20, fontWeight: 700 }}>Done</span>}
+                    {appt.bookingStatus === 'completed' && <span style={{ width:8, height:8, borderRadius:'50%', background:'#16A34A', display:'inline-block', flexShrink:0 }}/>}
                     {appt.paymentStatus === 'paid' && <span style={{ background: '#3b82f622', color: '#60a5fa', fontSize: 10, padding: '2px 7px', borderRadius: 20, fontWeight: 700 }}>Paid</span>}
                   </div>
                   <p style={{ color: 'var(--text-sec)', fontSize: 12, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
