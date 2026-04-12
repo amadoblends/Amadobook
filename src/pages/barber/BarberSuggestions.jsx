@@ -6,6 +6,7 @@ import { formatCurrency, parseLocalDate } from '../../utils/helpers'
 import { format } from 'date-fns'
 import BarberLayout from '../../components/layout/BarberLayout'
 import { PageLoader } from '../../components/ui/Spinner'
+import { createBroadcastNotifications } from '../../utils/notifications'
 import { MessageSquare, Send, Users, ChevronDown, ChevronUp, ArrowLeft, Calendar, DollarSign, Star, Phone, Mail } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -89,8 +90,14 @@ export default function BarberSuggestions() {
         createdAt:  serverTimestamp(),
         status:     'sent',
       })
+      // Create in-app notifications for each registered client
+      const clientsWithIds = clients.filter(cl => cl.id)
+      await createBroadcastNotifications(
+        clientsWithIds.map(cl => cl.id),
+        { barberName: barber.name || 'Your barber', subject: subject.trim(), message: message.trim() }
+      )
       setSent(true)
-      toast.success(`Message logged for ${clients.length} client${clients.length!==1?'s':''}!`)
+      toast.success(`Message sent to ${clients.length} client${clients.length!==1?'s':''}!`)
       setSubject(''); setMessage('')
       setTimeout(() => setSent(false), 3000)
     } catch(err) {

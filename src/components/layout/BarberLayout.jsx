@@ -5,7 +5,7 @@ import { useTheme } from '../../context/ThemeContext'
 import {
   LayoutDashboard, Scissors, Clock, Calendar, BarChart2,
   MessageSquare, LogOut, Menu, X, UserCircle,
-  QrCode, Share2, Copy, Check, ChevronRight,
+  QrCode, Share2, Copy, Check, ChevronRight, Bell,
   Camera, Edit3, Settings
 } from 'lucide-react'
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore'
@@ -179,6 +179,38 @@ function SharePanel({ onBack, bookingLink }) {
 }
 
 // ── Main Layout ────────────────────────────────────────────────────────────
+
+// ── Barber notification panel ─────────────────────────────────────────────
+function BarberNotifPanel({ onBack, userId }) {
+  const [notifs, setNotifs] = useState([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    if (!userId) return
+    getDocs(query(collection(db,'notifications'), where('userId','==',userId)))
+      .then(snap => {
+        const all = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))
+        setNotifs(all); setLoading(false)
+        snap.docs.filter(d=>!d.data().read).forEach(d=>updateDoc(doc(db,'notifications',d.id),{read:true}))
+      })
+  },[userId])
+  const typeIcon = {broadcast:'📢',reschedule:'📅',cancel:'❌',booking:'✅',system:'ℹ️'}
+  return (
+    <div>
+      <button onClick={onBack} style={{color:'var(--accent)',fontWeight:700,fontSize:13,background:'none',border:'none',cursor:'pointer',marginBottom:16,fontFamily:'Monda,sans-serif'}}>← Back</button>
+      <h3 style={{fontFamily:'Monda,sans-serif',color:'var(--text-pri)',fontWeight:800,fontSize:17,marginBottom:16}}>Notifications</h3>
+      {loading ? <div style={{textAlign:'center',padding:30}}><div style={{width:22,height:22,border:'3px solid var(--accent)',borderTopColor:'transparent',borderRadius:'50%',animation:'spin 0.8s linear infinite',margin:'0 auto'}}/></div>
+        : notifs.length===0 ? <p style={{color:'var(--text-sec)',fontSize:13,fontFamily:'Monda,sans-serif'}}>No notifications yet</p>
+        : notifs.map(n=>(
+          <div key={n.id} style={{background:n.read?'var(--card)':'var(--accent)08',border:`1px solid ${n.read?'var(--border)':'var(--accent)22'}`,borderRadius:12,padding:'10px 12px',marginBottom:8}}>
+            <p style={{color:'var(--text-pri)',fontWeight:700,fontSize:13,margin:'0 0 3px',fontFamily:'Monda,sans-serif'}}>{typeIcon[n.type]||'ℹ️'} {n.title}</p>
+            <p style={{color:'var(--text-sec)',fontSize:12,margin:0,lineHeight:1.4}}>{n.message}</p>
+          </div>
+        ))
+      }
+    </div>
+  )
+}
+
 export default function BarberLayout({ children }) {
   const { signOut, userData, user, refreshUserData } = useAuth()
   const { theme } = useTheme()
@@ -252,7 +284,11 @@ export default function BarberLayout({ children }) {
         <div style={{ position:'absolute', left:0, right:0, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
           <p style={{ fontFamily:'Monda,sans-serif', fontWeight:900, fontSize:16, color:'var(--text-pri)', margin:0 }}>{displayName}</p>
         </div>
-        <div style={{ display:'flex', gap:4, marginLeft:'auto', flexShrink:0 }}>
+        <div style={{ display:'flex', gap:2, marginLeft:'auto', flexShrink:0 }}>
+          <button onClick={() => setPanelView('notifs')}
+            style={{ background:'none', border:'none', color:'var(--text-sec)', cursor:'pointer', padding:6, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
+            <Bell size={18}/>
+          </button>
           <button onClick={() => setPanelView('share')}
             style={{ background:'none', border:'none', color:'var(--text-sec)', cursor:'pointer', padding:6, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center' }}>
             <QrCode size={18}/>
@@ -286,6 +322,7 @@ export default function BarberLayout({ children }) {
             </button>
             <div style={{ paddingTop:8 }}>
               {/* Main panel */}
+              {panelView === 'notifs' && <BarberNotifPanel onBack={()=>setPanelView(null)} userId={user?.uid}/>}
               {panelView === 'main' && (
                 <div>
                   <div style={{ textAlign:'center', marginBottom:20 }}>

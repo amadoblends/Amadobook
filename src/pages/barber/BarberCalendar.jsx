@@ -11,6 +11,7 @@ import {
 import toast from 'react-hot-toast'
 import BarberLayout from '../../components/layout/BarberLayout'
 import { useTheme } from '../../context/ThemeContext'
+import { createNotification } from '../../utils/notifications'
 import Modal from '../../components/ui/Modal'
 import {
   ChevronLeft, ChevronRight, CheckCircle, DollarSign,
@@ -289,6 +290,10 @@ export default function BarberCalendar() {
         bookingStatus:'cancelled', paymentStatus:'cancelled', cancelReason: cancelReason.trim(),
       })
       setAppointments(p => p.map(a => a.id===detailAppt.id ? {...a,bookingStatus:'cancelled',paymentStatus:'cancelled',cancelReason:cancelReason.trim()} : a))
+      // Notify client
+      if (detailAppt.clientId) {
+        await createNotification({ userId:detailAppt.clientId, type:'cancel', title:'Appointment Cancelled', message:`Your ${detailAppt.date} appointment was cancelled. Reason: ${cancelReason.trim()}`, data:{ appointmentId:detailAppt.id } })
+      }
       toast.success('Cancelled')
       setCancelModal(false); setDetailAppt(null); setCancelReason('')
     } catch { toast.error('Failed') }
@@ -302,6 +307,10 @@ export default function BarberCalendar() {
         date, startTime, endTime, rescheduleNote: note || null,
       })
       setAppointments(p => p.map(a => a.id===reschedAppt.id ? {...a,date,startTime,endTime,rescheduleNote:note||null} : a))
+      // Notify client
+      if (reschedAppt.clientId) {
+        await createNotification({ userId:reschedAppt.clientId, type:'reschedule', title:'Appointment Rescheduled', message:`Your appointment was moved to ${date} at ${startTime}.${note?' Note: '+note:''}`, data:{ appointmentId:reschedAppt.id } })
+      }
       toast.success('Rescheduled!')
       setReschedAppt(null); setDetailAppt(null)
     } catch { toast.error('Failed') }
