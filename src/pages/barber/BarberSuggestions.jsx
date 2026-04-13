@@ -27,6 +27,7 @@ export default function BarberSuggestions() {
   const [sending, setSending]   = useState(false)
   const [sent, setSent]         = useState(false)
   const [broadcastResult, setBroadcastResult] = useState(null)
+  const [isImportant, setIsImportant] = useState(false)
 
   // Client detail view
   const [selectedClient, setSelectedClient] = useState(null)
@@ -95,7 +96,7 @@ export default function BarberSuggestions() {
       const clientsWithIds = clients.filter(cl => cl.id)
       const notifCount = await createBroadcastNotifications(
         clientsWithIds.map(cl => cl.id),
-        { barberName: barber.name || 'Your barber', subject: subject.trim(), message: message.trim() }
+        { barberName: barber.name || 'Your barber', subject: subject.trim(), message: message.trim(), important: isImportant }
       )
       setSent(true)
       setBroadcastResult({ sent: clients.length, notified: notifCount })
@@ -384,7 +385,19 @@ function ClientDropdown({ clients, onSelect }) {
                       </button>
                     ))}
                   </div>
-                  <button onClick={sendBroadcast} disabled={sending || !message.trim()}
+                  {/* Important toggle */}
+                <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, marginBottom:10, cursor:'pointer' }}
+                  onClick={()=>setIsImportant(v=>!v)}>
+                  <div style={{ width:20, height:20, borderRadius:6, background:isImportant?'var(--accent)':'var(--bg)', border:`2px solid ${isImportant?'var(--accent)':'var(--border)'}`, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s' }}>
+                    {isImportant && <div style={{ width:10, height:10, borderRadius:2, background:'white' }}/>}
+                  </div>
+                  <div>
+                    <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:13, margin:0, ...F }}>Mark as Important</p>
+                    <p style={{ color:'var(--text-sec)', fontSize:11, margin:0 }}>Shows as floating popup on client dashboard</p>
+                  </div>
+                </div>
+
+                <button onClick={sendBroadcast} disabled={sending || !message.trim()}
                     style={{ width:'100%', background:sent?'#16A34A':'var(--accent)', border:'none', borderRadius:14, padding:'16px', color:'white', fontWeight:700, fontSize:15, cursor:message.trim()?'pointer':'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', gap:8, opacity:message.trim()?1:0.5, ...F }}>
                     {sending ? <div style={{ width:18, height:18, border:'2.5px solid white', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/> : <Send size={16}/>}
                     {sending?'Sending…':sent?'Sent! ✓':`Send to ${clients.length} client${clients.length!==1?'s':''}`}

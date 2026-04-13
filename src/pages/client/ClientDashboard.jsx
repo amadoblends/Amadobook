@@ -9,6 +9,8 @@ import { useTheme } from '../../context/ThemeContext'
 import { format, isFuture, isPast, differenceInDays, subMonths, eachMonthOfInterval, addDays, startOfDay, isToday, isSameDay } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useNavigate, useParams } from 'react-router-dom'
+import ImportantMessagePopup from '../../components/ui/ImportantMessagePopup'
+import PhoneInput from '../../components/ui/PhoneInput'
 import { Scissors, User, X, Navigation, RefreshCw, ChevronLeft, ChevronRight, Bell, ArrowLeft, Check, DollarSign, Calendar, Clock } from 'lucide-react'
 
 const F  = { fontFamily:'Monda,sans-serif' }
@@ -230,7 +232,7 @@ function ProfileView({ user, userData, onSave, onSignOut }) {
 
       {/* Fields */}
       <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'16px', marginBottom:14 }}>
-        {[['FIRST NAME','firstName','text'],['LAST NAME','lastName','text'],['PHONE','phone','tel']].map(([lbl,key,type]) => (
+        {[['FIRST NAME','firstName','text'],['LAST NAME','lastName','text']].map(([lbl,key,type]) => (
           <div key={key} style={{ marginBottom:16 }}>
             <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', marginBottom:7 }}>{lbl}</p>
             <div style={{ borderBottom:'1.5px solid var(--border)', paddingBottom:8 }}>
@@ -239,6 +241,10 @@ function ProfileView({ user, userData, onSave, onSignOut }) {
             </div>
           </div>
         ))}
+        <div style={{ marginBottom:16 }}>
+          <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', marginBottom:7 }}>PHONE</p>
+          <PhoneInput value={form.phone||''} onChange={v=>setForm(p=>({...p,phone:v}))}/>
+        </div>
         <button onClick={save} disabled={saving}
           style={{ width:'100%', background:'var(--accent)', border:'none', borderRadius:12, padding:'15px', color:'white', fontWeight:700, fontSize:15, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, ...F }}>
           {saving&&<div style={{width:16,height:16,border:'2px solid white',borderTopColor:'transparent',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/>}
@@ -421,7 +427,7 @@ export default function ClientDashboard() {
             <button onClick={()=>setView('visits')}
               style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, padding:'14px 10px', textAlign:'center', cursor:'pointer', ...F }}>
               <p style={{ color:'var(--accent)', fontWeight:900, fontSize:22, margin:'0 0 3px' }}>{totalVisits}</p>
-              <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:600, margin:0 }}>Visits ↗</p>
+              <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:600, margin:0 }}>Visits</p>
             </button>
             <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, padding:'14px 10px', textAlign:'center' }}>
               <p style={{ color:'var(--accent)', fontWeight:900, fontSize:22, margin:'0 0 3px' }}>{upcoming.length}</p>
@@ -430,7 +436,7 @@ export default function ClientDashboard() {
             <button onClick={()=>setView('spend')}
               style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, padding:'14px 10px', textAlign:'center', cursor:'pointer', ...F }}>
               <p style={{ color:'var(--accent)', fontWeight:900, fontSize:20, margin:'0 0 3px' }}>${(totalSpent||0).toFixed(0)}</p>
-              <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:600, margin:0 }}>Spent ↗</p>
+              <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:600, margin:0 }}>Spent</p>
             </button>
           </div>
 
@@ -614,6 +620,9 @@ export default function ClientDashboard() {
           </div>
         </Overlay>
       )}
+
+      {/* Important message floating popup */}
+      <ImportantMessagePopup userId={user?.uid}/>
 
       {/* Notifications panel */}
       {showNotifs && <NotificationsPanel userId={user?.uid} onClose={()=>setShowNotifs(false)}/>}

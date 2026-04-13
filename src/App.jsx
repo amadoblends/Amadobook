@@ -30,16 +30,16 @@ function SlugRedirect({ to }) {
 }
 
 function ThemeSync() {
-  const { user } = useAuth()
+  const { user, userData } = useAuth()
   const { setUid, loadPrefs, resetToDefaults } = useTheme()
   useEffect(() => {
     if (user?.uid) {
       setUid(user.uid)
-      loadPrefs(user.uid)
+      loadPrefs(user.uid, userData?.role)
     } else {
       resetToDefaults()
     }
-  }, [user?.uid])
+  }, [user?.uid, userData?.role])
   return null
 }
 

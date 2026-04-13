@@ -2,73 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── CSS Variables (set by ThemeContext) ──────────────── */
 :root {
-  --bg:       #F7F7F5;
-  --surface:  #FFFFFF;
+  --bg:       #F0EDE8;
+  --surface:  #FAF8F5;
   --card:     #FFFFFF;
-  --border:   #E8E8E4;
-  --text-pri: #111111;
-  --text-sec: #888888;
-  --accent:   #FF5C00;
-  --shadow:   0 2px 12px rgba(0,0,0,0.08);
+  --border:   #E2DDD8;
+  --text-pri: #1A1714;
+  --text-sec: #8A8078;
+  --accent:   #F59E0B;
+  --shadow:   0 2px 12px rgba(0,0,0,0.07);
+  /* Layout */
+  --sidebar-w: 220px;
+  --content-max: 680px;
 }
 
-/* ── Reset ─────────────────────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-text-size-adjust: 100%;
-}
+*, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
 html { overflow-x: hidden; scroll-behavior: smooth; }
 body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text-pri);
+  margin: 0; background: var(--bg); color: var(--text-pri);
   font-family: 'Monda', system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.25s ease, color 0.25s ease;
 }
-h1,h2,h3,h4,h5 { font-family: 'Space Grotesk', 'Monda', system-ui, sans-serif; margin: 0; font-weight: 700; }
+h1,h2,h3,h4,h5 { font-family: 'Monda', system-ui, sans-serif; margin: 0; }
 button { cursor: pointer; touch-action: manipulation; font-family: inherit; }
 input, textarea, select { font-family: inherit; font-size: 16px; }
 img { max-width: 100%; }
 
-/* ── Scrollbar ──────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
 
-/* ── Core components ───────────────────────────────────── */
 @layer components {
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 16px;
-    box-shadow: var(--shadow);
-  }
-
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); }
   .btn-primary {
     @apply flex items-center justify-center gap-2 rounded-2xl font-bold transition-all active:scale-95 disabled:opacity-50;
-    background: var(--accent);
-    color: white; min-height: 50px; font-size: 15px; border: none;
-    box-shadow: 0 4px 16px rgba(255,92,0,0.35);
+    background: var(--accent); color: white; min-height: 50px; font-size: 15px; border: none;
+    box-shadow: 0 4px 16px rgba(245,158,11,0.35);
   }
   .btn-secondary {
     @apply flex items-center justify-center gap-2 rounded-2xl font-semibold transition-all active:scale-95;
-    background: var(--surface); color: var(--text-pri);
-    border: 1.5px solid var(--border); min-height: 50px; font-size: 15px;
+    background: var(--surface); color: var(--text-pri); border: 1.5px solid var(--border); min-height: 50px; font-size: 15px;
   }
-  .btn-ghost {
-    @apply flex items-center gap-2 rounded-xl font-medium transition-all;
-    background: transparent; color: var(--text-sec); border: none; min-height: 40px;
-  }
-  .btn-ghost:hover { background: var(--card); color: var(--text-pri); }
-
   .input {
     @apply w-full rounded-xl outline-none transition-colors;
     background: var(--surface); border: 1.5px solid var(--border);
@@ -76,23 +53,32 @@ img { max-width: 100%; }
   }
   .input:focus { border-color: var(--accent); }
   .input::placeholder { color: var(--text-sec); opacity: 0.6; }
-
-  .badge-success { @apply text-xs font-bold px-2 py-0.5 rounded-full; background:#16A34A22; color:#16A34A; }
-  .badge-warning { @apply text-xs font-bold px-2 py-0.5 rounded-full; background:#f59e0b22; color:#d97706; }
-  .badge-danger  { @apply text-xs font-bold px-2 py-0.5 rounded-full; background:#ef444422; color:#dc2626; }
-  .badge-info    { @apply text-xs font-bold px-2 py-0.5 rounded-full; background:#3b82f622; color:#2563eb; }
-  .badge-purple  { @apply text-xs font-bold px-2 py-0.5 rounded-full; background:#8b5cf622; color:#7c3aed; }
 }
 
-/* ── Animations ─────────────────────────────────────────── */
+/* ── Responsive: Mobile first ───────────────────── */
+.page-container { width: 100%; max-width: var(--content-max); margin: 0 auto; padding: 16px 16px; }
+
+/* ── iPad (640px+) ──────────────────────────────── */
+@media (min-width: 640px) {
+  .page-container { padding: 20px 28px; }
+}
+
+/* ── Laptop/Desktop (1024px+) ───────────────────── */
+@media (min-width: 1024px) {
+  .page-container { padding: 28px 40px; }
+  /* Barber sidebar always visible */
+  .barber-sidebar-hidden { display: flex !important; }
+  .barber-mobile-header  { display: none !important; }
+}
+
 @keyframes spin    { to { transform: rotate(360deg); } }
-@keyframes fadeIn  { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
-@keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:none; } }
+@keyframes fadeIn  { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+@keyframes slideUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:none; } }
+@keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.4} }
+@keyframes glow    { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0.4)} 50%{box-shadow:0 0 0 8px rgba(245,158,11,0)} }
 
-.animate-fadein  { animation: fadeIn  0.2s ease-out; }
-.animate-slideup { animation: slideUp 0.25s ease-out; }
-
-/* ── Utilities ──────────────────────────────────────────── */
+.animate-fadein  { animation: fadeIn  0.25s ease-out; }
+.animate-slideup { animation: slideUp 0.3s ease-out; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 input[type="date"], input[type="time"] { color-scheme: light dark; }
