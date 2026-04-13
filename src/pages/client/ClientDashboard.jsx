@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
-import { collection, query, where, getDocs, doc, updateDoc, orderBy } from 'firebase/firestore'
+import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore'
+import { storage } from '../../lib/firebase'
+import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useAuth'
 import { formatCurrency, formatDuration, parseLocalDate, generateTimeSlots } from '../../utils/helpers'
@@ -213,7 +215,16 @@ function ProfileView({ user, userData, onSave, onSignOut }) {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M20 5h-3.2L15 3H9L7.2 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-8 13c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5z"/><circle cx="12" cy="13" r="3" fill="white"/></svg>
           </div>
         </div>
-        <input ref={photoRef} type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>setForm(p=>({...p,photoURL:ev.target.result}));r.readAsDataURL(f)}}/>
+        <input ref={photoRef} type="file" accept="image/*" capture="environment" style={{display:'none'}}
+      onChange={async e=>{
+        const file=e.target.files?.[0]; if(!file)return
+        const reader=new FileReader(); reader.onload=ev=>setForm(p=>({...p,photoURL:ev.target.result})); reader.readAsDataURL(file)
+        try {
+          const path=sRef(storage,`profiles/${user.uid}/photo_${Date.now()}`)
+          const snap=await uploadBytes(path,file); const url=await getDownloadURL(snap.ref)
+          setForm(p=>({...p,photoURL:url}))
+        } catch(err){ console.warn('Storage fallback:',err.code) }
+      }}/>
         <p style={{ color:'var(--text-sec)', fontSize:12, marginTop:8 }}>Tap to change photo</p>
       </div>
 
@@ -462,12 +473,24 @@ export default function ClientDashboard() {
             <div style={{ marginBottom:16 }}>
               <p style={{ color:'var(--text-sec)', fontSize:11, fontWeight:700, letterSpacing:'0.08em', marginBottom:8 }}>UPCOMING</p>
               {upcoming.slice(1).map(a=>(
-                <div key={a.id} style={{background:'var(--card)',border:'1px solid var(--border)',borderLeft:'2px solid var(--accent)',borderRadius:12,padding:'12px 14px',marginBottom:8,display:'flex',justifyContent:'space-between'}}>
-                  <div>
-                    <p style={{color:'var(--text-pri)',fontWeight:600,fontSize:13,margin:'0 0 2px'}}>{a.date?format(parseLocalDate(a.date),'MMM d'):''} · {formatTime(a.startTime)}</p>
-                    <p style={{color:'var(--text-sec)',fontSize:11,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:180}}>{a.services?.map(s=>s.name).join(', ')}</p>
+                <div key={a.id} style={{background:'var(--card)',border:'1px solid var(--border)',borderLeft:'2px solid var(--accent)',borderRadius:12,padding:'12px 14px',marginBottom:8}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                    <div>
+                      <p style={{color:'var(--text-pri)',fontWeight:600,fontSize:13,margin:'0 0 2px'}}>{a.date?format(parseLocalDate(a.date),'MMM d'):''} · {formatTime(a.startTime)}</p>
+                      <p style={{color:'var(--text-sec)',fontSize:11,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:160}}>{a.services?.map(s=>s.name).join(', ')}</p>
+                    </div>
+                    <p style={{color:'var(--accent)',fontWeight:700,fontSize:13,flexShrink:0}}>{formatCurrency(a.totalPrice)}</p>
                   </div>
-                  <p style={{color:'var(--accent)',fontWeight:700,fontSize:13,flexShrink:0}}>{formatCurrency(a.totalPrice)}</p>
+                  <div style={{display:'flex',gap:8}}>
+                    <button onClick={()=>{setReschedAppt(a);setReschedDate(null);setReschedSlot(null);setReschedNote('')}}
+                      style={{background:'var(--accent)15',border:'1px solid var(--accent)25',borderRadius:8,padding:'5px 10px',color:'var(--accent)',fontSize:11,fontWeight:700,cursor:'pointer',...F,display:'flex',alignItems:'center',gap:3}}>
+                      <RefreshCw size={10}/> Reschedule
+                    </button>
+                    <button onClick={()=>setCancelTarget(a.id)}
+                      style={{background:'#ef444410',border:'1px solid #ef444425',borderRadius:8,padding:'5px 10px',color:'#ef4444',fontSize:11,fontWeight:700,cursor:'pointer',...F}}>
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

@@ -9,6 +9,8 @@ import {
   Camera, Edit3, Settings
 } from 'lucide-react'
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore'
+import { storage } from '../../lib/firebase'
+import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db } from '../../lib/firebase'
 import ThemeToggle from '../ui/ThemeToggle'
 import toast from 'react-hot-toast'
