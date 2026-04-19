@@ -1,249 +1,579 @@
 /**
- * ClientAuthPage
- * - Input components defined OUTSIDE to prevent keyboard closing on re-render
- * - Single screen: tab toggle between Log In / Create Account
- * - After success → dashboard directly
+ * ClientAuthPage — Black/White minimal design
+ * Top: black + geometric pattern + logo
+ * Bottom: white card with form
+ * Screens: welcome | login | signup | guest
+ * Colors LOCKED — no theme dependency
  */
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { useAuth } from '../../hooks/useAuth'
-import toast from 'react-hot-toast'
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
+import { useAuth } from "../../hooks/useAuth"
+import { signInAnonymously } from "firebase/auth"
+import { auth, db } from "../../lib/firebase"
+import { doc, setDoc, serverTimestamp } from "firebase/firestore"
 
-const F = { fontFamily:'Monda,system-ui,sans-serif' }
-
-// ── Stable field — defined OUTSIDE parent so it never re-mounts on keystroke ──
-function Field({ label, type, value, onChange, placeholder, right }) {
-  return (
-    <div>
-      <p style={{ fontSize:10, fontWeight:700, color:'#888', letterSpacing:'0.1em', marginBottom:8 }}>{label}</p>
-      <div style={{ display:'flex', alignItems:'center', borderBottom:'1.5px solid #252525', paddingBottom:10 }}>
-        <input
-          type={type || 'text'}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          autoCapitalize="off"
-          autoCorrect="off"
-          autoComplete={type === 'password' ? 'current-password' : type === 'email' ? 'email' : 'off'}
-          style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'#fff', fontSize:16, fontFamily:'Monda,sans-serif' }}
-        />
-        {right}
-      </div>
-    </div>
-  )
+// ── Colors (locked, no theme) ─────────────────────────────────────────────
+const C = {
+  black:   '#0A0A0A',
+  white:   '#FFFFFF',
+  gray:    '#6B6B6B',
+  grayL:   '#D4D4D4',
+  grayXL:  '#F5F5F5',
+  border:  '#E5E5E5',
+  red:     '#EF4444',
+  redL:    '#FEE2E2',
 }
 
-// ── Login form — isolated component ────────────────────────────────────────
-function LoginForm({ onSuccess, onSwitchMode, onGuest, barberSlug }) {
-  const { signIn, signInWithGoogle } = useAuth()
-  const navigate = useNavigate()
-  const [email, setEmail]       = useState('')
-  const [password, setPassword] = useState('')
-  const [showPw, setShowPw]     = useState(false)
-  const [busy, setBusy]         = useState(false)
+// ── Geometric pattern (CSS) ───────────────────────────────────────────────
+const PATTERN = `
+  repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 14px,
+    rgba(255,255,255,0.04) 14px,
+    rgba(255,255,255,0.04) 15px
+  ),
+  repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 14px,
+    rgba(255,255,255,0.04) 14px,
+    rgba(255,255,255,0.04) 15px
+  )
+`
 
-  async function submit(e) {
-    e.preventDefault()
-    if (!email.trim() || !password) return toast.error('Enter email and password')
-    setBusy(true)
-    try { await signIn(email.trim(), password); onSuccess() }
-    catch { toast.error('Invalid email or password') }
-    finally { setBusy(false) }
+// ── Global styles ─────────────────────────────────────────────────────────
+const CSS = `
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .auth-slide { animation: slideUp 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+  .auth-fade  { animation: fadeIn 0.3s ease both; }
+
+  .f-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1.5px solid #E5E5E5;
+    color: #0A0A0A;
+    padding: 12px 0 10px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+    caret-color: #0A0A0A;
+    font-family: inherit;
+    box-sizing: border-box;
+  }
+  .f-input:focus { border-bottom-color: #0A0A0A; }
+  .f-input::placeholder { color: #C4C4C4; font-size: 14px; }
+
+  .f-label {
+    display: block;
+    font-size: 10px;
+    color: #9A9A9A;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    margin-bottom: 1px;
+    font-family: inherit;
+  }
+  .f-field { margin-bottom: 22px; }
+
+  .btn-black {
+    width: 100%;
+    background: #0A0A0A;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 14px;
+    padding: 16px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: 0.01em;
+    transition: opacity 0.15s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-black:hover { opacity: 0.88; }
+  .btn-black:active { transform: scale(0.985); }
+  .btn-black:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .btn-outline {
+    width: 100%;
+    background: transparent;
+    color: #0A0A0A;
+    border: 1.5px solid #E0E0E0;
+    border-radius: 14px;
+    padding: 15px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .btn-outline:hover { background: #F5F5F5; border-color: #CCC; }
+  .btn-outline:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .btn-text {
+    background: none; border: none;
+    color: #6B6B6B; font-size: 13px;
+    cursor: pointer; font-family: inherit;
+    padding: 0; display: inline;
+  }
+  .btn-text:hover { color: #0A0A0A; }
+
+  .err-msg {
+    background: #FEE2E2;
+    border: 1px solid #FECACA;
+    border-radius: 10px;
+    padding: 11px 14px;
+    color: #DC2626;
+    font-size: 13px;
+    margin-bottom: 20px;
+    line-height: 1.5;
   }
 
-  async function google() {
-    setBusy(true)
-    try { await signInWithGoogle('client'); onSuccess() }
-    catch { toast.error('Google sign-in failed') }
-    finally { setBusy(false) }
+  .name-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 22px;
   }
 
-  const PwEye = (
-    <button type="button" onClick={() => setShowPw(v => !v)}
-      style={{ background:'none', border:'none', color:'#555', cursor:'pointer', padding:0, flexShrink:0 }}>
-      {showPw ? <EyeOff size={16}/> : <Eye size={16}/>}
-    </button>
-  )
-
-  return (
-    <form onSubmit={submit} style={{ display:'flex', flexDirection:'column', gap:20 }}>
-      <h2 style={{ fontFamily:'Monda,sans-serif', fontWeight:900, color:'#fff', fontSize:22, margin:'0 0 4px' }}>Welcome back 👋</h2>
-      <Field label="EMAIL" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@email.com"/>
-      <Field label="PASSWORD" type={showPw?'text':'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" right={PwEye}/>
-      <button type="submit" disabled={busy} style={btnStyle(busy)}>
-        {busy && <Spin/>} {busy?'Signing in…':'Log In'}
-      </button>
-      <Divider/>
-      <button type="button" onClick={google} disabled={busy} style={googleStyle}>
-        <img src="https://www.google.com/favicon.ico" style={{width:18,height:18}} alt=""/>
-        Continue with Google
-      </button>
-      <p style={{ textAlign:'center', color:'#555', fontSize:13, margin:0 }}>
-        No account?{' '}
-        <button type="button" onClick={onSwitchMode} style={{ color:'#FF5C00', fontWeight:700, background:'none', border:'none', cursor:'pointer', ...F }}>Create Account</button>
-      </p>
-      <p style={{ textAlign:'center', margin:0 }}>
-        <button type="button" onClick={onGuest} style={{ color:'#444', fontSize:12, background:'none', border:'none', cursor:'pointer', ...F }}>
-          Skip — Continue as guest →
-        </button>
-      </p>
-    </form>
-  )
-}
-
-// ── Signup form — isolated component ───────────────────────────────────────
-function SignupForm({ onSuccess, onSwitchMode, onGuest }) {
-  const { signUpClient, signInWithGoogle } = useAuth()
-  const [firstName, setFirstName] = useState('')
-  const [lastName,  setLastName]  = useState('')
-  const [phone,     setPhone]     = useState('')
-  const [email,     setEmail]     = useState('')
-  const [password,  setPassword]  = useState('')
-  const [confirm,   setConfirm]   = useState('')
-  const [showPw,    setShowPw]    = useState(false)
-  const [busy,      setBusy]      = useState(false)
-
-  async function submit(e) {
-    e.preventDefault()
-    if (!firstName||!lastName||!email||!password||!confirm) return toast.error('Fill in all required fields')
-    if (password !== confirm) return toast.error('Passwords do not match')
-    if (password.length < 6)  return toast.error('Password must be at least 6 characters')
-    setBusy(true)
-    try { await signUpClient({ firstName:firstName.trim(), lastName:lastName.trim(), email:email.trim(), phone:phone.trim(), password }); toast.success('Account created! 🎉'); onSuccess() }
-    catch(err) { toast.error(err.code==='auth/email-already-in-use'?'Email already in use':err.message) }
-    finally { setBusy(false) }
+  .divider-row {
+    display: flex; align-items: center; gap: 12px; margin: 16px 0;
   }
+  .divider-line { flex: 1; height: 1px; background: #EBEBEB; }
+  .divider-txt { color: #BBBBBB; font-size: 12px; }
+`
 
-  async function google() {
-    setBusy(true)
-    try { await signInWithGoogle('client'); onSuccess() }
-    catch { toast.error('Google sign-in failed') }
-    finally { setBusy(false) }
-  }
+// ── Icons ─────────────────────────────────────────────────────────────────
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 20 20">
+    <path d="M19.6 10.23c0-.68-.06-1.36-.18-2H10v3.79h5.39a4.6 4.6 0 01-2 3.02v2.5h3.24c1.9-1.75 3-4.32 3-7.31z" fill="#4285F4"/>
+    <path d="M10 20c2.7 0 4.97-.9 6.62-2.46l-3.24-2.5c-.9.6-2.04.96-3.38.96-2.6 0-4.8-1.75-5.59-4.1H1.07v2.58A10 10 0 0010 20z" fill="#34A853"/>
+    <path d="M4.41 11.9A6.01 6.01 0 014.1 10c0-.66.11-1.3.31-1.9V5.52H1.07A10 10 0 000 10c0 1.61.38 3.14 1.07 4.48l3.34-2.58z" fill="#FBBC04"/>
+    <path d="M10 3.96c1.47 0 2.79.5 3.82 1.5l2.86-2.86C14.96.99 12.7 0 10 0A10 10 0 001.07 5.52l3.34 2.58C5.2 5.71 7.4 3.96 10 3.96z" fill="#EA4335"/>
+  </svg>
+)
 
-  const PwEye = (
-    <button type="button" onClick={() => setShowPw(v => !v)}
-      style={{ background:'none', border:'none', color:'#555', cursor:'pointer', padding:0, flexShrink:0 }}>
-      {showPw ? <EyeOff size={16}/> : <Eye size={16}/>}
-    </button>
-  )
+const ChevronLeft = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M15 18l-6-6 6-6"/>
+  </svg>
+)
 
-  return (
-    <form onSubmit={submit} style={{ display:'flex', flexDirection:'column', gap:18 }}>
-      <h2 style={{ fontFamily:'Monda,sans-serif', fontWeight:900, color:'#fff', fontSize:22, margin:'0 0 4px' }}>Create account ✨</h2>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
-        <Field label="FIRST NAME *" value={firstName} onChange={e=>setFirstName(e.target.value)} placeholder="Angelo"/>
-        <Field label="LAST NAME *"  value={lastName}  onChange={e=>setLastName(e.target.value)}  placeholder="Ferreras"/>
-      </div>
-      <Field label="PHONE"        type="tel"      value={phone}    onChange={e=>setPhone(e.target.value)}    placeholder="(315) 000-0000"/>
-      <Field label="EMAIL *"      type="email"    value={email}    onChange={e=>setEmail(e.target.value)}    placeholder="you@email.com"/>
-      <Field label="PASSWORD *"   type={showPw?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Min. 6 characters" right={PwEye}/>
-      <Field label="CONFIRM *"    type="password" value={confirm}  onChange={e=>setConfirm(e.target.value)}  placeholder="••••••••"/>
-      <button type="submit" disabled={busy} style={{...btnStyle(busy),marginTop:4}}>
-        {busy && <Spin/>} {busy?'Creating…':'Create Account'}
-      </button>
-      <Divider/>
-      <button type="button" onClick={google} disabled={busy} style={googleStyle}>
-        <img src="https://www.google.com/favicon.ico" style={{width:18,height:18}} alt=""/>
-        Continue with Google
-      </button>
-      <p style={{ textAlign:'center', color:'#555', fontSize:13, margin:0 }}>
-        Have an account?{' '}
-        <button type="button" onClick={onSwitchMode} style={{ color:'#FF5C00', fontWeight:700, background:'none', border:'none', cursor:'pointer', ...F }}>Log In</button>
-      </p>
-      <p style={{ textAlign:'center', margin:0 }}>
-        <button type="button" onClick={onGuest} style={{ color:'#444', fontSize:12, background:'none', border:'none', cursor:'pointer', ...F }}>
-          Skip — Continue as guest →
-        </button>
-      </p>
-    </form>
-  )
-}
-
-// ── Main page ──────────────────────────────────────────────────────────────
-export default function ClientAuthPage() {
-  const { barberSlug } = useParams()
-  const navigate = useNavigate()
-  const [params] = useSearchParams()
-  const { user, userData, loading: authLoading } = useAuth()
-  const [mode, setMode] = useState(params.get('mode') === 'signup' ? 'signup' : 'login')
-
-  // Already logged in → go straight to dashboard
-  useEffect(() => {
-    if (!authLoading && user && userData?.role === 'client') {
-      navigate(`/b/${barberSlug}/dashboard`, { replace:true })
-    }
-  }, [authLoading, user, userData])
-
-  if (authLoading) return <Spinner/>
-
-  function goToDashboard() { navigate(`/b/${barberSlug}/dashboard`, { replace:true }) }
-  function goToGuest()     { navigate(`/b/${barberSlug}/book`) }
-
-  return (
-    <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', flexDirection:'column', ...F }}>
-      {/* Static header */}
-      <div style={{ background:'linear-gradient(160deg,#0d0500,#3d1500 55%,#FF5C00)', position:'relative', overflow:'hidden', flexShrink:0 }}>
-        <div style={{ position:'absolute', inset:0, opacity:0.08, backgroundImage:'radial-gradient(circle,#FF5C00 1px,transparent 1px)', backgroundSize:'22px 22px' }}/>
-        <button onClick={() => navigate(`/b/${barberSlug}`)}
-          style={{ position:'relative', zIndex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.25)', border:'none', borderRadius:10, padding:'8px 14px', color:'white', cursor:'pointer', margin:'16px 16px 0', fontSize:13, fontWeight:700, ...F }}>
-          <ArrowLeft size={14}/> Back
-        </button>
-        <div style={{ position:'relative', zIndex:1, padding:'14px 24px 28px', textAlign:'center' }}>
-          <p style={{ fontFamily:'Monda,sans-serif', fontWeight:900, color:'#fff', fontSize:20, margin:'0 0 2px' }}>AmadoBook</p>
-          <p style={{ color:'rgba(255,255,255,0.45)', fontSize:12, margin:0 }}>Your barber, your schedule</p>
-        </div>
-        <svg viewBox="0 0 390 22" preserveAspectRatio="none" style={{ display:'block', height:22, width:'100%' }}>
-          <path d="M0 0 Q195 32 390 0 L390 22 L0 22 Z" fill="#0a0a0a"/>
-        </svg>
-      </div>
-
-      <div style={{ flex:1, padding:'16px 24px 48px', maxWidth:440, margin:'0 auto', width:'100%', overflowY:'auto' }}>
-        {/* Tab toggle */}
-        <div style={{ display:'flex', background:'#141414', borderRadius:14, padding:4, marginBottom:24, border:'1px solid #252525' }}>
-          {[['login','Log In'],['signup','Create Account']].map(([m,lbl]) => (
-            <button key={m} type="button" onClick={() => setMode(m)}
-              style={{ flex:1, padding:'11px', borderRadius:11, fontWeight:700, fontSize:14, background:mode===m?'#fff':'transparent', color:mode===m?'#000':'#555', border:'none', cursor:'pointer', ...F, transition:'background 0.15s, color 0.15s' }}>
-              {lbl}
-            </button>
-          ))}
-        </div>
-
-        {/* Forms — each is a stable isolated component */}
-        {mode === 'login'
-          ? <LoginForm  onSuccess={goToDashboard} onSwitchMode={() => setMode('signup')} onGuest={goToGuest} barberSlug={barberSlug}/>
-          : <SignupForm onSuccess={goToDashboard} onSwitchMode={() => setMode('login')}  onGuest={goToGuest}/>
-        }
-      </div>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
-  )
-}
-
-// ── Shared helpers ─────────────────────────────────────────────────────────
-const btnStyle = busy => ({
-  width:'100%', background:'linear-gradient(135deg,#FF5C00,#FF9000)', border:'none',
-  borderRadius:16, padding:'17px', color:'#fff', fontWeight:700, fontSize:16,
-  cursor:busy?'not-allowed':'pointer', display:'flex', alignItems:'center',
-  justifyContent:'center', gap:8, boxShadow:'0 8px 24px rgba(255,92,0,0.35)',
-  opacity:busy?0.7:1, fontFamily:'Monda,sans-serif',
-})
-const googleStyle = {
-  width:'100%', background:'#141414', border:'1px solid #252525', borderRadius:14,
-  padding:'15px', display:'flex', alignItems:'center', justifyContent:'center',
-  gap:12, cursor:'pointer', color:'#E5E5E5', fontWeight:600, fontSize:15,
-  fontFamily:'Monda,sans-serif',
-}
-const Spin = () => <div style={{ width:18, height:18, border:'2.5px solid white', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite', flexShrink:0 }}/>
 const Spinner = () => (
-  <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center' }}>
-    <div style={{ width:28, height:28, border:'3px solid #FF5C00', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
-    <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-  </div>
+  <div style={{ width:18, height:18, border:'2.5px solid rgba(255,255,255,0.35)', borderTopColor:'#fff', borderRadius:'50%', animation:'spin 0.75s linear infinite' }}/>
 )
-const Divider = () => (
-  <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-    <div style={{ flex:1, height:1, background:'#1a1a1a' }}/><span style={{ color:'#333', fontSize:12 }}>or</span><div style={{ flex:1, height:1, background:'#1a1a1a' }}/>
-  </div>
-)
+// add spin to CSS above
+
+// ── Layout shell ─────────────────────────────────────────────────────────
+function Shell({ topContent, card }) {
+  return (
+    <div style={{ minHeight:'100dvh', background:C.black, display:'flex', flexDirection:'column', fontFamily:"'Monda', system-ui, sans-serif", overflowX:'hidden' }}>
+
+      {/* Black top with pattern */}
+      <div style={{ flexShrink:0, minHeight:'38vh', background:`${PATTERN}, ${C.black}`, position:'relative', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px 20px 60px' }}>
+        {topContent}
+      </div>
+
+      {/* White card */}
+      <div style={{ flex:1, background:C.white, borderRadius:'28px 28px 0 0', marginTop:-28, padding:'28px 24px 48px', display:'flex', flexDirection:'column', maxWidth:480, width:'100%', alignSelf:'center', boxSizing:'border-box', overflowY:'auto' }}>
+        {card}
+      </div>
+
+      <style>{CSS + `@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )
+}
+
+// ── Logo (white SVG A logo, or PNG) ──────────────────────────────────────
+function Logo({ size = 72 }) {
+  return (
+    <div style={{ width:size, height:size, borderRadius:18, background:'rgba(255,255,255,0.10)', border:'1.5px solid rgba(255,255,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }}>
+      <img
+        src="/logo.png"
+        alt="AmadoBlends"
+        onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex' }}
+        style={{ width:size*0.65, height:size*0.65, objectFit:'contain' }}
+      />
+      {/* Fallback SVG scissors */}
+      <svg style={{ display:'none', width:size*0.45, height:size*0.45 }} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="1.5" strokeLinecap="round">
+        <circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>
+        <path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/>
+      </svg>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// WELCOME SCREEN
+// ─────────────────────────────────────────────────────────────────────────
+function WelcomeScreen({ onLogin, onSignup, onGuest, onGoogle, loading }) {
+  return (
+    <Shell
+      topContent={
+        <div className="auth-fade" style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, width:'100%' }}>
+          <Logo/>
+          <p style={{ color:'rgba(255,255,255,0.5)', fontSize:13, margin:0, letterSpacing:'0.04em' }}>AmadoBlends</p>
+        </div>
+      }
+      card={
+        <div className="auth-slide" style={{ display:'flex', flexDirection:'column', gap:0, width:'100%' }}>
+          <h1 style={{ color:C.black, fontSize:28, fontWeight:800, margin:'0 0 6px', letterSpacing:'-0.4px' }}>Welcome</h1>
+          <p style={{ color:C.gray, fontSize:14, margin:'0 0 28px' }}>Sign in to book your next cut</p>
+
+          {/* Google — primary quick action */}
+          <button className="btn-outline" onClick={onGoogle} disabled={loading} style={{ marginBottom:12 }}>
+            <GoogleIcon/> Continue with Google
+          </button>
+
+          {/* Email login */}
+          <button className="btn-black" onClick={onLogin} disabled={loading} style={{ marginBottom:12 }}>
+            Login
+          </button>
+
+          {/* Sign up */}
+          <button className="btn-outline" onClick={onSignup} disabled={loading} style={{ marginBottom:20 }}>
+            Sign Up
+          </button>
+
+          <div className="divider-row">
+            <div className="divider-line"/>
+            <span className="divider-txt">or</span>
+            <div className="divider-line"/>
+          </div>
+
+          {/* Guest */}
+          <button className="btn-text" onClick={onGuest} disabled={loading}
+            style={{ color:C.gray, fontSize:13, padding:'10px 0', width:'100%', textAlign:'center' }}>
+            Continue as Guest
+          </button>
+        </div>
+      }
+    />
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// LOGIN SCREEN
+// ─────────────────────────────────────────────────────────────────────────
+function LoginScreen({ onBack, onSuccess, onSwitchToSignup, onGoogle }) {
+  const { signIn } = useAuth()
+  const navigate = useNavigate()
+  const { barberSlug } = useParams()
+  const [email, setEmail]       = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError]       = useState("")
+  const [loading, setLoading]   = useState(false)
+
+  async function submit(e) {
+    e.preventDefault()
+    setError(""); setLoading(true)
+    try { await signIn(email, password); onSuccess() }
+    catch { setError("Invalid email or password. Please try again.") }
+    setLoading(false)
+  }
+
+  return (
+    <Shell
+      topContent={
+        <div className="auth-fade" style={{ width:'100%', display:'flex', flexDirection:'column', alignItems:'flex-start', paddingTop:8 }}>
+          <button onClick={onBack} style={{ background:'rgba(255,255,255,0.1)', border:'none', borderRadius:10, padding:'8px 12px', color:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', gap:4, fontSize:13, fontFamily:'inherit', marginBottom:20 }}>
+            <ChevronLeft/> Back
+          </button>
+          <h1 style={{ color:C.white, fontSize:32, fontWeight:800, margin:0, letterSpacing:'-0.5px' }}>Login</h1>
+        </div>
+      }
+      card={
+        <div className="auth-slide">
+          {error && <div className="err-msg">{error}</div>}
+
+          <form onSubmit={submit}>
+            <div className="f-field">
+              <label className="f-label">Email</label>
+              <input className="f-input" type="email" placeholder="your@email.com"
+                value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="email"/>
+            </div>
+            <div className="f-field" style={{ marginBottom:8 }}>
+              <label className="f-label">Password</label>
+              <input className="f-input" type="password" placeholder="••••••••"
+                value={password} onChange={e=>setPassword(e.target.value)} required autoComplete="current-password"/>
+            </div>
+
+            {/* Forgot */}
+            <div style={{ textAlign:'right', marginBottom:28 }}>
+              <button type="button" onClick={()=>navigate(`/b/${barberSlug}/forgot-password`)}
+                style={{ background:'none', border:'none', color:C.gray, fontSize:12, cursor:'pointer', fontFamily:'inherit' }}>
+                Forgot password?
+              </button>
+            </div>
+
+            <button className="btn-black" type="submit" disabled={loading}>
+              {loading ? <Spinner/> : "Login"}
+            </button>
+          </form>
+
+          <div className="divider-row" style={{ margin:'18px 0' }}>
+            <div className="divider-line"/>
+            <span className="divider-txt">or</span>
+            <div className="divider-line"/>
+          </div>
+
+          <button className="btn-outline" onClick={onGoogle} disabled={loading}>
+            <GoogleIcon/> Continue with Google
+          </button>
+
+          <p style={{ color:C.gray, fontSize:13, textAlign:'center', marginTop:24 }}>
+            Don't have an account?{" "}
+            <span onClick={onSwitchToSignup} style={{ color:C.black, fontWeight:700, cursor:'pointer' }}>Sign Up</span>
+          </p>
+        </div>
+      }
+    />
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// SIGNUP SCREEN
+// ─────────────────────────────────────────────────────────────────────────
+function SignupScreen({ onBack, onSuccess, onSwitchToLogin }) {
+  const { signUpClient } = useAuth()
+  const [form, setForm] = useState({ firstName:'', lastName:'', email:'', password:'', confirm:'' })
+  const [error, setError]   = useState("")
+  const [loading, setLoading] = useState(false)
+
+  const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!form.firstName.trim() || !form.lastName.trim()) { setError("Please enter your full name."); return }
+    if (form.password.length < 6) { setError("Password must be at least 6 characters."); return }
+    if (form.password !== form.confirm) { setError("Passwords don't match."); return }
+    setError(""); setLoading(true)
+    try {
+      await signUpClient({ email:form.email, password:form.password, firstName:form.firstName.trim(), lastName:form.lastName.trim() })
+      onSuccess()
+    } catch(err) {
+      setError(err.code === "auth/email-already-in-use" ? "Email already registered." : (err.message || "Could not create account."))
+    }
+    setLoading(false)
+  }
+
+  return (
+    <Shell
+      topContent={
+        <div className="auth-fade" style={{ width:'100%', display:'flex', flexDirection:'column', alignItems:'flex-start', paddingTop:8 }}>
+          <button onClick={onBack} style={{ background:'rgba(255,255,255,0.1)', border:'none', borderRadius:10, padding:'8px 12px', color:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', gap:4, fontSize:13, fontFamily:'inherit', marginBottom:20 }}>
+            <ChevronLeft/> Back
+          </button>
+          <h1 style={{ color:C.white, fontSize:32, fontWeight:800, margin:0, letterSpacing:'-0.5px' }}>Sign Up</h1>
+        </div>
+      }
+      card={
+        <div className="auth-slide">
+          {error && <div className="err-msg">{error}</div>}
+
+          <form onSubmit={submit}>
+            <div className="name-row">
+              <div>
+                <label className="f-label">First name</label>
+                <input className="f-input" type="text" placeholder="Angelo"
+                  value={form.firstName} onChange={set('firstName')} required autoComplete="given-name"/>
+              </div>
+              <div>
+                <label className="f-label">Last name</label>
+                <input className="f-input" type="text" placeholder="Ferreras"
+                  value={form.lastName} onChange={set('lastName')} required autoComplete="family-name"/>
+              </div>
+            </div>
+
+            <div className="f-field">
+              <label className="f-label">Email</label>
+              <input className="f-input" type="email" placeholder="your@email.com"
+                value={form.email} onChange={set('email')} required autoComplete="email"/>
+            </div>
+            <div className="f-field">
+              <label className="f-label">Password</label>
+              <input className="f-input" type="password" placeholder="••••••••"
+                value={form.password} onChange={set('password')} required autoComplete="new-password"/>
+            </div>
+            <div className="f-field" style={{ marginBottom:28 }}>
+              <label className="f-label">Confirm password</label>
+              <input className="f-input" type="password" placeholder="••••••••"
+                value={form.confirm} onChange={set('confirm')} required autoComplete="new-password"/>
+            </div>
+
+            <button className="btn-black" type="submit" disabled={loading}>
+              {loading ? <Spinner/> : "Sign Up"}
+            </button>
+          </form>
+
+          <p style={{ color:C.gray, fontSize:13, textAlign:'center', marginTop:24 }}>
+            Already have an account?{" "}
+            <span onClick={onSwitchToLogin} style={{ color:C.black, fontWeight:700, cursor:'pointer' }}>Sign In</span>
+          </p>
+        </div>
+      }
+    />
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// GUEST SCREEN — collects name + contact, then signs in anonymously
+// ─────────────────────────────────────────────────────────────────────────
+function GuestScreen({ onBack, onSuccess, barberSlug }) {
+  const [form, setForm] = useState({ firstName:'', lastName:'', email:'', phone:'' })
+  const [error, setError]   = useState("")
+  const [loading, setLoading] = useState(false)
+
+  const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!form.firstName.trim() || !form.lastName.trim()) { setError("Please enter your full name."); return }
+    if (!form.email.trim() && !form.phone.trim()) { setError("Enter at least an email or phone."); return }
+    setError(""); setLoading(true)
+    try {
+      const cred = await signInAnonymously(auth)
+      // Save guest info to Firestore so barber can see it
+      await setDoc(doc(db,'users',cred.user.uid), {
+        firstName: form.firstName.trim(),
+        lastName:  form.lastName.trim(),
+        email:     form.email.trim(),
+        phone:     form.phone.trim(),
+        role:      'client',
+        isGuest:   true,
+        createdAt: serverTimestamp(),
+      }, { merge: true })
+      onSuccess()
+    } catch {
+      setError("Could not continue. Please try again.")
+    }
+    setLoading(false)
+  }
+
+  return (
+    <Shell
+      topContent={
+        <div className="auth-fade" style={{ width:'100%', display:'flex', flexDirection:'column', alignItems:'flex-start', paddingTop:8 }}>
+          <button onClick={onBack} style={{ background:'rgba(255,255,255,0.1)', border:'none', borderRadius:10, padding:'8px 12px', color:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', gap:4, fontSize:13, fontFamily:'inherit', marginBottom:20 }}>
+            <ChevronLeft/> Back
+          </button>
+          <h1 style={{ color:C.white, fontSize:32, fontWeight:800, margin:0, letterSpacing:'-0.5px' }}>Guest</h1>
+          <p style={{ color:'rgba(255,255,255,0.45)', fontSize:14, margin:'6px 0 0' }}>No account needed</p>
+        </div>
+      }
+      card={
+        <div className="auth-slide">
+          {error && <div className="err-msg">{error}</div>}
+
+          <form onSubmit={submit}>
+            <div className="name-row">
+              <div>
+                <label className="f-label">First name</label>
+                <input className="f-input" type="text" placeholder="Angelo"
+                  value={form.firstName} onChange={set('firstName')} required autoComplete="given-name"/>
+              </div>
+              <div>
+                <label className="f-label">Last name</label>
+                <input className="f-input" type="text" placeholder="Ferreras"
+                  value={form.lastName} onChange={set('lastName')} required autoComplete="family-name"/>
+              </div>
+            </div>
+
+            <div className="f-field">
+              <label className="f-label">Email</label>
+              <input className="f-input" type="email" placeholder="your@email.com (optional)"
+                value={form.email} onChange={set('email')} autoComplete="email"/>
+            </div>
+            <div className="f-field" style={{ marginBottom:28 }}>
+              <label className="f-label">Phone</label>
+              <input className="f-input" type="tel" placeholder="(315) 000-0000 (optional)"
+                value={form.phone} onChange={set('phone')} autoComplete="tel"/>
+            </div>
+
+            <button className="btn-black" type="submit" disabled={loading}>
+              {loading ? <Spinner/> : "Continue as Guest"}
+            </button>
+          </form>
+
+          <p style={{ color:C.grayL, fontSize:12, textAlign:'center', marginTop:18, lineHeight:1.6 }}>
+            Your info is only used for this booking and won't create an account.
+          </p>
+        </div>
+      }
+    />
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// MAIN — router between screens
+// ─────────────────────────────────────────────────────────────────────────
+export default function ClientAuthPage() {
+  const [screen, setScreen] = useState("welcome") // welcome | login | signup | guest
+  const [googleLoading, setGoogleLoading] = useState(false)
+
+  const { signInWithGoogle } = useAuth()
+  const navigate = useNavigate()
+  const { barberSlug } = useParams()
+
+  function onSuccess() {
+    navigate(`/b/${barberSlug}/dashboard`, { replace: true })
+  }
+  function onGuestSuccess() {
+    navigate(`/b/${barberSlug}/book`)
+  }
+
+  async function handleGoogle() {
+    setGoogleLoading(true)
+    try { await signInWithGoogle("client"); onSuccess() }
+    catch {}
+    setGoogleLoading(false)
+  }
+
+  if (screen === "login") return (
+    <LoginScreen
+      onBack={() => setScreen("welcome")}
+      onSuccess={onSuccess}
+      onSwitchToSignup={() => setScreen("signup")}
+      onGoogle={handleGoogle}
+    />
+  )
+  if (screen === "signup") return (
+    <SignupScreen
+      onBack={() => setScreen("welcome")}
+      onSuccess={onSuccess}
+      onSwitchToLogin={() => setScreen("login")}
+    />
+  )
+  if (screen === "guest") return (
+    <GuestScreen
+      onBack={() => setScreen("welcome")}
+      onSuccess={onGuestSuccess}
+      barberSlug={barberSlug}
+    />
+  )
+
+  return (
+    <WelcomeScreen
+      onLogin={() => setScreen("login")}
+      onSignup={() => setScreen("signup")}
+      onGuest={() => setScreen("guest")}
+      onGoogle={handleGoogle}
+      loading={googleLoading}
+    />
+  )
+}
