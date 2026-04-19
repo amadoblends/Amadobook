@@ -3,9 +3,27 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useAuth'
-import { Scissors, Navigation } from 'lucide-react'
 
-const F = { fontFamily: 'Monda, system-ui, sans-serif' }
+const F = { fontFamily:"'Monda', system-ui, sans-serif" }
+
+// Same geometric pattern as ClientAuthPage
+const PATTERN = `
+  repeating-linear-gradient(45deg,transparent,transparent 14px,rgba(255,255,255,0.04) 14px,rgba(255,255,255,0.04) 15px),
+  repeating-linear-gradient(-45deg,transparent,transparent 14px,rgba(255,255,255,0.04) 14px,rgba(255,255,255,0.04) 15px)
+`
+
+const ScissorsIcon = () => (
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" strokeLinecap="round">
+    <circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>
+    <path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/>
+  </svg>
+)
+
+const MapPin = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+  </svg>
+)
 
 export default function BarberLandingPage() {
   const { barberSlug } = useParams()
@@ -14,95 +32,97 @@ export default function BarberLandingPage() {
   const [barber, setBarber] = useState(null)
   const [pageLoading, setPageLoading] = useState(true)
 
-  // Load barber info
   useEffect(() => {
     if (authLoading) return
-    getDocs(query(collection(db, 'barbers'), where('slug', '==', barberSlug)))
+    getDocs(query(collection(db,'barbers'),where('slug','==',barberSlug)))
       .then(snap => {
-        const doc = snap.docs.find(d => d.data().isActive !== false)
-        if (doc) setBarber({ id: doc.id, ...doc.data() })
+        const d = snap.docs.find(d => d.data().isActive !== false)
+        if (d) setBarber({ id:d.id, ...d.data() })
       })
       .finally(() => setPageLoading(false))
   }, [barberSlug, authLoading])
 
-  // If already logged in as client → skip straight to dashboard
+  // Logged-in client → dashboard
   useEffect(() => {
     if (!authLoading && user && userData?.role === 'client') {
-      navigate(`/b/${barberSlug}/dashboard`, { replace: true })
+      navigate(`/b/${barberSlug}/dashboard`, { replace:true })
     }
   }, [authLoading, user, userData])
 
-  if (authLoading || pageLoading) return <Spinner />
-  if (!barber) return <Center><p style={{ color: '#666', ...F }}>Barber not found.</p></Center>
+  if (authLoading || pageLoading) return (
+    <div style={{ minHeight:'100vh', background:'#0A0A0A', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ width:26, height:26, border:'2.5px solid #fff', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.75s linear infinite' }}/>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )
 
-  function openMaps() {
-    const addr = encodeURIComponent(barber.address || '')
-    const ios  = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    window.open(ios ? `maps://?q=${addr}` : `https://maps.google.com/?q=${addr}`, '_blank')
-  }
+  if (!barber) return (
+    <div style={{ minHeight:'100vh', background:'#0A0A0A', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <p style={{ color:'#666', ...F }}>Barber not found.</p>
+    </div>
+  )
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', ...F }}>
-      {/* Hero */}
-      <div style={{ background: 'linear-gradient(160deg,#0d0500,#3d1500 50%,#8B3E16 80%,#FF5C00)', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, opacity: 0.08, backgroundImage: 'radial-gradient(circle,#FF5C00 1px,transparent 1px)', backgroundSize: '22px 22px' }} />
-        <div style={{ position: 'relative', zIndex: 1, padding: '60px 24px 32px', textAlign: 'center' }}>
+    <div style={{ minHeight:'100dvh', background:'#0A0A0A', display:'flex', flexDirection:'column', ...F, overflowX:'hidden' }}>
+
+      {/* ── Black top with pattern ── */}
+      <div style={{ flexShrink:0, minHeight:'42vh', background:`${PATTERN}, #0A0A0A`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'48px 24px 60px', position:'relative' }}>
+        {/* Avatar */}
+        <div style={{ width:84, height:84, borderRadius:20, overflow:'hidden', border:'1.5px solid rgba(255,255,255,0.15)', marginBottom:16, background:'rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'center' }}>
           {barber.photoURL
-            ? <img src={barber.photoURL} style={{ width: 84, height: 84, borderRadius: 20, objectFit: 'cover', border: '2px solid rgba(255,255,255,0.2)', margin: '0 auto 16px', display: 'block' }} alt="" />
-            : <div style={{ width: 84, height: 84, borderRadius: 20, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                <Scissors size={34} color="white" />
-              </div>}
-          <h1 style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: '#fff', fontSize: 28, fontWeight: 900, margin: '0 0 8px' }}>{barber.name}</h1>
-          {barber.bio && <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, margin: '0 0 12px', lineHeight: 1.5, maxWidth: 300, marginLeft: 'auto', marginRight: 'auto' }}>{barber.bio}</p>}
-          {barber.address && (
-            <button onClick={openMaps} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'rgba(255,255,255,0.65)', fontSize: 12, padding: '5px 14px', borderRadius: 20, display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', ...F }}>
-              <Navigation size={10} />{barber.address}
-            </button>
-          )}
+            ? <img src={barber.photoURL} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt=""/>
+            : <ScissorsIcon/>
+          }
         </div>
-        <svg viewBox="0 0 390 28" preserveAspectRatio="none" style={{ display: 'block', height: 28, width: '100%' }}>
-          <path d="M0 0 Q195 42 390 0 L390 28 L0 28 Z" fill="#0a0a0a" />
-        </svg>
+
+        <h1 style={{ color:'#fff', fontSize:28, fontWeight:800, margin:'0 0 6px', letterSpacing:'-0.4px', textAlign:'center' }}>
+          {barber.name}
+        </h1>
+
+        {barber.bio && (
+          <p style={{ color:'rgba(255,255,255,0.45)', fontSize:14, margin:'0 0 12px', lineHeight:1.6, maxWidth:280, textAlign:'center' }}>
+            {barber.bio}
+          </p>
+        )}
+
+        {barber.address && (
+          <button onClick={() => {
+            const addr = encodeURIComponent(barber.address)
+            const ios = /iPad|iPhone|iPod/.test(navigator.userAgent)
+            window.open(ios ? `maps://?q=${addr}` : `https://maps.google.com/?q=${addr}`, '_blank')
+          }} style={{ background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.55)', fontSize:12, padding:'6px 14px', borderRadius:20, display:'inline-flex', alignItems:'center', gap:5, cursor:'pointer', ...F }}>
+            <MapPin/>{barber.address}
+          </button>
+        )}
       </div>
 
-      {/* Auth choices — the ONLY content shown before a decision is made */}
-      <div style={{ padding: '32px 24px', maxWidth: 420, margin: '0 auto' }}>
-        <h2 style={{ fontFamily: "'Space Grotesk','Monda',sans-serif", color: '#fff', fontSize: 22, fontWeight: 900, margin: '0 0 4px', textAlign: 'center' }}>
+      {/* ── White card ── */}
+      <div style={{ flex:1, background:'#fff', borderRadius:'28px 28px 0 0', marginTop:-28, padding:'32px 24px 52px', maxWidth:480, width:'100%', alignSelf:'center', boxSizing:'border-box', display:'flex', flexDirection:'column' }}>
+        <h2 style={{ color:'#0A0A0A', fontSize:22, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.3px' }}>
           Book your appointment
         </h2>
-        <p style={{ color: '#555', fontSize: 14, textAlign: 'center', margin: '0 0 28px' }}>
+        <p style={{ color:'#888', fontSize:14, margin:'0 0 28px' }}>
           Choose how to continue
         </p>
 
         <button onClick={() => navigate(`/b/${barberSlug}/auth`)}
-          style={{ width: '100%', background: 'linear-gradient(135deg,#FF5C00,#FF9000)', border: 'none', borderRadius: 16, padding: '17px', color: '#fff', fontWeight: 700, fontSize: 16, cursor: 'pointer', marginBottom: 12, boxShadow: '0 8px 24px rgba(255,92,0,0.35)', ...F }}>
+          style={{ width:'100%', background:'#0A0A0A', color:'#fff', border:'none', borderRadius:14, padding:'16px', fontSize:15, fontWeight:700, cursor:'pointer', marginBottom:12, ...F }}>
           Log In / Create Account
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-          <div style={{ flex: 1, height: 1, background: '#1e1e1e' }} />
-          <span style={{ color: '#444', fontSize: 12 }}>or</span>
-          <div style={{ flex: 1, height: 1, background: '#1e1e1e' }} />
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
+          <div style={{ flex:1, height:1, background:'#E8E8E8' }}/>
+          <span style={{ color:'#BBB', fontSize:12 }}>or</span>
+          <div style={{ flex:1, height:1, background:'#E8E8E8' }}/>
         </div>
 
-        <button onClick={() => navigate(`/b/${barberSlug}/book`)}
-          style={{ width: '100%', background: '#141414', border: '1px solid #252525', borderRadius: 16, padding: '15px', color: '#888', fontWeight: 600, fontSize: 15, cursor: 'pointer', ...F }}>
+        <button onClick={() => navigate(`/b/${barberSlug}/auth`, { state:{ startAtGuest:true } })}
+          style={{ width:'100%', background:'transparent', color:'#888', border:'1.5px solid #E5E5E5', borderRadius:14, padding:'15px', fontSize:14, fontWeight:500, cursor:'pointer', ...F }}>
           Continue as Guest →
         </button>
       </div>
+
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}} *{box-sizing:border-box}`}</style>
     </div>
   )
-}
-
-function Spinner() {
-  return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: 28, height: 28, border: '3px solid #FF5C00', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
-  )
-}
-
-function Center({ children }) {
-  return <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{children}</div>
 }

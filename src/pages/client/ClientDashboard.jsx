@@ -204,8 +204,8 @@ function ProfileView({ user, userData, onSave, onSignOut }) {
   }
 
   return (
-    <div style={{ padding:'20px', maxWidth:520, margin:'0 auto', ...F, paddingBottom:100 }}>
-      <h2 style={{ color:'var(--text-pri)', fontWeight:900, fontSize:22, marginBottom:20 }}>Profile</h2>
+    <div style={{ background:'#080808', minHeight:'100%', color:'#F5F5F5', padding:'20px 16px', paddingBottom:100, maxWidth:520, margin:'0 auto', ...F }}>
+      <h2 style={{ color:'#F5F5F5', fontWeight:900, fontSize:22, marginBottom:20 }}>Profile</h2>
 
       {/* Photo */}
       <div style={{ textAlign:'center', marginBottom:20 }}>
