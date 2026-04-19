@@ -17,11 +17,13 @@ import BarberCalendar     from './pages/barber/BarberCalendar'
 import BarberReports      from './pages/barber/BarberReports'
 import BarberSuggestions  from './pages/barber/BarberSuggestions'
 
+
 import BarberLandingPage    from './pages/client/BarberLandingPage'
 import ClientAuthPage       from './pages/client/ClientAuthPage'
 import BookingPage          from './pages/client/BookingPage'
 import BookingConfirmedPage from './pages/client/BookingConfirmedPage'
 import ClientDashboard      from './pages/client/ClientDashboard'
+import ClientForgotPassword from './pages/auth/ClientForgotPassword'
 
 // Redirects that preserve the actual slug
 function SlugRedirect({ to }) {
@@ -71,6 +73,15 @@ function AppRoutes() {
         <Route path="/b/:barberSlug/book"      element={<BookingPage />} />
         <Route path="/b/:barberSlug/confirmed" element={<BookingConfirmedPage />} />
         <Route path="/b/:barberSlug/dashboard" element={<ClientDashboard />} />
+
+
+{/* NUEVA RUTA PARA RECUPERAR CONTRASEÑA CLIENTE */}
+<Route path="/b/:barberSlug/forgot-password" element={<ClientForgotPassword />} />
+
+{/* NUEVA RUTA PARA PERFIL (Donde subirá la foto) */}
+<Route path="/b/:barberSlug/profile" element={<ClientProfilePage />} />
+
+
 
         {/* Fixed legacy redirects — was using literal ":barberSlug" */}
         <Route path="/b/:barberSlug/login"     element={<SlugRedirect to="auth" />} />
