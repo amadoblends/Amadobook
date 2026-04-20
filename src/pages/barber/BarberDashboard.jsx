@@ -1,5 +1,10 @@
 import { useEffect, useState, useRef } from 'react'
-import { collection, query, where, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore'
+// ✅ IMPORTACIÓN UNIFICADA DE FIRESTORE (Sin duplicados)
+import { 
+  collection, query, where, getDocs, 
+  onSnapshot, doc, updateDoc, getDoc 
+} from 'firebase/firestore'
+
 import { db, storage } from '../../lib/firebase'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { useAuth } from '../../hooks/useAuth'
@@ -8,8 +13,10 @@ import { format, isToday, isTomorrow, differenceInMinutes, differenceInSeconds }
 import BarberLayout from '../../components/layout/BarberLayout'
 import { PageLoader } from '../../components/ui/Spinner'
 import { useTheme } from '../../context/ThemeContext'
-import { DollarSign, Users, Clock, X, Scissors, Phone, Mail, Star, ChevronRight } from 'lucide-react'
-
+import { 
+  DollarSign, Users, Clock, X, Scissors, 
+  Phone, Mail, Star, ChevronRight 
+} from 'lucide-react'
 const F = { fontFamily:'Monda,sans-serif' }
 const SC = { pending:'#f59e0b', confirmed:'#16A34A', completed:'#3b82f6', cancelled:'#ef4444' }
 
@@ -229,10 +236,25 @@ export default function BarberDashboard() {
     init()
   }, [user])
 
-  useEffect(() => {
-    if (barber) { clearInterval(refreshRef.current); refreshRef.current=setInterval(()=>loadData(barber.id),20000) }
-    return ()=>clearInterval(refreshRef.current)
-  }, [barber])
+useEffect(() => {
+  if (!barber) return;
+
+  // 1. Creamos la consulta (query)
+  const q = query(collection(db, 'appointments'), where('barberId', '==', barber.id));
+
+  // 2. onSnapshot reemplaza por completo al loadData y al setInterval
+  const unsubscribe = onSnapshot(q, (snap) => {
+    const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setAllAppts(all);
+    setLoading(false);
+    
+    // Auto-completar citas pasadas (tu lógica original)
+    autoCompletePast(all);
+  });
+
+  // 3. Limpieza: esto se ejecuta cuando el componente se desmonta
+  return () => unsubscribe();
+}, [barber]);
 
   if (loading) return <BarberLayout><PageLoader/></BarberLayout>
 

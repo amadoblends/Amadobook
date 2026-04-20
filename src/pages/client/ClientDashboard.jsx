@@ -1,18 +1,32 @@
 import { useEffect, useState, useRef } from 'react'
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore'
-import { storage } from '../../lib/firebase'
+// ✅ UNIFICADO: Todo lo de Firestore en una sola línea y sin repeticiones
+import { 
+  collection, query, where, getDocs, 
+  doc, updateDoc, onSnapshot 
+} from 'firebase/firestore'
+
+import { storage, db } from '../../lib/firebase'
 import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useAuth'
-import { formatCurrency, formatDuration, parseLocalDate, generateTimeSlots } from '../../utils/helpers'
+import { 
+  formatCurrency, formatDuration, 
+  parseLocalDate, generateTimeSlots 
+} from '../../utils/helpers'
 import { useTheme } from '../../context/ThemeContext'
-import { format, isFuture, isPast, differenceInDays, subMonths, eachMonthOfInterval, addDays, startOfDay, isToday, isSameDay } from 'date-fns'
+import { 
+  format, isFuture, isPast, differenceInDays, 
+  subMonths, eachMonthOfInterval, addDays, 
+  startOfDay, isToday, isSameDay 
+} from 'date-fns'
 import toast from 'react-hot-toast'
 import { useNavigate, useParams } from 'react-router-dom'
 import ImportantMessagePopup from '../../components/ui/ImportantMessagePopup'
 import PhoneInput from '../../components/ui/PhoneInput'
-import { Scissors, User, X, Navigation, RefreshCw, ChevronLeft, ChevronRight, Bell, ArrowLeft, Check, DollarSign, Calendar, Clock } from 'lucide-react'
-
+import { 
+  Scissors, User, X, Navigation, RefreshCw, 
+  ChevronLeft, ChevronRight, Bell, ArrowLeft, 
+  Check, DollarSign, Calendar, Clock 
+} from 'lucide-react'
 const F  = { fontFamily:'Monda,sans-serif' }
 const SC = { pending:'#f59e0b', confirmed:'#16A34A', completed:'#3b82f6', cancelled:'#ef4444' }
 
@@ -336,8 +350,19 @@ export default function ClientDashboard() {
     }
   }
 
-  useEffect(() => { loadAppts(); refreshRef.current=setInterval(loadAppts,20000); return()=>clearInterval(refreshRef.current) }, [user])
+useEffect(() => {
+  if (!user) return;
+  const q = query(collection(db, 'appointments'), where('clientId', '==', user.uid));
+  
+  // onSnapshot escucha cambios en tiempo real. ¡Adiós a los setInterval!
+  const unsubscribe = onSnapshot(q, (snap) => {
+    const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setAppointments(all);
+    setLoading(false);
+  });
 
+  return () => unsubscribe(); // Limpia la conexión al desmontar
+}, [user]);
   // Reschedule slots
   useEffect(() => {
     if (!reschedDate||!reschedAppt||!availability) { setReschedSlots([]); return }

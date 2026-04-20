@@ -1,8 +1,16 @@
 import { useEffect, useState, useMemo } from 'react'
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore'
+// ✅ UNIFICADO: Solo una línea para firestore con todo lo que necesitas
+import { 
+  collection, query, where, getDocs, 
+  doc, updateDoc, onSnapshot 
+} from 'firebase/firestore'
+
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useAuth'
-import { formatCurrency, formatDuration, getInitials, parseLocalDate, generateTimeSlots } from '../../utils/helpers'
+import { 
+  formatCurrency, formatDuration, getInitials, 
+  parseLocalDate, generateTimeSlots 
+} from '../../utils/helpers'
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth,
   isSameDay, startOfWeek, endOfWeek, isToday, addMonths, subMonths,
@@ -18,7 +26,6 @@ import {
   XCircle, Calendar, RefreshCw, RotateCcw
 } from 'lucide-react'
 import { PageLoader } from '../../components/ui/Spinner'
-
 const F = { fontFamily: 'Monda, sans-serif' }
 const SC = { pending:'#f59e0b', confirmed:'#16A34A', completed:'#3b82f6', cancelled:'#ef4444' }
 
@@ -247,26 +254,53 @@ export default function BarberCalendar() {
   const [tipAmount, setTipAmount]       = useState('')
   const [updating, setUpdating]         = useState(false)
 
-  useEffect(() => {
+useEffect(() => {
     if (!user) return
-    async function load() {
+
+    let unsubAppointments;
+    let unsubAvailability;
+
+    async function setupListeners() {
       try {
-        const bSnap = await getDocs(query(collection(db,'barbers'), where('userId','==',user.uid)))
-        if (bSnap.empty) { setLoading(false); return }
-        const b = { id:bSnap.docs[0].id, ...bSnap.docs[0].data() }
+        // 1. Obtenemos el perfil del barbero (esto solo se necesita 1 vez para sacar el ID)
+        const bSnap = await getDocs(query(collection(db, 'barbers'), where('userId', '==', user.uid)))
+        if (bSnap.empty) { 
+          setLoading(false); 
+          return; 
+        }
+        
+        const b = { id: bSnap.docs[0].id, ...bSnap.docs[0].data() }
         setBarber(b)
-        const [aSnap, avSnap] = await Promise.all([
-          getDocs(query(collection(db,'appointments'), where('barberId','==',b.id))),
-          getDocs(query(collection(db,'availability'),  where('barberId','==',b.id))),
-        ])
-        setAppointments(aSnap.docs.map(d => ({id:d.id,...d.data()})))
-        if (!avSnap.empty) setAvailability(avSnap.docs[0].data())
-      } catch(e) { console.error(e) }
-      finally { setLoading(false) }
+
+        // 2. Escuchar CITAS en tiempo real
+        const qAppts = query(collection(db, 'appointments'), where('barberId', '==', b.id))
+        unsubAppointments = onSnapshot(qAppts, (snap) => {
+          const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          setAppointments(all)
+        })
+
+        // 3. Escuchar DISPONIBILIDAD en tiempo real
+        const qAvail = query(collection(db, 'availability'), where('barberId', '==', b.id))
+        unsubAvailability = onSnapshot(qAvail, (snap) => {
+          if (!snap.empty) {
+            setAvailability(snap.docs[0].data())
+          }
+        })
+
+      } catch (e) {
+        console.error("Error cargando datos:", e)
+      } finally {
+        setLoading(false)
+      }
     }
-    load()
-    const iv = setInterval(load, 20000)
-    return () => clearInterval(iv)
+
+    setupListeners()
+
+    // 4. Limpieza: Apagar los "escuchadores" cuando el usuario cierre el calendario
+    return () => {
+      if (unsubAppointments) unsubAppointments()
+      if (unsubAvailability) unsubAvailability()
+    }
   }, [user])
 
   const calDays = eachDayOfInterval({

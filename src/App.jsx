@@ -17,13 +17,11 @@ import BarberCalendar     from './pages/barber/BarberCalendar'
 import BarberReports      from './pages/barber/BarberReports'
 import BarberSuggestions  from './pages/barber/BarberSuggestions'
 
-
 import BarberLandingPage    from './pages/client/BarberLandingPage'
 import ClientAuthPage       from './pages/client/ClientAuthPage'
 import BookingPage          from './pages/client/BookingPage'
 import BookingConfirmedPage from './pages/client/BookingConfirmedPage'
 import ClientDashboard      from './pages/client/ClientDashboard'
-import ClientForgotPassword from './pages/auth/ClientForgotPassword'
 
 // Redirects that preserve the actual slug
 function SlugRedirect({ to }) {
@@ -58,9 +56,12 @@ function AppRoutes() {
     <>
       <ThemeSync />
       <Routes>
+        {/* ── RUTAS DEL BARBERO (Administración) ── */}
         <Route path="/barber/login"           element={<BarberLoginPage />} />
         <Route path="/barber/signup"          element={<BarberSignupPage />} />
-        <Route path="/barber/forgot-password" element={<ForgotPasswordPage backTo="/barber/login" />} />
+        <Route path="/barber/forgot-password" element={<ForgotPasswordPage role="barber" />} />
+        
+        {/* Panel Protegido del Barbero */}
         <Route path="/barber/dashboard"    element={<BarberRoute><BarberDashboard /></BarberRoute>} />
         <Route path="/barber/services"     element={<BarberRoute><BarberServices /></BarberRoute>} />
         <Route path="/barber/availability" element={<BarberRoute><BarberAvailability /></BarberRoute>} />
@@ -68,32 +69,25 @@ function AppRoutes() {
         <Route path="/barber/reports"      element={<BarberRoute><BarberReports /></BarberRoute>} />
         <Route path="/barber/suggestions"  element={<BarberRoute><BarberSuggestions /></BarberRoute>} />
 
-        <Route path="/b/:barberSlug"           element={<BarberLandingPage />} />
-        <Route path="/b/:barberSlug/auth"      element={<ClientAuthPage />} />
-        <Route path="/b/:barberSlug/book"      element={<BookingPage />} />
-        <Route path="/b/:barberSlug/confirmed" element={<BookingConfirmedPage />} />
-        <Route path="/b/:barberSlug/dashboard" element={<ClientDashboard />} />
+        {/* ── RUTAS DEL CLIENTE (Acceso por URL de Barbería) ── */}
+        <Route path="/b/:barberSlug"                 element={<BarberLandingPage />} />
+        <Route path="/b/:barberSlug/auth"            element={<ClientAuthPage />} />
+        <Route path="/b/:barberSlug/forgot-password" element={<ForgotPasswordPage role="client" />} />
+        <Route path="/b/:barberSlug/book"            element={<BookingPage />} />
+        <Route path="/b/:barberSlug/confirmed"       element={<BookingConfirmedPage />} />
+        <Route path="/b/:barberSlug/dashboard"       element={<ClientDashboard />} />
 
+        {/* Redirecciones para evitar duplicados en Login/Signup de clientes */}
+        <Route path="/b/:barberSlug/login"           element={<SlugRedirect to="auth" />} />
+        <Route path="/b/:barberSlug/signup"          element={<SlugRedirect to="auth" />} />
 
-{/* NUEVA RUTA PARA RECUPERAR CONTRASEÑA CLIENTE */}
-<Route path="/b/:barberSlug/forgot-password" element={<ClientForgotPassword />} />
-
-{/* NUEVA RUTA PARA PERFIL (Donde subirá la foto) */}
-<Route path="/b/:barberSlug/profile" element={<ClientProfilePage />} />
-
-
-
-        {/* Fixed legacy redirects — was using literal ":barberSlug" */}
-        <Route path="/b/:barberSlug/login"     element={<SlugRedirect to="auth" />} />
-        <Route path="/b/:barberSlug/signup"    element={<SlugRedirect to="auth" />} />
-
+        {/* Home y Errores */}
         <Route path="/" element={<Navigate to="/barber/login" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   )
 }
-
 export default function App() {
   return (
     <BrowserRouter>

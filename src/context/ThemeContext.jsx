@@ -51,8 +51,7 @@ export function ThemeProvider({ children }) {
         const t  = d.theme      || 'light'
         const tf = d.timeFormat || '12h'
         // Clients always get yellow; barbers get their saved accent
-        const a  = userRole === 'barber' ? (d.accent || '#F59E0B') : CLIENT_ACCENT
-        setThemeState(t); setAccentState(a); setTimeFormatState(tf)
+const a = userRole === 'barber' ? (d.accent || '#F59E0B') : 'var(--text-pri)';        setThemeState(t); setAccentState(a); setTimeFormatState(tf)
         applyTheme(t, a)
         localStorage.setItem(storageKey(userId,'theme'), t)
         localStorage.setItem(storageKey(userId,'timefmt'), tf)
