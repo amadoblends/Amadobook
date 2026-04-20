@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../hooks/useAuth'
+import { useBarberAuth as useAuth } from '../../hooks/useBarberAuth'
 import { useTheme } from '../../context/ThemeContext'
 import {
   LayoutDashboard, Scissors, Clock, Calendar, BarChart2,

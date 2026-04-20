@@ -7,7 +7,7 @@ import {
 
 import { storage, db } from '../../lib/firebase'
 import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { useAuth } from '../../hooks/useAuth'
+import { useClientAuth as useAuth } from '../../hooks/useClientAuth'
 import { 
   formatCurrency, formatDuration, 
   parseLocalDate, generateTimeSlots 
@@ -205,102 +205,117 @@ function VisitHistory({ appointments, onBack }) {
 
 // ── Profile view ───────────────────────────────────────────────────────────
 function ProfileView({ user, userData, onSave, onSignOut }) {
-  const { theme, toggleTheme, timeFormat, setTimeFormat, accent, setAccent, accents } = useTheme()
-  const [form, setForm]     = useState({ firstName:userData?.firstName||'', lastName:userData?.lastName||'', phone:userData?.phone||'', photoURL:userData?.photoURL||'' })
+  const { theme, toggleTheme, timeFormat, setTimeFormat } = useTheme()
+  const isDark = theme === 'dark'
+  const BG   = isDark ? '#0A0A0A' : '#FFFFFF'
+  const CARD = isDark ? '#161616' : '#F5F5F5'
+  const BDR  = isDark ? '#2A2A2A' : '#E5E5E5'
+  const TXT  = isDark ? '#F5F5F5' : '#0A0A0A'
+  const TXT2 = '#777777'
+  const BTN  = isDark ? '#FFFFFF' : '#0A0A0A'
+  const BTNI = isDark ? '#0A0A0A' : '#FFFFFF'
+
+  const [form, setForm] = useState({
+    firstName: userData?.firstName||'',
+    lastName:  userData?.lastName||'',
+    phone:     userData?.phone||'',
+    photoURL:  userData?.photoURL||'',
+  })
   const [saving, setSaving] = useState(false)
   const photoRef = useRef(null)
 
   async function save() {
     setSaving(true)
     try { await updateDoc(doc(db,'users',user.uid),form); await onSave(); toast.success('Saved!') }
-    catch { toast.error('Failed') }
+    catch { toast.error('Failed to save') }
     finally { setSaving(false) }
   }
 
   return (
-    <div style={{ background:'#080808', minHeight:'100%', color:'#F5F5F5', padding:'20px 16px', paddingBottom:100, maxWidth:520, margin:'0 auto', ...F }}>
-      <h2 style={{ color:'#F5F5F5', fontWeight:900, fontSize:22, marginBottom:20 }}>Profile</h2>
+    <div style={{ position:'fixed', inset:0, bottom:70, background:BG, overflowY:'auto', zIndex:10 }}>
+      <div style={{ maxWidth:520, margin:'0 auto', padding:'28px 20px 60px' }}>
+        <h2 style={{ color:TXT, fontWeight:900, fontSize:22, marginBottom:24, fontFamily:"'Monda',system-ui,sans-serif" }}>Profile</h2>
 
-      {/* Photo */}
-      <div style={{ textAlign:'center', marginBottom:20 }}>
-        <div style={{ position:'relative', display:'inline-block', cursor:'pointer' }} onClick={() => photoRef.current?.click()}>
-          <div style={{ width:80, height:80, borderRadius:'50%', overflow:'hidden', background:'var(--accent)22', border:'3px solid var(--accent)44', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:26, color:'var(--accent)' }}>
-            {form.photoURL?<img src={form.photoURL} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>:`${form.firstName?.[0]||''}${form.lastName?.[0]||''}`}
-          </div>
-          <div style={{ position:'absolute', bottom:0, right:0, width:26, height:26, borderRadius:'50%', background:'var(--accent)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--surface)' }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M20 5h-3.2L15 3H9L7.2 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-8 13c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5z"/><circle cx="12" cy="13" r="3" fill="white"/></svg>
-          </div>
-        </div>
-        <input ref={photoRef} type="file" accept="image/*" capture="environment" style={{display:'none'}}
-      onChange={async e=>{
-        const file=e.target.files?.[0]; if(!file)return
-        const reader=new FileReader(); reader.onload=ev=>setForm(p=>({...p,photoURL:ev.target.result})); reader.readAsDataURL(file)
-        try {
-          const path=sRef(storage,`profiles/${user.uid}/photo_${Date.now()}`)
-          const snap=await uploadBytes(path,file); const url=await getDownloadURL(snap.ref)
-          setForm(p=>({...p,photoURL:url}))
-        } catch(err){ console.warn('Storage fallback:',err.code) }
-      }}/>
-        <p style={{ color:'var(--text-sec)', fontSize:12, marginTop:8 }}>Tap to change photo</p>
-      </div>
-
-      {/* Fields */}
-      <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'16px', marginBottom:14 }}>
-        {[['FIRST NAME','firstName','text'],['LAST NAME','lastName','text']].map(([lbl,key,type]) => (
-          <div key={key} style={{ marginBottom:16 }}>
-            <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', marginBottom:7 }}>{lbl}</p>
-            <div style={{ borderBottom:'1.5px solid var(--border)', paddingBottom:8 }}>
-              <input type={type} value={form[key]||''} onChange={e=>{const v=e.target.value;setForm(p=>({...p,[key]:v}))}} autoComplete="off"
-                style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:'var(--text-pri)', fontSize:16, fontFamily:'Monda,sans-serif' }}/>
+        {/* Avatar */}
+        <div style={{ textAlign:'center', marginBottom:24 }}>
+          <div style={{ position:'relative', display:'inline-block', cursor:'pointer' }} onClick={()=>photoRef.current?.click()}>
+            <div style={{ width:80, height:80, borderRadius:'50%', overflow:'hidden', background:CARD, border:`2px solid ${BDR}`, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:26, color:TXT }}>
+              {form.photoURL
+                ? <img src={form.photoURL} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
+                : `${form.firstName?.[0]||''}${form.lastName?.[0]||''}`}
+            </div>
+            <div style={{ position:'absolute', bottom:0, right:0, width:26, height:26, borderRadius:'50%', background:BTN, border:`2px solid ${BG}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill={BTNI}><path d="M20 5h-3.2L15 3H9L7.2 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-8 13c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5z"/><circle cx="12" cy="13" r="3" fill={BTNI}/></svg>
             </div>
           </div>
-        ))}
-        <div style={{ marginBottom:16 }}>
-          <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', marginBottom:7 }}>PHONE</p>
-          <PhoneInput value={form.phone||''} onChange={v=>setForm(p=>({...p,phone:v}))}/>
+          <input ref={photoRef} type="file" accept="image/*" style={{display:'none'}}
+            onChange={async e=>{
+              const file=e.target.files?.[0]; if(!file)return
+              const reader=new FileReader()
+              reader.onload=ev=>setForm(p=>({...p,photoURL:ev.target.result}))
+              reader.readAsDataURL(file)
+              try {
+                const path=sRef(storage,`profiles/${user.uid}/photo_${Date.now()}`)
+                const snap=await uploadBytes(path,file)
+                const url=await getDownloadURL(snap.ref)
+                setForm(p=>({...p,photoURL:url}))
+              } catch(err){ console.warn('photo upload:',err.code) }
+            }}/>
+          <p style={{ color:TXT2, fontSize:12, marginTop:8 }}>Tap to change photo</p>
         </div>
+
+        {/* Fields */}
+        <div style={{ background:CARD, border:`1px solid ${BDR}`, borderRadius:16, padding:'16px 18px', marginBottom:12 }}>
+          {[['FIRST NAME','firstName'],['LAST NAME','lastName']].map(([lbl,key]) => (
+            <div key={key} style={{ marginBottom:16 }}>
+              <p style={{ color:TXT2, fontSize:10, fontWeight:700, letterSpacing:'0.09em', marginBottom:6 }}>{lbl}</p>
+              <div style={{ borderBottom:`1.5px solid ${BDR}`, paddingBottom:8 }}>
+                <input type="text" value={form[key]||''} onChange={e=>setForm(p=>({...p,[key]:e.target.value}))}
+                  style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:TXT, fontSize:16, fontFamily:"'Monda',system-ui,sans-serif" }}/>
+              </div>
+            </div>
+          ))}
+          <div>
+            <p style={{ color:TXT2, fontSize:10, fontWeight:700, letterSpacing:'0.09em', marginBottom:6 }}>PHONE</p>
+            <div style={{ borderBottom:`1.5px solid ${BDR}`, paddingBottom:8 }}>
+              <input type="tel" value={form.phone||''} onChange={e=>setForm(p=>({...p,phone:e.target.value}))}
+                style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:TXT, fontSize:16, fontFamily:"'Monda',system-ui,sans-serif" }}/>
+            </div>
+          </div>
+        </div>
+
         <button onClick={save} disabled={saving}
-          style={{ width:'100%', background:'var(--accent)', border:'none', borderRadius:12, padding:'15px', color:'white', fontWeight:700, fontSize:15, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, ...F }}>
-          {saving&&<div style={{width:16,height:16,border:'2px solid white',borderTopColor:'transparent',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/>}
-          {saving?'Saving…':'Save Changes'}
+          style={{ width:'100%', background:BTN, border:'none', borderRadius:13, padding:'15px', color:BTNI, fontWeight:700, fontSize:15, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:12, fontFamily:"'Monda',system-ui,sans-serif" }}>
+          {saving && <div style={{width:16,height:16,border:`2px solid ${BTNI}44`,borderTopColor:BTNI,borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/>}
+          {saving?'Saving\u2026':'Save Changes'}
+        </button>
+
+        {/* Appearance */}
+        <div style={{ background:CARD, border:`1px solid ${BDR}`, borderRadius:16, padding:'16px 18px', marginBottom:12 }}>
+          <p style={{ color:TXT2, fontSize:10, fontWeight:700, letterSpacing:'0.09em', marginBottom:16 }}>APPEARANCE</p>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
+            <span style={{ color:TXT, fontWeight:600, fontSize:14 }}>{isDark?'Dark Mode':'Light Mode'}</span>
+            <button onClick={toggleTheme}
+              style={{ width:52, height:28, borderRadius:14, padding:3, border:'none', cursor:'pointer', background:BTN, display:'flex', alignItems:'center', justifyContent:isDark?'flex-end':'flex-start', transition:'all 0.25s' }}>
+              <div style={{ width:22, height:22, borderRadius:'50%', background:BTNI, boxShadow:'0 1px 4px rgba(0,0,0,0.25)' }}/>
+            </button>
+          </div>
+          <p style={{ color:TXT2, fontSize:10, fontWeight:700, letterSpacing:'0.09em', marginBottom:10 }}>TIME FORMAT</p>
+          <div style={{ display:'flex', background:BG, borderRadius:12, padding:3, border:`1px solid ${BDR}` }}>
+            {[['12h','12h (AM/PM)'],['24h','24h']].map(([val,lbl]) => (
+              <button key={val} onClick={()=>setTimeFormat(val)}
+                style={{ flex:1, padding:'9px', borderRadius:10, fontWeight:700, fontSize:13, background:timeFormat===val?BTN:'transparent', color:timeFormat===val?BTNI:TXT2, border:'none', cursor:'pointer', fontFamily:"'Monda',system-ui,sans-serif", transition:'all 0.15s' }}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button onClick={onSignOut}
+          style={{ width:'100%', background:'none', border:`1px solid ${BDR}`, borderRadius:13, padding:'14px', color:'#EF4444', fontWeight:600, fontSize:14, cursor:'pointer', fontFamily:"'Monda',system-ui,sans-serif" }}>
+          Sign Out
         </button>
       </div>
-
-      {/* Appearance settings */}
-      <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'16px', marginBottom:14 }}>
-        <p style={{ color:'var(--text-sec)', fontSize:11, fontWeight:700, letterSpacing:'0.08em', marginBottom:14 }}>APPEARANCE</p>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-          <p style={{ color:'var(--text-pri)', fontWeight:600, fontSize:14, margin:0 }}>{theme==='light'?'Light Mode':'Dark Mode'}</p>
-          <button onClick={toggleTheme}
-            style={{ width:52, height:28, borderRadius:14, padding:3, border:'none', cursor:'pointer', background:theme==='light'?'var(--border)':'var(--accent)', display:'flex', alignItems:'center', justifyContent:theme==='light'?'flex-start':'flex-end', transition:'background 0.2s' }}>
-            <div style={{ width:22, height:22, borderRadius:'50%', background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'all 0.2s' }}/>
-          </button>
-        </div>
-        <p style={{ color:'var(--text-sec)', fontSize:11, fontWeight:700, letterSpacing:'0.08em', marginBottom:10 }}>TIME FORMAT</p>
-        <div style={{ display:'flex', background:'var(--bg)', borderRadius:12, padding:3, border:'1px solid var(--border)', marginBottom:16 }}>
-          {[['12h','12h (AM/PM)'],['24h','24h']].map(([val,lbl]) => (
-            <button key={val} onClick={()=>setTimeFormat(val)}
-              style={{ flex:1, padding:'9px', borderRadius:10, fontWeight:700, fontSize:13, background:timeFormat===val?'var(--accent)':'transparent', color:timeFormat===val?'white':'var(--text-sec)', border:'none', cursor:'pointer', ...F }}>
-              {lbl}
-            </button>
-          ))}
-        </div>
-        <p style={{ color:'var(--text-sec)', fontSize:11, fontWeight:700, letterSpacing:'0.08em', marginBottom:10 }}>ACCENT COLOR</p>
-        <div style={{ display:'flex', gap:10 }}>
-          {accents.map(a => (
-            <button key={a.id} onClick={()=>setAccent(a.color)}
-              style={{ flex:1, padding:'10px 4px', borderRadius:12, border:`2px solid ${accent===a.color?a.color:'var(--border)'}`, background:accent===a.color?a.color+'22':'var(--card)', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
-              <div style={{ width:24, height:24, borderRadius:'50%', background:a.color, border:`3px solid ${accent===a.color?'white':'transparent'}`, boxShadow:accent===a.color?`0 0 0 2px ${a.color}`:'none' }}/>
-              <span style={{ color:accent===a.color?a.color:'var(--text-sec)', fontSize:10, fontWeight:700, fontFamily:'Monda,sans-serif' }}>{a.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <button onClick={onSignOut}
-        style={{ width:'100%', background:'none', border:'1px solid var(--border)', borderRadius:12, padding:'14px', color:'#ef4444', fontWeight:600, fontSize:14, cursor:'pointer', ...F }}>
-        Sign Out
-      </button>
     </div>
   )
 }

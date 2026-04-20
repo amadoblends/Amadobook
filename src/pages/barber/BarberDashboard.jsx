@@ -7,7 +7,7 @@ import {
 
 import { db, storage } from '../../lib/firebase'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { useAuth } from '../../hooks/useAuth'
+import { useBarberAuth as useAuth } from '../../hooks/useBarberAuth'
 import { formatCurrency, formatDuration, parseLocalDate } from '../../utils/helpers'
 import { format, isToday, isTomorrow, differenceInMinutes, differenceInSeconds } from 'date-fns'
 import BarberLayout from '../../components/layout/BarberLayout'

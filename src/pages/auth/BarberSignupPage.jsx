@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../hooks/useAuth'
+import { useBarberAuth as useAuth } from '../../hooks/useBarberAuth'
 import { collection, addDoc, serverTimestamp, setDoc, doc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { generateSlug } from '../../utils/helpers'

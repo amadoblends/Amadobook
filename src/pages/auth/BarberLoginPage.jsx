@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../hooks/useAuth'
+import { useBarberAuth as useAuth } from '../../hooks/useBarberAuth'
 import toast from 'react-hot-toast'
 import { Eye, EyeOff, Scissors } from 'lucide-react'
 

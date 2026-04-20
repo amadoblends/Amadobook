@@ -6,7 +6,7 @@ import {
 } from 'firebase/firestore'
 
 import { db } from '../../lib/firebase'
-import { useAuth } from '../../hooks/useAuth'
+import { useBarberAuth as useAuth } from '../../hooks/useBarberAuth'
 import { 
   formatCurrency, formatDuration, getInitials, 
   parseLocalDate, generateTimeSlots 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
-import { useAuth } from '../../hooks/useAuth'
+import { useBarberAuth as useAuth } from '../../hooks/useBarberAuth'
 import { formatCurrency, formatDuration } from '../../utils/helpers'
 import toast from 'react-hot-toast'
 import BarberLayout from '../../components/layout/BarberLayout'

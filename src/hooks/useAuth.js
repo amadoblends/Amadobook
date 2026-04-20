@@ -1,3 +1,3 @@
-import { useContext } from 'react'
-import { AuthContext } from '../context/AuthContext'
-export function useAuth() { return useContext(AuthContext) }
+// Legacy alias — client pages use this
+// Barber pages should import useBarberAuth directly
+export { useClientAuth as useAuth } from './useClientAuth'

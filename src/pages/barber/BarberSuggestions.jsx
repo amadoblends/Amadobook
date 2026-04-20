@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
-import { useAuth } from '../../hooks/useAuth'
+import { useBarberAuth as useAuth } from '../../hooks/useBarberAuth'
 import { formatCurrency, parseLocalDate } from '../../utils/helpers'
 import { format } from 'date-fns'
 import BarberLayout from '../../components/layout/BarberLayout'

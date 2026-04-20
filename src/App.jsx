@@ -1,12 +1,24 @@
+/**
+ * App.jsx — Two isolated app trees
+ *
+ * /barber/*  → BarberAuthProvider (barberAuth instance)
+ * /b/:slug/* → ClientAuthProvider (clientAuth instance)
+ *
+ * Sessions are 100% independent — logging into one
+ * does NOT affect the other, even in the same browser.
+ */
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { AuthProvider } from './context/AuthContext'
-import { ThemeProvider } from './context/ThemeContext'
-import { useAuth } from './hooks/useAuth'
 import { useEffect } from 'react'
-import { useTheme } from './context/ThemeContext'
+
+import { BarberAuthProvider }  from './context/BarberAuthContext'
+import { ClientAuthProvider }  from './context/ClientAuthContext'
+import { ThemeProvider, useTheme } from './context/ThemeContext'
+import { useBarberAuth } from './hooks/useBarberAuth'
+import { useClientAuth } from './hooks/useClientAuth'
 import { PageLoader } from './components/ui/Spinner'
 
+// ── Barber pages ──────────────────────────────────────────────────────────
 import BarberLoginPage    from './pages/auth/BarberLoginPage'
 import BarberSignupPage   from './pages/auth/BarberSignupPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
@@ -17,89 +29,111 @@ import BarberCalendar     from './pages/barber/BarberCalendar'
 import BarberReports      from './pages/barber/BarberReports'
 import BarberSuggestions  from './pages/barber/BarberSuggestions'
 
+// ── Client pages ──────────────────────────────────────────────────────────
 import BarberLandingPage    from './pages/client/BarberLandingPage'
 import ClientAuthPage       from './pages/client/ClientAuthPage'
 import BookingPage          from './pages/client/BookingPage'
 import BookingConfirmedPage from './pages/client/BookingConfirmedPage'
 import ClientDashboard      from './pages/client/ClientDashboard'
 
-// Redirects that preserve the actual slug
+// ── Theme sync ────────────────────────────────────────────────────────────
+function BarberThemeSync() {
+  const { user, userData } = useBarberAuth()
+  const { loadPrefs, resetToDefaults, setRole } = useTheme()
+  useEffect(() => {
+    if (user?.uid) { setRole('barber'); loadPrefs(user.uid, 'barber') }
+    else resetToDefaults()
+  }, [user?.uid])
+  return null
+}
+
+function ClientThemeSync() {
+  const { user } = useClientAuth()
+  const { loadPrefs, resetToDefaults, setRole } = useTheme()
+  useEffect(() => {
+    if (user?.uid) { setRole('client'); loadPrefs(user.uid, 'client') }
+    else resetToDefaults()
+  }, [user?.uid])
+  return null
+}
+
+// ── Route guards ──────────────────────────────────────────────────────────
+function BarberRoute({ children }) {
+  const { user, userData, loading } = useBarberAuth()
+  if (loading) return <PageLoader />
+  if (!user)   return <Navigate to="/barber/login" replace />
+  if (userData?.role !== 'barber') return <Navigate to="/barber/login" replace />
+  return children
+}
+
+// ── Slug redirect helper ──────────────────────────────────────────────────
 function SlugRedirect({ to }) {
   const { barberSlug } = useParams()
   return <Navigate to={`/b/${barberSlug}/${to}`} replace />
 }
 
-function ThemeSync() {
-  const { user, userData } = useAuth()
-  const { setUid, loadPrefs, resetToDefaults } = useTheme()
-  useEffect(() => {
-    if (user?.uid) {
-      setUid(user.uid)
-      loadPrefs(user.uid, userData?.role)
-    } else {
-      resetToDefaults()
-    }
-  }, [user?.uid, userData?.role])
-  return null
-}
-
-function BarberRoute({ children }) {
-  const { user, userData, loading } = useAuth()
-  if (loading) return <PageLoader />
-  if (!user) return <Navigate to="/barber/login" replace />
-  if (userData?.role !== 'barber') return <Navigate to="/" replace />
-  return children
-}
-
-function AppRoutes() {
+// ── BARBER APP subtree ────────────────────────────────────────────────────
+function BarberApp() {
   return (
-    <>
-      <ThemeSync />
+    <BarberAuthProvider>
+      <BarberThemeSync />
       <Routes>
-        {/* ── RUTAS DEL BARBERO (Administración) ── */}
-        <Route path="/barber/login"           element={<BarberLoginPage />} />
-        <Route path="/barber/signup"          element={<BarberSignupPage />} />
-        <Route path="/barber/forgot-password" element={<ForgotPasswordPage role="barber" />} />
-        
-        {/* Panel Protegido del Barbero */}
-        <Route path="/barber/dashboard"    element={<BarberRoute><BarberDashboard /></BarberRoute>} />
-        <Route path="/barber/services"     element={<BarberRoute><BarberServices /></BarberRoute>} />
-        <Route path="/barber/availability" element={<BarberRoute><BarberAvailability /></BarberRoute>} />
-        <Route path="/barber/calendar"     element={<BarberRoute><BarberCalendar /></BarberRoute>} />
-        <Route path="/barber/reports"      element={<BarberRoute><BarberReports /></BarberRoute>} />
-        <Route path="/barber/suggestions"  element={<BarberRoute><BarberSuggestions /></BarberRoute>} />
-
-        {/* ── RUTAS DEL CLIENTE (Acceso por URL de Barbería) ── */}
-        <Route path="/b/:barberSlug"                 element={<BarberLandingPage />} />
-        <Route path="/b/:barberSlug/auth"            element={<ClientAuthPage />} />
-        <Route path="/b/:barberSlug/forgot-password" element={<ForgotPasswordPage role="client" />} />
-        <Route path="/b/:barberSlug/book"            element={<BookingPage />} />
-        <Route path="/b/:barberSlug/confirmed"       element={<BookingConfirmedPage />} />
-        <Route path="/b/:barberSlug/dashboard"       element={<ClientDashboard />} />
-
-        {/* Redirecciones para evitar duplicados en Login/Signup de clientes */}
-        <Route path="/b/:barberSlug/login"           element={<SlugRedirect to="auth" />} />
-        <Route path="/b/:barberSlug/signup"          element={<SlugRedirect to="auth" />} />
-
-        {/* Home y Errores */}
-        <Route path="/" element={<Navigate to="/barber/login" replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="login"           element={<BarberLoginPage />} />
+        <Route path="signup"          element={<BarberSignupPage />} />
+        <Route path="forgot-password" element={<ForgotPasswordPage role="barber" />} />
+        <Route path="dashboard"       element={<BarberRoute><BarberDashboard /></BarberRoute>} />
+        <Route path="services"        element={<BarberRoute><BarberServices /></BarberRoute>} />
+        <Route path="availability"    element={<BarberRoute><BarberAvailability /></BarberRoute>} />
+        <Route path="calendar"        element={<BarberRoute><BarberCalendar /></BarberRoute>} />
+        <Route path="reports"         element={<BarberRoute><BarberReports /></BarberRoute>} />
+        <Route path="suggestions"     element={<BarberRoute><BarberSuggestions /></BarberRoute>} />
+        <Route index element={<Navigate to="login" replace />} />
       </Routes>
-    </>
+    </BarberAuthProvider>
   )
 }
+
+// ── CLIENT APP subtree ────────────────────────────────────────────────────
+function ClientApp() {
+  return (
+    <ClientAuthProvider>
+      <ClientThemeSync />
+      <Routes>
+        <Route index                  element={<BarberLandingPage />} />
+        <Route path="auth"            element={<ClientAuthPage />} />
+        <Route path="forgot-password" element={<ForgotPasswordPage role="client" />} />
+        <Route path="book"            element={<BookingPage />} />
+        <Route path="confirmed"       element={<BookingConfirmedPage />} />
+        <Route path="dashboard"       element={<ClientDashboard />} />
+        {/* Legacy redirects */}
+        <Route path="login"           element={<SlugRedirect to="auth" />} />
+        <Route path="signup"          element={<SlugRedirect to="auth" />} />
+      </Routes>
+    </ClientAuthProvider>
+  )
+}
+
+// ── Root ──────────────────────────────────────────────────────────────────
 export default function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
-        <AuthProvider>
-          <Toaster position="top-center" toastOptions={{
-            style: { background: '#1a1a1a', color: '#E5E5E5', border: '1px solid #2a2a2a', borderRadius: '14px', fontSize: '14px', fontFamily: 'Inter, sans-serif' },
-            success: { iconTheme: { primary: '#16A34A', secondary: '#fff' } },
-            error:   { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
-          }} />
-          <AppRoutes />
-        </AuthProvider>
+        <Toaster position="top-center" toastOptions={{
+          style: { background:'#1a1a1a', color:'#F5F5F5', border:'1px solid #2a2a2a', borderRadius:'12px', fontSize:'14px', fontFamily:"'Monda',system-ui,sans-serif" },
+          success: { iconTheme: { primary:'#22C55E', secondary:'#fff' } },
+          error:   { iconTheme: { primary:'#EF4444', secondary:'#fff' } },
+        }}/>
+        <Routes>
+          {/* ── BARBER APP ── */}
+          <Route path="/barber/*" element={<BarberApp />} />
+
+          {/* ── CLIENT APP ── */}
+          <Route path="/b/:barberSlug/*" element={<ClientApp />} />
+
+          {/* ── HOME ── redirect to barber login by default ── */}
+          <Route path="/" element={<Navigate to="/barber/login" replace />} />
+          <Route path="*" element={<Navigate to="/"            replace />} />
+        </Routes>
       </ThemeProvider>
     </BrowserRouter>
   )

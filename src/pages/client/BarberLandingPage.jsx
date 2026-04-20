@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
-import { useAuth } from '../../hooks/useAuth'
+import { useClientAuth as useAuth } from '../../hooks/useClientAuth'
 
 const F = { fontFamily:"'Monda', system-ui, sans-serif" }
 
