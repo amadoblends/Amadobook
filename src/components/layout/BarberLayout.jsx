@@ -22,7 +22,7 @@ const NAV = [
   { to:'/barber/availability', icon:Clock,           label:'Availability' },
   { to:'/barber/calendar',     icon:Calendar,        label:'Calendar'     },
   { to:'/barber/reports',      icon:BarChart2,       label:'Reports'      },
-  { to:'/barber/suggestions',  icon:MessageSquare,   label:'Suggestions'  },
+  { to:'/barber/broadcast',    icon:MessageSquare,   label:'Broadcast'    },
 ]
 
 // ── NavLinks (stable — no re-render on panel state change) ─────────────────
@@ -32,7 +32,7 @@ const NavLinks = ({ onClick }) => NAV.map(({ to, icon:Icon, label }) => (
       display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:12,
       fontWeight:600, fontSize:14, textDecoration:'none', fontFamily:'Monda,sans-serif',
       background: isActive ? 'var(--accent)' : 'transparent',
-      color: isActive ? 'white' : 'var(--text-sec)',
+      color: isActive ? 'var(--accent-inv)' : 'var(--text-sec)',
       transition:'all 0.15s',
     })}>
     <Icon size={16}/><span>{label}</span>

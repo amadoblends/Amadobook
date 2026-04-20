@@ -18,6 +18,7 @@ import BarberAvailability from './pages/barber/BarberAvailability'
 import BarberCalendar     from './pages/barber/BarberCalendar'
 import BarberReports      from './pages/barber/BarberReports'
 import BarberSuggestions  from './pages/barber/BarberSuggestions'
+import BarberBroadcast   from './pages/barber/BarberBroadcast'
 
 import BarberLandingPage    from './pages/client/BarberLandingPage'
 import ClientAuthPage       from './pages/client/ClientAuthPage'
@@ -74,6 +75,7 @@ function AppRoutes() {
         <Route path="/barber/calendar"        element={<BarberRoute><BarberCalendar /></BarberRoute>} />
         <Route path="/barber/reports"         element={<BarberRoute><BarberReports /></BarberRoute>} />
         <Route path="/barber/suggestions"     element={<BarberRoute><BarberSuggestions /></BarberRoute>} />
+        <Route path="/barber/broadcast"       element={<BarberRoute><BarberBroadcast /></BarberRoute>} />
 
         {/* CLIENT */}
         <Route path="/b/:barberSlug"                 element={<BarberLandingPage />} />

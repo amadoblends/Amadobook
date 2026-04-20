@@ -5,8 +5,8 @@ import { db } from '../lib/firebase'
 const ThemeContext = createContext(null)
 
 export const THEMES = {
-  light: { bg:'#F0EDE8', surface:'#FAF8F5', card:'#FFFFFF', border:'#E2DDD8', textPri:'#1A1714', textSec:'#8A8078', name:'Light',  shadow:'0 2px 12px rgba(0,0,0,0.07)' },
-  dark:  { bg:'#0C0C0C', surface:'#141414', card:'#1A1A1A', border:'#2A2A2A', textPri:'#E8E8E8', textSec:'#666666', name:'Dark',   shadow:'0 2px 12px rgba(0,0,0,0.4)' },
+  light: { bg:'#FAFAFA', surface:'#F0F0F0', card:'#FFFFFF', border:'#E5E5E5', textPri:'#0A0A0A', textSec:'#777777', name:'Light',  shadow:'0 2px 12px rgba(0,0,0,0.07)' },
+  dark:  { bg:'#0A0A0A', surface:'#111111', card:'#161616', border:'#252525', textPri:'#F5F5F5', textSec:'#777777', name:'Dark',   shadow:'0 2px 12px rgba(0,0,0,0.5)' },
 }
 
 // Barber gets 3 accent choices; client is always yellow
