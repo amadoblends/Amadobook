@@ -1,10 +1,16 @@
 /**
- * firebase.js — Two isolated Auth instances
- * barberAuth: for /barber/* routes
- * clientAuth: for /b/:slug/* routes
- * Both share the same Firestore & Storage
+ * firebase.js — Two isolated Auth instances, ONE shared Firestore/Storage
+ *
+ * WHY TWO AUTH INSTANCES:
+ * Barber and client sessions are completely independent.
+ * A barber can be logged in on /barber/* while a client is logged in on /b/:slug/*
+ * in the same browser tab, with no interference.
+ *
+ * WHY ONE FIRESTORE:
+ * Firestore is just a database — auth isolation is handled at the rule level.
+ * Both apps read/write to the same project data.
  */
-import { initializeApp } from 'firebase/app'
+import { initializeApp, getApps, getApp } from 'firebase/app'
 import {
   getAuth, GoogleAuthProvider,
   indexedDBLocalPersistence, initializeAuth,
@@ -21,24 +27,29 @@ const config = {
   appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-// ── Two separate app instances = truly isolated sessions ──────────────────
-const barberApp = initializeApp(config, 'barber')
-const clientApp = initializeApp(config, 'client')
+// ── Shared app for Firestore + Storage (no auth needed for reads) ─────────
+const sharedApp = getApps().find(a => a.name === 'shared') || initializeApp(config, 'shared')
 
-// Barber auth — persists in IndexedDB under key 'barber'
+// ── Barber app — isolated auth session ───────────────────────────────────
+const barberApp = getApps().find(a => a.name === 'barber') || initializeApp(config, 'barber')
+
+// ── Client app — isolated auth session ───────────────────────────────────
+const clientApp = getApps().find(a => a.name === 'client') || initializeApp(config, 'client')
+
+// Barber auth (persists separately in IndexedDB)
 export const barberAuth = initializeAuth(barberApp, {
   persistence: indexedDBLocalPersistence,
 })
 
-// Client auth — persists in IndexedDB under key 'client'
+// Client auth (persists separately in IndexedDB)
 export const clientAuth = initializeAuth(clientApp, {
   persistence: indexedDBLocalPersistence,
 })
 
-// Shared Firestore & Storage (same data, different auth sessions)
-export const db             = getFirestore(barberApp)
-export const storage        = getStorage(barberApp)
+// Shared Firestore & Storage — available to everyone without auth isolation
+export const db             = getFirestore(sharedApp)
+export const storage        = getStorage(sharedApp)
 export const googleProvider = new GoogleAuthProvider()
 
-// Legacy export for any file still using `auth` directly
+// Legacy alias — some files still import `auth` directly
 export const auth = clientAuth

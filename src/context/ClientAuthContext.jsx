@@ -73,12 +73,20 @@ export function ClientAuthProvider({ children }) {
   async function refreshUserData()    { if (user) await loadUserData(user.uid) }
 
   useEffect(() => {
+    // Small delay prevents false "logged out" state during app init
+    let mounted = true
     const unsub = onAuthStateChanged(clientAuth, async (u) => {
-      if (u) { setUser(u); await loadUserData(u.uid) }
-      else   { setUser(null); setUserData(null) }
-      setLoading(false)
+      if (!mounted) return
+      if (u) {
+        setUser(u)
+        await loadUserData(u.uid)
+      } else {
+        setUser(null)
+        setUserData(null)
+      }
+      if (mounted) setLoading(false)
     })
-    return unsub
+    return () => { mounted = false; unsub() }
   }, [])
 
   return (

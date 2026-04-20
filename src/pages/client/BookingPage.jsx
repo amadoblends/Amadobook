@@ -33,12 +33,13 @@ const CSS = `
   .b-field { margin-bottom:22px; }
 
   .btn-bw {
-    width:100%; background:var(--text-pri); color:var(--bg);
-    border:none; borderRadius:14px; padding:16px; 
-    fontSize:15px; fontWeight:700; cursor:pointer;
-    display:flex; alignItems:center; justifyContent:center; gap:8px;
-    transition: opacity 0.2s;
+    width:100%; background:#0A0A0A; color:#FFFFFF;
+    border:none; border-radius:22px; padding:17px 24px; 
+    font-size:15px; font-weight:700; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    transition: opacity 0.2s; font-family:'Monda',system-ui,sans-serif;
   }
+  .btn-bw:hover { opacity: 0.88; }
   .btn-bw:disabled { opacity: 0.3; cursor: not-allowed; }
 
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -180,16 +181,16 @@ export default function BookingPage() {
       <style>{CSS}</style>
 
       {/* Header — Fijo arriba, siempre Negro con texto Blanco (Contraste) */}
-      <div style={{ position:'sticky', top:0, zIndex:20, background:'var(--text-pri)', padding:'12px 20px' }}>
+      <div style={{ position:'sticky', top:0, zIndex:20, background:'#0A0A0A', padding:'12px 20px' }}>
         <div style={{ maxWidth:560, margin:'0 auto', display:'flex', alignItems:'center', gap:14 }}>
-          <button onClick={()=>step>0?setStep(s=>s-1):navigate(`/b/${barberSlug}`)}
+          <button onClick={()=>step>0?setStep(s=>s-1):navigate(user?`/b/${barberSlug}/dashboard`:`/b/${barberSlug}`)}
             style={{ background:'rgba(255,255,255,0.1)', border:'none', borderRadius:10, width:36, height:36, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#fff' }}>
             <ChevL/>
           </button>
           <div style={{ flex:1 }}>
             <p style={{ color:'rgba(255,255,255,0.5)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', margin:0 }}>STEP {step + 1}</p>
             <div style={{ display:'flex', gap:4, marginTop:4 }}>
-              {[0,1,2,3].map(i => <div key={i} style={{ height:3, flex:1, borderRadius:2, background: i <= step ? '#fff' : 'rgba(255,255,255,0.2)' }}/>)}
+              {[0,1,2,3].map(i => <div key={i} style={{ height:3, flex:1, borderRadius:2, background: i <= step ? '#FFFFFF' : 'rgba(255,255,255,0.18)' }}/>)}
             </div>
           </div>
         </div>
