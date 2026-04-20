@@ -1,20 +1,5 @@
-/**
- * firebase.js — Two isolated Auth instances, ONE shared Firestore/Storage
- *
- * WHY TWO AUTH INSTANCES:
- * Barber and client sessions are completely independent.
- * A barber can be logged in on /barber/* while a client is logged in on /b/:slug/*
- * in the same browser tab, with no interference.
- *
- * WHY ONE FIRESTORE:
- * Firestore is just a database — auth isolation is handled at the rule level.
- * Both apps read/write to the same project data.
- */
-import { initializeApp, getApps, getApp } from 'firebase/app'
-import {
-  getAuth, GoogleAuthProvider,
-  indexedDBLocalPersistence, initializeAuth,
-} from 'firebase/auth'
+import { initializeApp, getApps } from 'firebase/app'
+import { getAuth, GoogleAuthProvider, browserLocalPersistence, setPersistence } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
@@ -27,29 +12,17 @@ const config = {
   appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-// ── Shared app for Firestore + Storage (no auth needed for reads) ─────────
-const sharedApp = getApps().find(a => a.name === 'shared') || initializeApp(config, 'shared')
+// Single app — stable, no re-initialization errors
+const app = getApps().length ? getApps()[0] : initializeApp(config)
 
-// ── Barber app — isolated auth session ───────────────────────────────────
-const barberApp = getApps().find(a => a.name === 'barber') || initializeApp(config, 'barber')
-
-// ── Client app — isolated auth session ───────────────────────────────────
-const clientApp = getApps().find(a => a.name === 'client') || initializeApp(config, 'client')
-
-// Barber auth (persists separately in IndexedDB)
-export const barberAuth = initializeAuth(barberApp, {
-  persistence: indexedDBLocalPersistence,
-})
-
-// Client auth (persists separately in IndexedDB)
-export const clientAuth = initializeAuth(clientApp, {
-  persistence: indexedDBLocalPersistence,
-})
-
-// Shared Firestore & Storage — available to everyone without auth isolation
-export const db             = getFirestore(sharedApp)
-export const storage        = getStorage(sharedApp)
+export const auth           = getAuth(app)
+export const db             = getFirestore(app)
+export const storage        = getStorage(app)
 export const googleProvider = new GoogleAuthProvider()
 
-// Legacy alias — some files still import `auth` directly
-export const auth = clientAuth
+// Persist session across page refreshes and navigation
+setPersistence(auth, browserLocalPersistence).catch(() => {})
+
+// Aliases used by the two-context system
+export const barberAuth = auth
+export const clientAuth = auth
