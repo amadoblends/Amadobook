@@ -323,7 +323,7 @@ function ProfileView({ user, userData, onSave, onSignOut }) {
 // ── Main Dashboard ─────────────────────────────────────────────────────────
 export default function ClientDashboard() {
   const { barberSlug } = useParams()
-  const { user, userData, signOut, refreshUserData } = useAuth()
+  const { user, userData, loading: authLoading, signOut, refreshUserData } = useAuth()
   const { formatTime } = useTheme()
   const navigate = useNavigate()
   const [view, setView]           = useState('home')  // home | profile | spend | visits
@@ -343,11 +343,12 @@ export default function ClientDashboard() {
   const refreshRef = useRef(null)
 
   useEffect(() => {
+    if (authLoading) return   // wait for Firebase to resolve session
     if (!user) { navigate(`/b/${barberSlug}/auth`); return }
-  }, [user])
+  }, [user, authLoading])
 
   async function loadAppts() {
-    if (!user) return
+    if (!user || authLoading) return
     const snap = await getDocs(query(collection(db,'appointments'), where('clientId','==',user.uid)))
     const all  = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))
     setAppointments(all)
@@ -366,18 +367,15 @@ export default function ClientDashboard() {
   }
 
 useEffect(() => {
-  if (!user) return;
+  if (authLoading || !user) return;
   const q = query(collection(db, 'appointments'), where('clientId', '==', user.uid));
-  
-  // onSnapshot escucha cambios en tiempo real. ¡Adiós a los setInterval!
   const unsubscribe = onSnapshot(q, (snap) => {
     const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     setAppointments(all);
     setLoading(false);
   });
-
-  return () => unsubscribe(); // Limpia la conexión al desmontar
-}, [user]);
+  return () => unsubscribe();
+}, [user, authLoading]);
   // Reschedule slots
   useEffect(() => {
     if (!reschedDate||!reschedAppt||!availability) { setReschedSlots([]); return }
@@ -431,7 +429,7 @@ useEffect(() => {
   const totalVisits = userData?.totalVisits || history.filter(a=>a.bookingStatus==='completed').length
   const { text:greetText, emoji:greetEmoji } = getGreeting()
 
-  if (loading) return (
+  if (authLoading || loading) return (
     <div style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div style={{ width:28, height:28, border:'3px solid var(--accent)', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>

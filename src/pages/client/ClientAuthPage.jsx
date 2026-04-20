@@ -7,7 +7,7 @@
  */
 import { useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { useAuth } from "../../hooks/useAuth"
+import { useClientAuth as useAuth } from "../../hooks/useClientAuth"
 import { signInAnonymously } from "firebase/auth"
 import { auth, db } from "../../lib/firebase"
 import { doc, setDoc, serverTimestamp } from "firebase/firestore"
