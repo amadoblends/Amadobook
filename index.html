@@ -2,19 +2,47 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- iPhone: maximum-scale=1 prevents zoom on input focus, viewport-fit=cover uses full screen -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- PWA / iOS home screen -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#0A0A0A" />
     <title>AmadoBook</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Monda:wght@400;700&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Monda:wght@400;700&display=swap" rel="stylesheet" />
     <style>
-      html, body, #root { margin: 0; padding: 0; background: #000; }
-      html { overflow-x: hidden; max-width: 100vw; }
-      *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-      input, select, textarea { font-size: 16px !important; }
+      /* Reset */
+      html, body, #root {
+        margin: 0; padding: 0;
+        width: 100%; height: 100%;
+        overflow-x: hidden;
+      }
+      body { background: #0A0A0A; }
+
+      /* Global box model */
+      *, *::before, *::after {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      /* CRITICAL: font-size 16px on all inputs prevents iPhone zoom */
+      input, select, textarea, button {
+        font-family: 'Monda', system-ui, sans-serif;
+      }
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+
+      /* Prevent iOS bounce scroll on fixed elements */
+      html { height: -webkit-fill-available; }
+      body { min-height: -webkit-fill-available; }
+
+      /* Smooth scrolling */
+      * { -webkit-overflow-scrolling: touch; }
+
       @keyframes spin { to { transform: rotate(360deg); } }
     </style>
   </head>
