@@ -15,8 +15,10 @@ export function BarberAuthProvider({ children }) {
   const [loading, setLoading]   = useState(true)
 
   async function loadUserData(uid) {
-    const snap = await getDoc(doc(db, 'users', uid))
-    if (snap.exists()) { setUserData(snap.data()); return snap.data() }
+    try {
+      const snap = await getDoc(doc(db, 'users', uid))
+      if (snap.exists()) { setUserData(snap.data()); return snap.data() }
+    } catch {}
     return null
   }
 
@@ -56,9 +58,9 @@ export function BarberAuthProvider({ children }) {
     return cred.user
   }
 
-  async function signOut()           { await fbSignOut(auth); setUser(null); setUserData(null) }
-  async function resetPassword(e)    { return sendPasswordResetEmail(auth, e) }
-  async function refreshUserData()   { if (user) await loadUserData(user.uid) }
+  async function signOut()         { await fbSignOut(auth); setUser(null); setUserData(null) }
+  async function resetPassword(e)  { return sendPasswordResetEmail(auth, e) }
+  async function refreshUserData() { if (user) await loadUserData(user.uid) }
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -68,8 +70,6 @@ export function BarberAuthProvider({ children }) {
     })
     return unsub
   }, [])
-
-  if (loading) return null
 
   return (
     <BarberAuthContext.Provider value={{

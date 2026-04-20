@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState, useRef } from 'react'
+import { createContext, useEffect, useState } from 'react'
 import {
   onAuthStateChanged, signInWithEmailAndPassword,
   createUserWithEmailAndPassword, signInWithPopup, signInAnonymously,
@@ -10,10 +10,9 @@ import { auth, db, googleProvider } from '../lib/firebase'
 export const ClientAuthContext = createContext(null)
 
 export function ClientAuthProvider({ children }) {
-  const [user, setUser]         = useState(undefined) // undefined = not yet resolved
+  const [user, setUser]         = useState(null)
   const [userData, setUserData] = useState(null)
   const [loading, setLoading]   = useState(true)
-  const resolvedRef = useRef(false)
 
   async function loadUserData(uid) {
     try {
@@ -60,31 +59,18 @@ export function ClientAuthProvider({ children }) {
     return cred.user
   }
 
-  async function signOut() {
-    await fbSignOut(auth)
-    setUser(null)
-    setUserData(null)
-  }
-
+  async function signOut() { await fbSignOut(auth); setUser(null); setUserData(null) }
   async function resetPassword(email) { return sendPasswordResetEmail(auth, email) }
   async function refreshUserData()    { if (user) await loadUserData(user.uid) }
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
-      if (u) {
-        setUser(u)
-        await loadUserData(u.uid)
-      } else {
-        setUser(null)
-        setUserData(null)
-      }
+      if (u) { setUser(u); await loadUserData(u.uid) }
+      else   { setUser(null); setUserData(null) }
       setLoading(false)
     })
     return unsub
   }, [])
-
-  // Never render children until auth is resolved
-  if (loading) return null
 
   return (
     <ClientAuthContext.Provider value={{

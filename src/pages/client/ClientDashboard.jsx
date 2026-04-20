@@ -323,7 +323,7 @@ function ProfileView({ user, userData, onSave, onSignOut }) {
 // ── Main Dashboard ─────────────────────────────────────────────────────────
 export default function ClientDashboard() {
   const { barberSlug } = useParams()
-  const { user, userData, signOut, refreshUserData } = useAuth()
+  const { user, userData, loading: authLoading, signOut, refreshUserData } = useAuth()
   const { formatTime } = useTheme()
   const navigate = useNavigate()
   const [view, setView]           = useState('home')  // home | profile | spend | visits
@@ -343,8 +343,9 @@ export default function ClientDashboard() {
   const refreshRef = useRef(null)
 
   useEffect(() => {
-    if (!user) { navigate(`/b/${barberSlug}/auth`); return }
-  }, [user])
+    if (authLoading) return
+    if (!user) navigate(`/b/${barberSlug}/auth`)
+  }, [user, authLoading])
 
   async function loadAppts() {
     if (!user) return
@@ -366,7 +367,7 @@ export default function ClientDashboard() {
   }
 
 useEffect(() => {
-  if (authLoading || !user) return;
+  if (!user) return;
   const q = query(collection(db, 'appointments'), where('clientId', '==', user.uid));
   const unsubscribe = onSnapshot(q, (snap) => {
     const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -428,7 +429,7 @@ useEffect(() => {
   const totalVisits = userData?.totalVisits || history.filter(a=>a.bookingStatus==='completed').length
   const { text:greetText, emoji:greetEmoji } = getGreeting()
 
-  if (loading) return (
+  if (authLoading || loading) return (
     <div style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div style={{ width:28, height:28, border:'3px solid var(--accent)', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>

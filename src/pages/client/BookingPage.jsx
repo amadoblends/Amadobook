@@ -99,29 +99,36 @@ export default function BookingPage() {
   const totalDuration = selectedServices.reduce((s,v)=>s+(v.duration||0),0)
   const totalPrice    = selectedServices.reduce((s,v)=>s+(v.price||0),0)
 
+  // Load barber data ONCE on mount — not dependent on user state
   useEffect(()=>{
     async function load() {
-      const bSnap = await getDocs(query(collection(db,'barbers'),where('slug','==',barberSlug)))
-      const active = bSnap.docs.find(d=>d.data().isActive!==false)
-      if (!active) { navigate(`/b/${barberSlug}`); return }
-      const bd = {id:active.id,...active.data()}; setBarber(bd)
-      const [sSnap,aSnap,apSnap] = await Promise.all([
-        getDocs(query(collection(db,'services'),where('barberId','==',bd.id))),
-        getDocs(query(collection(db,'availability'),where('barberId','==',bd.id))),
-        getDocs(query(collection(db,'appointments'),where('barberId','==',bd.id))),
-      ])
-      setServices(sSnap.docs.map(d=>({id:d.id,...d.data()})).filter(s=>s.isActive!==false))
-      if (!aSnap.empty) setAvailability(aSnap.docs[0].data())
-      setBarberAppts(apSnap.docs.map(d=>d.data()))
-      setLoading(false)
+      try {
+        const bSnap = await getDocs(query(collection(db,'barbers'),where('slug','==',barberSlug)))
+        const active = bSnap.docs.find(d=>d.data().isActive!==false)
+        if (!active) { navigate(`/b/${barberSlug}`); return }
+        const bd = {id:active.id,...active.data()}; setBarber(bd)
+        const [sSnap,aSnap,apSnap] = await Promise.all([
+          getDocs(query(collection(db,'services'),where('barberId','==',bd.id))),
+          getDocs(query(collection(db,'availability'),where('barberId','==',bd.id))),
+          getDocs(query(collection(db,'appointments'),where('barberId','==',bd.id))),
+        ])
+        setServices(sSnap.docs.map(d=>({id:d.id,...d.data()})).filter(s=>s.isActive!==false))
+        if (!aSnap.empty) setAvailability(aSnap.docs[0].data())
+        setBarberAppts(apSnap.docs.map(d=>d.data()))
+      } catch(e) { console.error('load error:', e) }
+      finally { setLoading(false) }
     }
     load()
+  },[barberSlug])
+
+  // Prefill user info separately (won't reset availability data)
+  useEffect(()=>{
     if (user && userData) {
       setName(`${userData.firstName||''} ${userData.lastName||''}`.trim())
       setEmail(userData.email || user.email || '')
       setPhone(userData.phone || '')
     }
-  },[barberSlug, user, userData])
+  },[user?.uid])
 
   // Lógica de slots (idéntica pero limpia)
   useEffect(()=>{
