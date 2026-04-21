@@ -239,6 +239,7 @@ function RescheduleModal({ appt, appointments, availability, onClose, onSave, up
 // ── Main Calendar ──────────────────────────────────────────────────────────
 export default function BarberCalendar() {
   const { user } = useAuth()
+  useEffect(() => { window.scrollTo(0,0) }, [])
   const { formatTime } = useTheme()
   const [barber, setBarber]             = useState(null)
   const [appointments, setAppointments] = useState([])

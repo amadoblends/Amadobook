@@ -19,10 +19,12 @@ export default function BarberReports() {
   const [barber, setBarber]             = useState(null)
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading]           = useState(true)
-  const [period, setPeriod]             = useState('This Month')
+  const [period, setPeriod]             = useState('Today')
   const [view, setView]                 = useState('summary')  // summary | history | payments
   const [histFilter, setHistFilter]     = useState('All')
   const [chartDetail, setChartDetail]   = useState(null)      // clicked month detail
+
+  useEffect(() => { window.scrollTo(0,0) }, [])
 
   useEffect(() => {
     if (!user) return

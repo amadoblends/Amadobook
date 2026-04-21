@@ -11,9 +11,9 @@ import { PageLoader } from '../../components/ui/Spinner'
 
 const EMPTY = { name:'', description:'', price:'', duration:'', serviceType:'single', isActive:true }
 const TYPES = [
-  { id:'combo',  label:'🔥 Combo'  },
-  { id:'single', label:'✂️ Service' },
-  { id:'extra',  label:'➕ Add-on'  },
+  { id:'combo',  label:'Combo'   },
+  { id:'single', label:'Service' },
+  { id:'extra',  label:'Add-on'  },
 ]
 
 export default function BarberServices() {
@@ -90,7 +90,7 @@ export default function BarberServices() {
 
   const displayed = filter === 'all' ? services : services.filter(s => s.serviceType === filter)
   const groups = ['combo','single','extra']
-  const groupTitles = { combo:'🔥 Combos', single:'✂️ Services', extra:'➕ Add-ons' }
+  const groupTitles = { combo:'Combos', single:'Services', extra:'Add-ons' }
 
   return (
     <BarberLayout>
@@ -193,7 +193,7 @@ export default function BarberServices() {
                 className="py-3 rounded-2xl text-center text-xs font-bold transition-all"
                 style={{
                   background: form.serviceType===t.id ? 'var(--accent)' : 'var(--surface)',
-                  color: form.serviceType===t.id ? 'white' : 'var(--text-sec)',
+                  color: form.serviceType===t.id ? 'var(--accent-inv)' : 'var(--text-sec)',
                   border: `1.5px solid ${form.serviceType===t.id ? 'var(--accent)' : 'var(--border)'}`,
                 }}>
                 {t.label}

@@ -50,6 +50,7 @@ function CustomInput({ label, value, onChange, suffix, min = 0 }) {
 
 export default function BarberAvailability() {
   const { user } = useAuth()
+  useEffect(() => { window.scrollTo(0,0) }, [])
   const [barber, setBarber]     = useState(null)
   const [availId, setAvailId]   = useState(null)
   const [schedule, setSchedule] = useState(() =>
