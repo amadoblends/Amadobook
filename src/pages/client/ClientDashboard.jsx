@@ -19,7 +19,7 @@ import {
   startOfDay, isToday, isSameDay 
 } from 'date-fns'
 import toast from 'react-hot-toast'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import ImportantMessagePopup from '../../components/ui/ImportantMessagePopup'
 import PhoneInput from '../../components/ui/PhoneInput'
 import { 
@@ -324,6 +324,8 @@ function ProfileView({ user, userData, onSave, onSignOut }) {
 export default function ClientDashboard() {
   const { barberSlug } = useParams()
   const { user, userData, loading: authLoading, signOut, refreshUserData } = useAuth()
+  const location = useLocation()
+  const highlightDate = location.state?.highlightDate || null
   const { formatTime } = useTheme()
   const navigate = useNavigate()
   const [view, setView]           = useState('home')  // home | profile | spend | visits
@@ -460,20 +462,33 @@ useEffect(() => {
             <NotifBell userId={user?.uid} onOpen={()=>setShowNotifs(true)}/>
           </div>
 
+          {/* Highlighted date from confirmed booking */}
+          {highlightDate && (() => {
+            const highlighted = appointments.find(a=>a.date===highlightDate && a.bookingStatus!=='cancelled')
+            if (!highlighted) return null
+            return (
+              <div style={{ background:'var(--card)', border:'1.5px solid var(--accent)', borderRadius:16, padding:'14px 16px', marginBottom:16 }}>
+                <p style={{ color:'var(--accent)', fontSize:10, fontWeight:700, letterSpacing:'0.09em', margin:'0 0 8px' }}>✓ APPOINTMENT CONFIRMED</p>
+                <p style={{ color:'var(--text-pri)', fontWeight:800, fontSize:15, margin:'0 0 3px' }}>{highlighted.date?format(parseLocalDate(highlighted.date),'EEEE, MMMM d'):''}</p>
+                <p style={{ color:'var(--text-sec)', fontSize:13, margin:0 }}>{formatTime(highlighted.startTime)} – {formatTime(highlighted.endTime)} · {highlighted.services?.map(s=>s.name).join(', ')}</p>
+              </div>
+            )
+          })()}
+
           {/* Stats — tappable */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:16 }}>
             <button onClick={()=>setView('visits')}
               style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, padding:'14px 10px', textAlign:'center', cursor:'pointer', ...F }}>
-              <p style={{ color:'var(--accent)', fontWeight:900, fontSize:22, margin:'0 0 3px' }}>{totalVisits}</p>
+              <p style={{ color:'var(--text-pri)', fontWeight:900, fontSize:22, margin:'0 0 3px' }}>{totalVisits}</p>
               <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:600, margin:0 }}>Visits</p>
             </button>
             <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, padding:'14px 10px', textAlign:'center' }}>
-              <p style={{ color:'var(--accent)', fontWeight:900, fontSize:22, margin:'0 0 3px' }}>{upcoming.length}</p>
+              <p style={{ color:'var(--text-pri)', fontWeight:900, fontSize:22, margin:'0 0 3px' }}>{upcoming.length}</p>
               <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:600, margin:0 }}>Upcoming</p>
             </div>
             <button onClick={()=>setView('spend')}
               style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, padding:'14px 10px', textAlign:'center', cursor:'pointer', ...F }}>
-              <p style={{ color:'var(--accent)', fontWeight:900, fontSize:20, margin:'0 0 3px' }}>${(totalSpent||0).toFixed(0)}</p>
+              <p style={{ color:'var(--text-pri)', fontWeight:900, fontSize:20, margin:'0 0 3px' }}>${(totalSpent||0).toFixed(0)}</p>
               <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:600, margin:0 }}>Spent</p>
             </button>
           </div>

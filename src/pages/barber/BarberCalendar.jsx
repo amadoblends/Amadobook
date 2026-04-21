@@ -27,7 +27,7 @@ import {
 } from 'lucide-react'
 import { PageLoader } from '../../components/ui/Spinner'
 const F = { fontFamily: 'Monda, sans-serif' }
-const SC = { pending:'#f59e0b', confirmed:'#16A34A', completed:'#3b82f6', cancelled:'#ef4444' }
+const SC = { pending:'#EAB308', confirmed:'#22C55E', completed:'var(--text-sec)', cancelled:'#EF4444' }
 
 // ── Smart reschedule picker ────────────────────────────────────────────────
 function RescheduleModal({ appt, appointments, availability, onClose, onSave, updating }) {
@@ -157,13 +157,13 @@ function RescheduleModal({ appt, appointments, availability, onClose, onSave, up
                     opacity: disabled ? 0.3 : 1,
                     display:'flex', flexDirection:'column', alignItems:'center', gap:3,
                   }}>
-                  <span style={{ fontSize:9, fontWeight:700, color: sel?'rgba(255,255,255,0.8)':'var(--text-sec)' }}>
+                  <span style={{ fontSize:9, fontWeight:700, color: sel?'var(--accent-inv)':'var(--text-sec)' }}>
                     {format(date, 'EEE').toUpperCase()}
                   </span>
-                  <span style={{ fontSize:14, fontWeight:800, color: sel?'white': isToday(date)?'var(--accent)':'var(--text-pri)' }}>
+                  <span style={{ fontSize:14, fontWeight:800, color: sel?'var(--accent-inv)': isToday(date)?'var(--accent)':'var(--text-pri)' }}>
                     {format(date, 'd')}
                   </span>
-                  <span style={{ fontSize:9, fontWeight:700, color: sel?'rgba(255,255,255,0.7)':'#4ade80' }}>
+                  <span style={{ fontSize:9, fontWeight:700, color: sel?'var(--accent-inv)':'#22C55E' }}>
                     {count > 0 ? `${count}` : ''}
                   </span>
                 </button>
@@ -428,11 +428,11 @@ useEffect(() => {
                     display:'flex', flexDirection:'column', alignItems:'center', gap:3,
                     filter: isPast && !sel ? 'grayscale(0.7)' : 'none',
                   }}>
-                  <span style={{ fontSize:13, fontWeight:700, color: sel?'white': tod?'var(--accent)': isPast?'var(--text-sec)':'var(--text-pri)' }}>
+                  <span style={{ fontSize:13, fontWeight:700, color: sel?'var(--accent-inv)': tod?'var(--accent)': isPast?'var(--text-sec)':'var(--text-pri)' }}>
                     {date.getDate()}
                   </span>
                   {count > 0 && inMonth && (
-                    <span style={{ fontSize:9, fontWeight:700, color: sel?'rgba(255,255,255,0.8)': isPast?'var(--text-sec)':'var(--accent)' }}>
+                    <span style={{ fontSize:9, fontWeight:700, color: sel?'var(--accent-inv)': isPast?'var(--text-sec)':'#22C55E' }}>
                       {count}
                     </span>
                   )}

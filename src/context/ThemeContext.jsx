@@ -17,6 +17,15 @@ export const BARBER_ACCENTS = [
 ]
 export const CLIENT_ACCENT = '#F59E0B'  // always yellow
 
+function accentInv(a) {
+  if (!a) return '#fff'
+  const u = a.toUpperCase()
+  const lightAccents = ['#F5C518','#F59E0B','#EAB308','#FCD34D','#FBBF24','#FACC15','#FFD700','#FFFFFF','WHITE']
+  if (lightAccents.includes(u)) return '#0A0A0A'
+  if (u === '#0A0A0A' || u === 'BLACK') return '#FFFFFF'
+  return '#FFFFFF'
+}
+
 function applyTheme(themeKey, accent) {
   const t = THEMES[themeKey] || THEMES.light
   const r = document.documentElement
@@ -27,9 +36,11 @@ function applyTheme(themeKey, accent) {
   r.style.setProperty('--text-pri', t.textPri)
   r.style.setProperty('--text-sec', t.textSec)
   r.style.setProperty('--accent',   accent)
+  r.style.setProperty('--accent-inv', accentInv(accent))
   r.style.setProperty('--shadow',   t.shadow)
   document.body.style.background = t.bg
   document.body.style.color      = t.textPri
+  document.documentElement.setAttribute('data-theme', themeKey)
 }
 
 const storageKey = (uid, key) => uid ? `ab_${uid}_${key}` : `ab_guest_${key}`
