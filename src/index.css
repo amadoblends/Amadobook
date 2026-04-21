@@ -95,7 +95,7 @@ img { max-width: 100%; }
     padding: 12px 14px;
     font-size: 16px;
   }
-  .input:focus { border-color: var(--accent); }
+  .input:focus { border-color: var(--accent); outline: none; }
   .input::placeholder { color: var(--text-sec); opacity: 0.6; }
 }
 

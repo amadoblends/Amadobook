@@ -1,103 +1,146 @@
+/**
+ * ThemeContext — Single source of truth for all colors
+ *
+ * BARBER: starts dark, can pick accent (Orange/Yellow/Green), can toggle dark/light
+ * CLIENT: locked B&W — accent = white in dark, black in light, NO color picker
+ */
 import { createContext, useContext, useEffect, useState } from 'react'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 
 const ThemeContext = createContext(null)
 
+// ── Theme palettes ─────────────────────────────────────────────────────────
 export const THEMES = {
-  light: { bg:'#FAFAFA', surface:'#F0F0F0', card:'#FFFFFF', border:'#E5E5E5', textPri:'#0A0A0A', textSec:'#777777', name:'Light',  shadow:'0 2px 12px rgba(0,0,0,0.07)' },
-  dark:  { bg:'#0A0A0A', surface:'#111111', card:'#161616', border:'#252525', textPri:'#F5F5F5', textSec:'#777777', name:'Dark',   shadow:'0 2px 12px rgba(0,0,0,0.5)' },
+  dark:  {
+    bg:'#0A0A0A', surface:'#111111', card:'#161616',
+    border:'#252525', textPri:'#F5F5F5', textSec:'#777777',
+    name:'Dark', shadow:'0 2px 16px rgba(0,0,0,0.6)',
+  },
+  light: {
+    bg:'#FAFAFA', surface:'#F0F0F0', card:'#FFFFFF',
+    border:'#E5E5E5', textPri:'#0A0A0A', textSec:'#777777',
+    name:'Light', shadow:'0 2px 12px rgba(0,0,0,0.07)',
+  },
 }
 
-// Barber gets 3 accent choices; client is always yellow
+// Barber accent options
 export const BARBER_ACCENTS = [
-  { id:'orange', color:'#FF5C00', label:'Orange' },
-  { id:'yellow', color:'#F59E0B', label:'Yellow' },
-  { id:'green',  color:'#16A34A', label:'Green'  },
+  { id:'yellow', color:'#F5C518', label:'Gold'   },
+  { id:'green',  color:'#22C55E', label:'Green'  },
+  { id:'white',  color:'#F5F5F5', label:'White'  },
 ]
-export const CLIENT_ACCENT = '#F59E0B'  // always yellow
 
-function accentInv(a) {
-  if (!a) return '#fff'
-  const u = a.toUpperCase()
-  const lightAccents = ['#F5C518','#F59E0B','#EAB308','#FCD34D','#FBBF24','#FACC15','#FFD700','#FFFFFF','WHITE']
-  if (lightAccents.includes(u)) return '#0A0A0A'
-  if (u === '#0A0A0A' || u === 'BLACK') return '#FFFFFF'
+// Compute the correct text color to use ON TOP of an accent background
+export function accentInv(a) {
+  if (!a) return '#FFFFFF'
+  const u = (typeof a === 'string') ? a.toUpperCase().replace(/\s/g,'') : ''
+  // Light / yellow / white accents → dark text
+  const LIGHT = ['#F5C518','#F59E0B','#EAB308','#FFFF00','#FFD700','#FBBF24','#FACC15',
+                 '#F5F5F5','#FFFFFF','WHITE','#FAFAFA','#F0F0F0','#E5E5E5',
+                 '#22C55E','#16A34A','#4ADE80']
+  if (LIGHT.includes(u)) return '#0A0A0A'
+  // Black → light text
+  if (['#0A0A0A','#000000','#111111','BLACK'].includes(u)) return '#FFFFFF'
   return '#FFFFFF'
 }
 
+// Apply all CSS variables to :root
 function applyTheme(themeKey, accent) {
-  const t = THEMES[themeKey] || THEMES.light
-  const r = document.documentElement
-  r.style.setProperty('--bg',       t.bg)
-  r.style.setProperty('--surface',  t.surface)
-  r.style.setProperty('--card',     t.card)
-  r.style.setProperty('--border',   t.border)
-  r.style.setProperty('--text-pri', t.textPri)
-  r.style.setProperty('--text-sec', t.textSec)
-  r.style.setProperty('--accent',   accent)
-  r.style.setProperty('--accent-inv', accentInv(accent))
-  r.style.setProperty('--shadow',   t.shadow)
+  const t   = THEMES[themeKey] || THEMES.dark
+  const inv = accentInv(accent)
+  const r   = document.documentElement
+
+  r.style.setProperty('--bg',         t.bg)
+  r.style.setProperty('--surface',    t.surface)
+  r.style.setProperty('--card',       t.card)
+  r.style.setProperty('--border',     t.border)
+  r.style.setProperty('--text-pri',   t.textPri)
+  r.style.setProperty('--text-sec',   t.textSec)
+  r.style.setProperty('--accent',     accent)
+  r.style.setProperty('--accent-inv', inv)
+  r.style.setProperty('--shadow',     t.shadow)
+
+  // Used by index.css input[type=date] color-scheme
+  r.setAttribute('data-theme', themeKey)
   document.body.style.background = t.bg
   document.body.style.color      = t.textPri
-  document.documentElement.setAttribute('data-theme', themeKey)
 }
 
-const storageKey = (uid, key) => uid ? `ab_${uid}_${key}` : `ab_guest_${key}`
+// Client accent is always theme-matched: white in dark, black in light
+function clientAccent(themeKey) {
+  return themeKey === 'dark' ? '#F5F5F5' : '#0A0A0A'
+}
 
+const storageKey = (uid, k) => uid ? `ab_${uid}_${k}` : `ab_guest_${k}`
+
+// ── Provider ───────────────────────────────────────────────────────────────
 export function ThemeProvider({ children }) {
-  const [theme,      setThemeState]      = useState('light')
-  const [accent,     setAccentState]     = useState(CLIENT_ACCENT)
-  const [timeFormat, setTimeFormatState] = useState('12h')
-  const [uid,        setUid]             = useState(null)
-  const [role,       setRole]            = useState(null)  // 'barber' | 'client' | null
+  const [theme,      setThemeState]  = useState('dark')
+  const [accent,     setAccentState] = useState('#F5C518')
+  const [timeFormat, setTFState]     = useState('12h')
+  const [uid,        setUid]         = useState(null)
+  const [role,       setRole]        = useState(null)  // 'barber' | 'client' | null
 
+  // ── Load from Firestore + localStorage ──
   async function loadPrefs(userId, userRole) {
     if (!userId) return
-    setRole(userRole || null)
+    setRole(userRole)
     try {
       const snap = await getDoc(doc(db, 'userPrefs', userId))
-      if (snap.exists()) {
-        const d  = snap.data()
-        const t  = d.theme      || 'light'
-        const tf = d.timeFormat || '12h'
-        // Clients always get yellow; barbers get their saved accent
-const a = userRole === 'barber' ? (d.accent || '#F59E0B') : 'var(--text-pri)';        setThemeState(t); setAccentState(a); setTimeFormatState(tf)
-        applyTheme(t, a)
-        localStorage.setItem(storageKey(userId,'theme'), t)
-        localStorage.setItem(storageKey(userId,'timefmt'), tf)
-        if (userRole === 'barber') localStorage.setItem(storageKey(userId,'accent'), a)
-      } else {
-        const t  = localStorage.getItem(storageKey(userId,'theme'))   || 'light'
-        const tf = localStorage.getItem(storageKey(userId,'timefmt')) || '12h'
-        const a  = userRole === 'barber' ? (localStorage.getItem(storageKey(userId,'accent')) || '#F59E0B') : CLIENT_ACCENT
-        setThemeState(t); setAccentState(a); setTimeFormatState(tf)
-        applyTheme(t, a)
-      }
-    } catch(e) { console.error('loadPrefs:', e) }
-  }
+      const d    = snap.exists() ? snap.data() : {}
 
-  function resetToDefaults() {
-    setThemeState('light'); setAccentState(CLIENT_ACCENT); setTimeFormatState('12h'); setRole(null)
-    applyTheme('light', CLIENT_ACCENT); setUid(null)
+      const t  = d.theme      || localStorage.getItem(storageKey(userId,'theme'))   || (userRole === 'barber' ? 'dark' : 'dark')
+      const tf = d.timeFormat || localStorage.getItem(storageKey(userId,'timefmt')) || '12h'
+      const a  = userRole === 'barber'
+        ? (d.accent || localStorage.getItem(storageKey(userId,'accent')) || '#F5C518')
+        : clientAccent(t)
+
+      setThemeState(t)
+      setAccentState(a)
+      setTFState(tf)
+      applyTheme(t, a)
+
+      localStorage.setItem(storageKey(userId,'theme'),   t)
+      localStorage.setItem(storageKey(userId,'timefmt'), tf)
+    } catch(e) { console.error('loadPrefs:', e) }
   }
 
   async function savePrefs(t, a, tf) {
     if (!uid) return
-    localStorage.setItem(storageKey(uid,'theme'), t)
+    localStorage.setItem(storageKey(uid,'theme'),   t)
     localStorage.setItem(storageKey(uid,'timefmt'), tf)
     if (role === 'barber') localStorage.setItem(storageKey(uid,'accent'), a)
-    try { await setDoc(doc(db,'userPrefs',uid), { theme:t, accent:a, timeFormat:tf }, { merge:true }) } catch {}
+    try {
+      await setDoc(doc(db,'userPrefs',uid), { theme:t, accent:a, timeFormat:tf }, { merge:true })
+    } catch {}
   }
 
-  function setTheme(t)      { setThemeState(t); applyTheme(t, accent); savePrefs(t, accent, timeFormat) }
-  function setAccent(a)     {
-    // Only barbers can change accent
-    if (role !== 'barber') return
-    setAccentState(a); applyTheme(theme, a); savePrefs(theme, a, timeFormat)
+  function resetToDefaults() {
+    const t = 'dark', a = '#F5C518', tf = '12h'
+    setThemeState(t); setAccentState(a); setTFState(tf); setRole(null); setUid(null)
+    applyTheme(t, a)
   }
-  function setTimeFormat(tf){ setTimeFormatState(tf); savePrefs(theme, accent, tf) }
-  function toggleTheme()    { setTheme(theme === 'light' ? 'dark' : 'light') }
+
+  // ── Public setters ──
+  function setTheme(t) {
+    // When theme changes, update client accent automatically
+    const a = role === 'barber' ? accent : clientAccent(t)
+    setThemeState(t)
+    setAccentState(a)
+    applyTheme(t, a)
+    savePrefs(t, a, timeFormat)
+  }
+
+  function setAccent(a) {
+    if (role !== 'barber') return   // clients cannot change accent
+    setAccentState(a)
+    applyTheme(theme, a)
+    savePrefs(theme, a, timeFormat)
+  }
+
+  function setTimeFormat(tf) { setTFState(tf); savePrefs(theme, accent, tf) }
+  function toggleTheme()     { setTheme(theme === 'light' ? 'dark' : 'light') }
 
   function formatTime(timeStr) {
     if (!timeStr) return ''
@@ -107,10 +150,20 @@ const a = userRole === 'barber' ? (d.accent || '#F59E0B') : 'var(--text-pri)';  
     return `${h%12||12}:${String(m).padStart(2,'0')} ${period}`
   }
 
-  useEffect(() => { applyTheme('light', CLIENT_ACCENT) }, [])
+  // Apply dark theme on initial mount (barber app default)
+  useEffect(() => { applyTheme('dark', '#F5C518') }, [])
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, accent, setAccent, role, barberAccents:BARBER_ACCENTS, themes:THEMES, timeFormat, setTimeFormat, formatTime, setUid, setRole, loadPrefs, resetToDefaults }}>
+    <ThemeContext.Provider value={{
+      theme, setTheme, toggleTheme,
+      accent, setAccent,
+      role, setRole,
+      barberAccents: BARBER_ACCENTS,
+      themes: THEMES,
+      timeFormat, setTimeFormat, formatTime,
+      setUid, loadPrefs, resetToDefaults,
+      accentInv,
+    }}>
       {children}
     </ThemeContext.Provider>
   )

@@ -169,7 +169,7 @@ export default function BarberServices() {
                           </button>
                           <button onClick={() => setDeleteTarget(svc)}
                             className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-medium"
-                            style={{background:'#ef444410',color:'#f87171'}}>
+                            style={{background:'#ef444410',color:'#EF4444'}}>
                             <Trash2 size={12}/> Remove
                           </button>
                         </div>
@@ -231,8 +231,8 @@ export default function BarberServices() {
             <button onClick={() => setForm(p => ({...p,isActive:!p.isActive}))}
               className="relative w-12 h-6 rounded-full transition-all flex-shrink-0"
               style={{background: form.isActive ? 'var(--accent)' : 'var(--border)'}}>
-              <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
-                style={{left: form.isActive ? '26px' : '2px'}}/>
+              <div className="absolute top-0.5 w-5 h-5 rounded-full shadow"
+                style={{background:"var(--card)", left: form.isActive ? '26px' : '2px', transition:'left 0.2s', position:'absolute', top:'2px'}}/>
             </button>
           </div>
 
@@ -255,7 +255,7 @@ export default function BarberServices() {
           <button onClick={() => setDeleteTarget(null)} className="btn-secondary flex-1">Keep</button>
           <button onClick={handleDelete}
             className="flex-1 p-3 rounded-2xl font-semibold text-sm"
-            style={{background:'#ef444415',color:'#f87171',border:'1px solid #ef444433'}}>
+            style={{background:'#ef444415',color:'#EF4444',border:'1px solid #ef444433'}}>
             Remove
           </button>
         </div>

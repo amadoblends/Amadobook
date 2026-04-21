@@ -226,7 +226,7 @@ function RescheduleModal({ appt, appointments, availability, onClose, onSave, up
             Cancel
           </button>
           <button onClick={confirm} disabled={updating || !selectedSlot}
-            style={{ flex:1, padding:'13px', borderRadius:12, background: selectedSlot?'var(--accent)':'var(--border)', color:'white', fontWeight:700, border:'none', cursor: selectedSlot?'pointer':'not-allowed', ...F, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+            style={{ flex:1, padding:'13px', borderRadius:12, background: selectedSlot?'var(--accent)':'var(--border)', color:'var(--accent-inv)', fontWeight:700, border:'none', cursor: selectedSlot?'pointer':'not-allowed', ...F, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
             {updating && <div style={{ width:14, height:14, border:'2px solid white', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>}
             Confirm
           </button>
@@ -456,9 +456,9 @@ useEffect(() => {
         ) : dayAppointments.map(appt => (
           <button key={appt.id} onClick={() => setDetailAppt(appt)}
             style={{
-              width:'100%', background: appt.bookingStatus==='completed'?'#16A34A12':'var(--card)',
-              border: appt.bookingStatus==='completed'?'1px solid #16A34A33':'1px solid var(--border)',
-              borderLeft:`3px solid ${appt.bookingStatus==='completed'?'#16A34A': appt.isGuest?'#8b5cf6':'var(--accent)'}`,
+              width:'100%', background: appt.bookingStatus==='completed'?'rgba(34,197,94,0.08)':'var(--card)',
+              border: appt.bookingStatus==='completed'?'1px solid rgba(34,197,94,0.25)':'1px solid var(--border)',
+              borderLeft:`3px solid ${appt.bookingStatus==='completed'?'#22C55E': appt.isGuest?'#8B5CF6':'var(--accent)'}`,
               borderRadius:14, padding:'12px 14px', cursor:'pointer',
               display:'flex', alignItems:'center', gap:12, textAlign:'left', marginBottom:8, ...F,
             }}>
@@ -470,9 +470,9 @@ useEffect(() => {
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                 <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:14, margin:0 }}>{appt.clientName}</p>
-                {appt.isGuest && <span style={{ background:'#8b5cf622', color:'#7c3aed', fontSize:10, padding:'1px 6px', borderRadius:10, fontWeight:700 }}>Guest</span>}
-                {appt.bookingStatus==='completed' && <span style={{ width:8, height:8, borderRadius:'50%', background:'#16A34A', display:'inline-block' }}/>}
-                {appt.paymentStatus==='paid' && <span style={{ background:'#3b82f622', color:'#2563eb', fontSize:10, padding:'1px 6px', borderRadius:10, fontWeight:700 }}>Paid</span>}
+                {appt.isGuest && <span style={{ background:'rgba(139,92,246,0.15)', color:'#7C3AED', fontSize:10, padding:'1px 6px', borderRadius:10, fontWeight:700 }}>Guest</span>}
+                {appt.bookingStatus==='completed' && <span style={{ width:8, height:8, borderRadius:'50%', background:'#22C55E', display:'inline-block' }}/>}
+                {appt.paymentStatus==='paid' && <span style={{ background:'var(--accent)20', color:'var(--accent)', fontSize:10, padding:'1px 6px', borderRadius:10, fontWeight:700 }}>Paid</span>}
               </div>
               <p style={{ color:'var(--text-sec)', fontSize:12, margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                 {appt.services?.map(s=>s.name).join(', ')}
@@ -508,13 +508,13 @@ useEffect(() => {
               ].map(([l,v]) => (
                 <div key={l} style={{ display:'flex', justifyContent:'space-between', fontSize:13, padding:'4px 0', borderBottom:'1px solid var(--border)' }}>
                   <span style={{ color:'var(--text-sec)' }}>{l}</span>
-                  <span style={{ color: l==='Total'?'var(--accent)': l==='Payment'?(detailAppt.paymentStatus==='paid'?'#16A34A':'#f59e0b'):'var(--text-pri)', fontWeight:600 }}>{v}</span>
+                  <span style={{ color: l==='Total'?'var(--accent)': l==='Payment'?(detailAppt.paymentStatus==='paid'?'#22C55E':'#EAB308'):'var(--text-pri)', fontWeight:600 }}>{v}</span>
                 </div>
               ))}
               {detailAppt.tip > 0 && (
                 <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, padding:'4px 0' }}>
                   <span style={{ color:'var(--text-sec)' }}>Tip</span>
-                  <span style={{ color:'#16A34A', fontWeight:600 }}>+{formatCurrency(detailAppt.tip)}</span>
+                  <span style={{ color:'#22C55E', fontWeight:600 }}>+{formatCurrency(detailAppt.tip)}</span>
                 </div>
               )}
             </div>
@@ -528,27 +528,27 @@ useEffect(() => {
               ))}
             </div>
 
-            {detailAppt.rescheduleNote && <div style={{ background:'#f59e0b15', border:'1px solid #f59e0b33', borderRadius:10, padding:'8px 12px', fontSize:12, color:'#d97706' }}>Note: {detailAppt.rescheduleNote}</div>}
-            {detailAppt.cancelReason   && <div style={{ background:'#ef444415', border:'1px solid #ef444433', borderRadius:10, padding:'8px 12px', fontSize:12, color:'#dc2626' }}>Cancelled: {detailAppt.cancelReason}</div>}
+            {detailAppt.rescheduleNote && <div style={{ background:'rgba(234,179,8,0.1)', border:'1px solid rgba(234,179,8,0.25)', borderRadius:10, padding:'8px 12px', fontSize:12, color:'#EAB308' }}>Note: {detailAppt.rescheduleNote}</div>}
+            {detailAppt.cancelReason   && <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:10, padding:'8px 12px', fontSize:12, color:'#EF4444' }}>Cancelled: {detailAppt.cancelReason}</div>}
 
             {detailAppt.bookingStatus !== 'cancelled' && (
               <div style={{ display:'flex', flexDirection:'column', gap:8, paddingTop:8, borderTop:'1px solid var(--border)' }}>
                 {detailAppt.bookingStatus !== 'completed' && (
                   <button onClick={() => setTipModal(true)}
-                    style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:12, background:'#16A34A15', color:'#16A34A', border:'1px solid #16A34A33', cursor:'pointer', fontWeight:700, fontSize:13, ...F }}>
+                    style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:12, background:'rgba(34,197,94,0.1)', color:'#22C55E', border:'1px solid rgba(34,197,94,0.25)', cursor:'pointer', fontWeight:700, fontSize:13, ...F }}>
                     <CheckCircle size={15}/> Mark Completed
                   </button>
                 )}
                 <button onClick={() => togglePaid(detailAppt)}
-                  style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:12, background:'#3b82f615', color:'#2563eb', border:'1px solid #3b82f633', cursor:'pointer', fontWeight:700, fontSize:13, ...F }}>
+                  style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:12, background:'var(--accent)15', color:'var(--accent)', border:'1px solid var(--accent)33', cursor:'pointer', fontWeight:700, fontSize:13, ...F }}>
                   <DollarSign size={15}/> {detailAppt.paymentStatus==='paid'?'Mark Unpaid':'Mark Paid'}
                 </button>
                 <button onClick={() => setReschedAppt(detailAppt)}
-                  style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:12, background:'#f59e0b15', color:'#d97706', border:'1px solid #f59e0b33', cursor:'pointer', fontWeight:700, fontSize:13, ...F }}>
+                  style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:12, background:'rgba(234,179,8,0.1)', color:'#EAB308', border:'1px solid rgba(234,179,8,0.25)', cursor:'pointer', fontWeight:700, fontSize:13, ...F }}>
                   <RefreshCw size={15}/> Reschedule
                 </button>
                 <button onClick={() => setCancelModal(true)}
-                  style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:12, background:'#ef444415', color:'#dc2626', border:'1px solid #ef444433', cursor:'pointer', fontWeight:700, fontSize:13, ...F }}>
+                  style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:12, background:'rgba(239,68,68,0.08)', color:'#EF4444', border:'1px solid rgba(239,68,68,0.25)', cursor:'pointer', fontWeight:700, fontSize:13, ...F }}>
                   <XCircle size={15}/> Cancel
                 </button>
               </div>
@@ -575,7 +575,7 @@ useEffect(() => {
               No Tip
             </button>
             <button onClick={() => handleComplete(true)} disabled={updating}
-              style={{ flex:1, padding:'13px', borderRadius:12, background:'#16A34A', color:'white', fontWeight:700, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, ...F }}>
+              style={{ flex:1, padding:'13px', borderRadius:12, background:'#22C55E', color:'var(--accent-inv)', fontWeight:700, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, ...F }}>
               {updating && <div style={{ width:14, height:14, border:'2px solid white', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>}
               {tipAmount ? `Add $${tipAmount}` : 'Complete'}
             </button>
@@ -596,8 +596,8 @@ useEffect(() => {
           <div style={{ display:'flex', gap:10 }}>
             <button onClick={() => setCancelModal(false)} style={{ flex:1, padding:'13px', borderRadius:12, background:'var(--surface)', color:'var(--text-sec)', fontWeight:600, border:'1px solid var(--border)', cursor:'pointer', ...F }}>Back</button>
             <button onClick={handleCancel} disabled={updating}
-              style={{ flex:1, padding:'13px', borderRadius:12, background:'#ef444415', color:'#dc2626', fontWeight:700, border:'1px solid #ef444433', cursor:'pointer', ...F, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-              {updating && <div style={{ width:14, height:14, border:'2px solid #dc2626', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>}
+              style={{ flex:1, padding:'13px', borderRadius:12, background:'rgba(239,68,68,0.08)', color:'#EF4444', fontWeight:700, border:'1px solid rgba(239,68,68,0.25)', cursor:'pointer', ...F, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+              {updating && <div style={{ width:14, height:14, border:'2px solid #EF4444', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>}
               Confirm Cancel
             </button>
           </div>

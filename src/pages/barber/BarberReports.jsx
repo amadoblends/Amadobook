@@ -12,7 +12,7 @@ import { PageLoader } from '../../components/ui/Spinner'
 
 const F = { fontFamily:'Monda,sans-serif' }
 const PERIODS = ['Today','This Week','This Month','All Time']
-const PAY_COLORS = { cash:'#22C55E', square:'#3B82F6', 'cash app':'#F59E0B', zelle:'#8B5CF6', other:'#6B7280' }
+const PAY_COLORS = { cash:'#22C55E', square:'#3B82F6', 'cash app':'var(--accent)', zelle:'#8B5CF6', other:'#6B7280' }
 
 export default function BarberReports() {
   const { user } = useAuth()
@@ -102,7 +102,7 @@ export default function BarberReports() {
     return true
   }).sort((a,b)=>b.date?.localeCompare(a.date))
 
-  const statusColors = { completed:'#22C55E', cancelled:'#EF4444', confirmed:'#3B82F6', pending:'#F59E0B' }
+  const statusColors = { completed:'#22C55E', cancelled:'#EF4444', confirmed:'#3B82F6', pending:'var(--accent)' }
 
   if (loading) return <BarberLayout><PageLoader/></BarberLayout>
 

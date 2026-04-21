@@ -109,7 +109,7 @@ function EditProfilePanel({ userData, user, onBack, onSaved }) {
       ))}
 
       <button onClick={save} disabled={saving}
-        style={{ width:'100%', background:'var(--accent)', border:'none', borderRadius:14, padding:'15px', color:'white', fontWeight:700, fontSize:15, cursor:'pointer', fontFamily:'Monda,sans-serif', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+        style={{ width:'100%', background:'var(--accent)', border:'none', borderRadius:14, padding:'15px', color:'var(--accent-inv)', fontWeight:700, fontSize:15, cursor:'pointer', fontFamily:'Monda,sans-serif', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
         {saving && <div style={{ width:16, height:16, border:'2px solid white', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>}
         {saving ? 'Saving…' : 'Save Changes'}
       </button>
@@ -169,11 +169,11 @@ function SharePanel({ onBack, bookingLink }) {
       <div style={{ display:'flex', gap:10 }}>
         <button onClick={copyLink}
           style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'13px', borderRadius:12, background:'var(--card)', border:'1px solid var(--border)', color:'var(--text-pri)', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Monda,sans-serif' }}>
-          {copied ? <Check size={14} color="#16A34A"/> : <Copy size={14}/>}
+          {copied ? <Check size={14} color="#22C55E"/> : <Copy size={14}/>}
           {copied ? 'Copied!' : 'Copy'}
         </button>
         <button onClick={share}
-          style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'13px', borderRadius:12, background:'var(--accent)', border:'none', color:'white', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Monda,sans-serif' }}>
+          style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'13px', borderRadius:12, background:'var(--accent)', border:'none', color:'var(--accent-inv)', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Monda,sans-serif' }}>
           <Share2 size={14}/> Share
         </button>
       </div>

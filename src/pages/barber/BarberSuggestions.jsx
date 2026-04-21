@@ -157,9 +157,9 @@ export default function BarberSuggestions() {
             {/* Stats grid */}
             <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }}>
               {[
-                { label:'Total Visits',  value: done.length,             color:'#16A34A' },
+                { label:'Total Visits',  value: done.length,             color:'#22C55E' },
                 { label:'Total Spent',   value: formatCurrency(totalSpent), color:'var(--accent)' },
-                { label:'Upcoming',      value: upcoming.length,         color:'#3b82f6' },
+                { label:'Upcoming',      value: upcoming.length,         color:'var(--accent)' },
                 { label:'Cancellations', value: cancel.length,           color:'#ef4444' },
               ].map(s => (
                 <div key={s.label} style={{ background:'var(--bg)', borderRadius:12, padding:'12px' }}>
@@ -170,8 +170,8 @@ export default function BarberSuggestions() {
             </div>
 
             {totalTips > 0 && (
-              <div style={{ marginTop:10, background:'#16A34A15', border:'1px solid #16A34A33', borderRadius:10, padding:'8px 12px', fontSize:13 }}>
-                <span style={{ color:'#16A34A', fontWeight:700 }}>Tips received: {formatCurrency(totalTips)}</span>
+              <div style={{ marginTop:10, background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.2)', borderRadius:10, padding:'8px 12px', fontSize:13 }}>
+                <span style={{ color:'#22C55E', fontWeight:700 }}>Tips received: {formatCurrency(totalTips)}</span>
               </div>
             )}
             {lastVisit && (
@@ -198,7 +198,7 @@ export default function BarberSuggestions() {
           <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'16px' }}>
             <p style={{ color:'var(--text-sec)', fontSize:11, fontWeight:700, letterSpacing:'0.08em', marginBottom:12 }}>APPOINTMENT HISTORY ({c.appts.length})</p>
             {c.appts.map(a => {
-              const statusColors = { completed:'#16A34A', confirmed:'#3b82f6', cancelled:'#ef4444', pending:'#f59e0b' }
+              const statusColors = { completed:'#22C55E', confirmed:'var(--accent)', cancelled:'#ef4444', pending:'var(--accent)' }
               return (
                 <div key={a.id} style={{ display:'flex', justifyContent:'space-between', padding:'10px 0', borderBottom:'1px solid var(--border)' }}>
                   <div>
@@ -213,7 +213,7 @@ export default function BarberSuggestions() {
                   <div style={{ textAlign:'right', flexShrink:0, marginLeft:10 }}>
                     <p style={{ color:'var(--accent)', fontWeight:700, fontSize:13, margin:'0 0 2px' }}>{formatCurrency(a.totalPrice)}</p>
                     <span style={{ fontSize:10, fontWeight:700, color: statusColors[a.bookingStatus]||'#888', textTransform:'uppercase' }}>{a.bookingStatus}</span>
-                    {a.tip > 0 && <p style={{ color:'#16A34A', fontSize:10, margin:'2px 0 0' }}>+{formatCurrency(a.tip)} tip</p>}
+                    {a.tip > 0 && <p style={{ color:'#22C55E', fontSize:10, margin:'2px 0 0' }}>+{formatCurrency(a.tip)} tip</p>}
                   </div>
                 </div>
               )
@@ -398,7 +398,7 @@ function ClientDropdown({ clients, onSelect }) {
                 </div>
 
                 <button onClick={sendBroadcast} disabled={sending || !message.trim()}
-                    style={{ width:'100%', background:sent?'#16A34A':'var(--accent)', border:'none', borderRadius:14, padding:'16px', color:'white', fontWeight:700, fontSize:15, cursor:message.trim()?'pointer':'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', gap:8, opacity:message.trim()?1:0.5, ...F }}>
+                    style={{ width:'100%', background:sent?'#22C55E':'var(--accent)', border:'none', borderRadius:14, padding:'16px', color:'var(--accent-inv)', fontWeight:700, fontSize:15, cursor:message.trim()?'pointer':'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', gap:8, opacity:message.trim()?1:0.5, ...F }}>
                     {sending ? <div style={{ width:18, height:18, border:'2.5px solid white', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/> : <Send size={16}/>}
                     {sending?'Sending…':sent?'Sent! ✓':`Send to ${clients.length} client${clients.length!==1?'s':''}`}
                   </button>

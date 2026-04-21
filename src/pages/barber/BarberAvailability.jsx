@@ -198,8 +198,8 @@ export default function BarberAvailability() {
                   <button onClick={() => updateDay(d,'enabled',!day.enabled)}
                     className="relative w-11 h-6 rounded-full flex-shrink-0 transition-all"
                     style={{background: day.enabled ? 'var(--accent)' : 'var(--border)'}}>
-                    <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
-                      style={{left: day.enabled ? '22px' : '2px'}}/>
+                    <div className="absolute rounded-full shadow"
+                      style={{background:"var(--card)", width:20, height:20, top:2, left: day.enabled ? '22px' : '2px', transition:'left 0.2s', position:'absolute'}}/>
                   </button>
                   <p className="font-bold text-sm flex-1" style={{color: day.enabled ? 'var(--text-pri)' : 'var(--text-sec)'}}>
                     {getDayName(d)}
@@ -259,7 +259,7 @@ export default function BarberAvailability() {
                         </div>
                         <button onClick={() => removeBreak(d,i)}
                           className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{background:'#ef444415',color:'#f87171'}}>
+                          style={{background:'#ef444415',color:'#EF4444'}}>
                           <X size={14}/>
                         </button>
                       </div>
@@ -286,10 +286,10 @@ export default function BarberAvailability() {
               {blockedDates.map(date => (
                 <div key={date} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl"
                   style={{background:'#ef444415',border:'1px solid #ef444433'}}>
-                  <span className="text-sm font-semibold" style={{color:'#f87171'}}>
+                  <span className="text-sm font-semibold" style={{color:'#EF4444'}}>
                     {format(new Date(date+'T12:00'),'MMM d')}
                   </span>
-                  <button onClick={() => setBlockedDates(p => p.filter(dd=>dd!==date))} style={{color:'#f87171'}}>
+                  <button onClick={() => setBlockedDates(p => p.filter(dd=>dd!==date))} style={{color:'#EF4444'}}>
                     <X size={12}/>
                   </button>
                 </div>

@@ -13,7 +13,7 @@ import { useTheme } from '../../context/ThemeContext'
 import { DollarSign, Users, Clock, X, Scissors, Phone, Mail, ChevronRight, TrendingUp } from 'lucide-react'
 
 const F   = { fontFamily:'Monda,sans-serif' }
-const SC  = { pending:'#F59E0B', confirmed:'#22C55E', completed:'#3B82F6', cancelled:'#EF4444' }
+const SC  = { pending:'var(--accent)', confirmed:'#22C55E', completed:'#3B82F6', cancelled:'#EF4444' }
 
 // ── Countdown ────────────────────────────────────────────────────────────
 function Countdown({ endTime, date }) {
