@@ -293,29 +293,30 @@ function DayTimeline({ appointments, selectedDay, onApptClick, formatTime }) {
   }
 
   const hours = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i)
+  const ROW_H = totalHeightPx / (endHour - startHour)
 
-  if (!appointments.length) return (
-    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, padding:'32px 16px', textAlign:'center', ...F }}>
-      <Calendar size={22} style={{ color:'var(--text-sec)', opacity:0.3, display:'block', margin:'0 auto 8px' }}/>
-      <p style={{ color:'var(--text-sec)', fontSize:13, margin:0 }}>No appointments this day</p>
-    </div>
-  )
+  function fmtHour(h) {
+    return h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h-12}pm`
+  }
 
   return (
-    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, overflow:'hidden' }}>
+    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'14px 14px 0 0', overflow:'hidden' }}>
 
-      {/* Zoom controls */}
+      {/* Zoom controls header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 12px', borderBottom:'1px solid var(--border)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
           <Clock size={13} style={{ color:'var(--accent)' }}/>
           <span style={{ color:'var(--text-sec)', fontSize:11, fontWeight:700, letterSpacing:'0.06em', ...F }}>
             {isToday(selectedDay) ? 'TODAY' : format(selectedDay,'EEE, MMM d').toUpperCase()}
           </span>
+          {!appointments.length && (
+            <span style={{ color:'var(--text-sec)', fontSize:10, opacity:0.5, ...F }}>— no appointments</span>
+          )}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:4 }}>
           <button onClick={() => setPxPerMin(p => Math.max(MIN_PX, +(p - 0.6).toFixed(1)))}
             disabled={pxPerMin <= MIN_PX}
-            style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center', cursor: pxPerMin<=MIN_PX ? 'not-allowed':'pointer', color: pxPerMin<=MIN_PX ? 'var(--border)':'var(--text-sec)' }}>
+            style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center', cursor: pxPerMin<=MIN_PX?'not-allowed':'pointer', color: pxPerMin<=MIN_PX?'var(--border)':'var(--text-sec)' }}>
             <ZoomOut size={13}/>
           </button>
           <span style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, minWidth:28, textAlign:'center', ...F }}>
@@ -323,31 +324,36 @@ function DayTimeline({ appointments, selectedDay, onApptClick, formatTime }) {
           </span>
           <button onClick={() => setPxPerMin(p => Math.min(MAX_PX, +(p + 0.6).toFixed(1)))}
             disabled={pxPerMin >= MAX_PX}
-            style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center', cursor: pxPerMin>=MAX_PX ? 'not-allowed':'pointer', color: pxPerMin>=MAX_PX ? 'var(--border)':'var(--text-sec)' }}>
+            style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center', cursor: pxPerMin>=MAX_PX?'not-allowed':'pointer', color: pxPerMin>=MAX_PX?'var(--border)':'var(--text-sec)' }}>
             <ZoomIn size={13}/>
           </button>
         </div>
       </div>
 
-      {/* Timeline grid — no scroll, full height */}
-      <div style={{ position:'relative', height: totalHeightPx, padding:'0 10px 10px 54px' }}>
+      {/* Timeline grid — always rendered, no scroll, full height, no bottom radius */}
+      <div style={{ position:'relative', height: totalHeightPx }}>
 
-        {/* Hour lines + labels */}
-        {hours.map(h => {
-          const topPx = ((h - startHour) / (endHour - startHour)) * totalHeightPx
+        {/* Hour rows — full-width bands so grid is always visible */}
+        {hours.map((h, i) => {
+          const topPx = i * ROW_H
+          const isLast = i === hours.length - 1
           return (
-            <div key={h} style={{ position:'absolute', left:0, right:0, top: topPx }}>
+            <div key={h} style={{
+              position:'absolute', left:0, right:0,
+              top: topPx, height: isLast ? 0 : ROW_H,
+              borderBottom: isLast ? 'none' : '1px solid var(--border)',
+              display:'flex', alignItems:'flex-start',
+            }}>
+              {/* Hour label flush left */}
               <span style={{
-                position:'absolute', left:6, top:-8,
-                fontSize:9, fontWeight:700, color:'var(--text-sec)',
-                fontFamily:'Monda,sans-serif', letterSpacing:'0.04em', whiteSpace:'nowrap',
+                display:'inline-block',
+                width:48, paddingLeft:8, paddingTop:3,
+                fontSize:10, fontWeight:700, color:'var(--text-sec)',
+                fontFamily:'Monda,sans-serif', letterSpacing:'0.03em',
+                flexShrink:0, lineHeight:1,
               }}>
-                {h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h-12}pm`}
+                {fmtHour(h)}
               </span>
-              <div style={{
-                position:'absolute', left:48, right:10, top:0,
-                height:1, background:'var(--border)', opacity:0.5,
-              }}/>
             </div>
           )
         })}
@@ -356,15 +362,14 @@ function DayTimeline({ appointments, selectedDay, onApptClick, formatTime }) {
         {appointments.map(appt => {
           const topPct = timeToY(appt.startTime)
           const hPct   = apptHeightPct(appt)
-          const topPx  = (topPct  / 100) * totalHeightPx
-          const hPx    = Math.max(20, (hPct / 100) * totalHeightPx - 2)
+          const topPx  = (topPct / 100) * totalHeightPx
+          const hPx    = Math.max(22, (hPct / 100) * totalHeightPx - 2)
           const color  = STATUS_COLOR[appt.bookingStatus] || 'var(--accent)'
           const isDone = appt.bookingStatus === 'completed'
 
-          // Adapt content to available height
-          const showServices = hPx >= 44
-          const showTime     = hPx >= 28
-          const bigName      = hPx >= 60
+          const showServices = hPx >= 52
+          const showTime     = hPx >= 32
+          const bigText      = hPx >= 64
 
           return (
             <button
@@ -373,52 +378,59 @@ function DayTimeline({ appointments, selectedDay, onApptClick, formatTime }) {
               style={{
                 position:'absolute',
                 top: topPx + 1,
-                left: 54,
-                right: 10,
+                left: 52,
+                right: 8,
                 height: hPx,
-                borderRadius: 8,
-                border: `1.5px solid ${color}55`,
-                borderLeft: `3px solid ${color}`,
+                borderRadius: 7,
+                /* full visible border all around + accent left */
+                border: `1.5px solid ${color}88`,
+                borderLeft: `4px solid ${color}`,
                 background: isDone
-                  ? `${color}14`
-                  : `linear-gradient(135deg,${color}1A 0%,${color}08 100%)`,
+                  ? `${color}18`
+                  : `linear-gradient(135deg,${color}22 0%,${color}0C 100%)`,
+                boxShadow: `0 1px 4px ${color}22`,
                 cursor:'pointer', textAlign:'left',
-                padding: hPx < 28 ? '0 6px' : '4px 7px',
-                display:'flex', flexDirection: hPx < 28 ? 'row' : 'column',
-                alignItems: hPx < 28 ? 'center' : 'flex-start',
-                justifyContent: hPx < 28 ? 'space-between' : 'flex-start',
-                gap: 1, overflow:'hidden', ...F,
-                transition:'filter 0.12s, opacity 0.12s',
+                padding: hPx < 32 ? '0 7px' : '5px 8px',
+                display:'flex',
+                flexDirection: hPx < 32 ? 'row' : 'column',
+                alignItems: hPx < 32 ? 'center' : 'flex-start',
+                justifyContent: hPx < 32 ? 'space-between' : 'flex-start',
+                gap: 2, overflow:'hidden', ...F,
+                transition:'filter 0.12s',
+                zIndex: 2,
               }}
-              onMouseEnter={e => e.currentTarget.style.filter='brightness(1.12)'}
+              onMouseEnter={e => e.currentTarget.style.filter='brightness(1.1)'}
               onMouseLeave={e => e.currentTarget.style.filter='none'}
             >
+              {/* Name + time on same line when very short */}
               <span style={{
-                fontWeight:700,
-                fontSize: bigName ? 12 : 10,
+                fontWeight:800,
+                fontSize: bigText ? 13 : 11,
                 color:'var(--text-pri)',
                 whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-                maxWidth:'100%', lineHeight:1.2,
+                maxWidth:'100%', lineHeight:1.3,
               }}>
                 {appt.clientName}
               </span>
 
               {showServices && (
                 <span style={{
-                  fontSize:9, color:'var(--text-sec)',
+                  fontSize: bigText ? 11 : 10,
+                  color:'var(--text-sec)',
                   whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-                  maxWidth:'100%', lineHeight:1.2,
+                  maxWidth:'100%', lineHeight:1.3,
                 }}>
-                  {appt.services?.map(s => s.name).join(', ')}
+                  {appt.services?.map(s => s.name).join(' · ')}
                 </span>
               )}
 
               {showTime && (
                 <span style={{
-                  fontSize:9, color, fontWeight:700, lineHeight:1.2,
+                  fontSize: bigText ? 11 : 10,
+                  color, fontWeight:700, lineHeight:1.3,
                   marginTop: showServices ? 'auto' : undefined,
                 }}>
-                  {formatTime(appt.startTime)}–{formatTime(appt.endTime)}
+                  {formatTime(appt.startTime)} – {formatTime(appt.endTime)}
                 </span>
               )}
             </button>
@@ -430,7 +442,7 @@ function DayTimeline({ appointments, selectedDay, onApptClick, formatTime }) {
           <div style={{
             position:'absolute',
             top: (nowPct / 100) * totalHeightPx,
-            left:48, right:10,
+            left:48, right:8,
             height:2, background:'#EF4444',
             borderRadius:2, zIndex:10,
             boxShadow:'0 0 6px #EF444488',
