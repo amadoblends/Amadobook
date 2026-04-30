@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 // ✅ UNIFICADO: Solo una línea para firestore con todo lo que necesitas
 import { 
   collection, query, where, getDocs, 
@@ -23,7 +23,7 @@ import { createNotification } from '../../utils/notifications'
 import Modal from '../../components/ui/Modal'
 import {
   ChevronLeft, ChevronRight, CheckCircle, DollarSign,
-  XCircle, Calendar, RefreshCw, RotateCcw
+  XCircle, Calendar, RefreshCw, RotateCcw, ChevronDown, Clock
 } from 'lucide-react'
 import { PageLoader } from '../../components/ui/Spinner'
 const F = { fontFamily: 'Monda, sans-serif' }
@@ -233,6 +233,239 @@ function RescheduleModal({ appt, appointments, availability, onClose, onSave, up
         </div>
       </div>
     </Modal>
+  )
+}
+
+// ── Day Timeline View ──────────────────────────────────────────────────────
+function DayTimeline({ appointments, selectedDay, onApptClick, formatTime }) {
+  const [open, setOpen] = useState(true)
+  const [nowPct, setNowPct] = useState(null)
+  const containerRef = useRef(null)
+
+  // Build hour range from appointments or fall back to 8am–8pm
+  const { startHour, endHour } = useMemo(() => {
+    if (!appointments.length) return { startHour: 8, endHour: 20 }
+    const mins = appointments.flatMap(a => {
+      const [sh, sm] = a.startTime.split(':').map(Number)
+      const [eh, em] = a.endTime.split(':').map(Number)
+      return [sh * 60 + sm, eh * 60 + em]
+    })
+    const minH = Math.max(0,  Math.floor(Math.min(...mins) / 60) - 1)
+    const maxH = Math.min(24, Math.ceil(Math.max(...mins)  / 60) + 1)
+    return { startHour: minH, endHour: maxH }
+  }, [appointments])
+
+  const totalMinutes = (endHour - startHour) * 60
+  const PX_PER_MIN  = 2.5  // height scale
+
+  // Current time indicator
+  useEffect(() => {
+    if (!isToday(selectedDay)) { setNowPct(null); return }
+    function update() {
+      const now = new Date()
+      const nowMin = now.getHours() * 60 + now.getMinutes()
+      const startMin = startHour * 60
+      const pct = ((nowMin - startMin) / totalMinutes) * 100
+      setNowPct(pct < 0 ? null : pct > 100 ? null : pct)
+    }
+    update()
+    const iv = setInterval(update, 30000)
+    return () => clearInterval(iv)
+  }, [selectedDay, startHour, totalMinutes])
+
+  // Scroll to current time on open
+  useEffect(() => {
+    if (open && nowPct !== null && containerRef.current) {
+      const scrollTarget = (nowPct / 100) * containerRef.current.scrollHeight - 80
+      containerRef.current.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' })
+    }
+  }, [open, nowPct])
+
+  function timeToY(timeStr) {
+    const [h, m] = timeStr.split(':').map(Number)
+    return ((h * 60 + m - startHour * 60) / totalMinutes) * 100
+  }
+
+  function apptHeightPct(appt) {
+    const [sh, sm] = appt.startTime.split(':').map(Number)
+    const [eh, em] = appt.endTime.split(':').map(Number)
+    const dur = (eh * 60 + em) - (sh * 60 + sm)
+    return (dur / totalMinutes) * 100
+  }
+
+  const STATUS_COLOR = {
+    pending:   '#EAB308',
+    confirmed: 'var(--accent)',
+    completed: '#22C55E',
+    cancelled: '#EF4444',
+  }
+
+  const hours = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i)
+  const totalHeightPx = totalMinutes * PX_PER_MIN
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      {/* Toggle header */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'var(--card)', border: '1px solid var(--border)', borderRadius: open ? '14px 14px 0 0' : 14,
+          padding: '11px 14px', cursor: 'pointer', ...F,
+          borderBottom: open ? '1px solid var(--border)' : '1px solid var(--border)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Clock size={14} style={{ color: 'var(--accent)' }} />
+          <span style={{ color: 'var(--text-pri)', fontWeight: 700, fontSize: 13 }}>
+            Timeline · {isToday(selectedDay) ? 'Today' : format(selectedDay, 'EEE, MMM d')}
+          </span>
+          {appointments.length > 0 && (
+            <span style={{
+              background: 'var(--accent)', color: 'var(--accent-inv)', fontSize: 10,
+              fontWeight: 800, padding: '1px 7px', borderRadius: 20,
+            }}>{appointments.length}</span>
+          )}
+        </div>
+        <ChevronDown size={16} style={{
+          color: 'var(--text-sec)',
+          transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+          transition: 'transform 0.25s ease',
+        }} />
+      </button>
+
+      {/* Timeline body */}
+      {open && (
+        <div
+          ref={containerRef}
+          style={{
+            background: 'var(--card)', border: '1px solid var(--border)',
+            borderTop: 'none', borderRadius: '0 0 14px 14px',
+            maxHeight: 480, overflowY: 'auto', position: 'relative',
+          }}
+        >
+          {appointments.length === 0 ? (
+            <div style={{ padding: '32px 16px', textAlign: 'center' }}>
+              <Calendar size={22} style={{ color: 'var(--text-sec)', opacity: 0.3, marginBottom: 8, display: 'block', margin: '0 auto 8px' }} />
+              <p style={{ color: 'var(--text-sec)', fontSize: 13, margin: 0, ...F }}>No appointments this day</p>
+            </div>
+          ) : (
+            <div style={{ position: 'relative', height: totalHeightPx, padding: '0 10px 10px 54px' }}>
+
+              {/* Hour lines + labels */}
+              {hours.map(h => {
+                const topPct = ((h - startHour) / (endHour - startHour)) * 100
+                const topPx  = (topPct / 100) * totalHeightPx
+                return (
+                  <div key={h} style={{ position: 'absolute', left: 0, right: 0, top: topPx }}>
+                    <span style={{
+                      position: 'absolute', left: 6, top: -8,
+                      fontSize: 9, fontWeight: 700, color: 'var(--text-sec)',
+                      fontFamily: 'Monda, sans-serif', letterSpacing: '0.04em',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`}
+                    </span>
+                    <div style={{
+                      position: 'absolute', left: 48, right: 10, top: 0,
+                      height: 1, background: 'var(--border)', opacity: 0.6,
+                    }} />
+                  </div>
+                )
+              })}
+
+              {/* Appointment blocks */}
+              {appointments.map(appt => {
+                const topPct = timeToY(appt.startTime)
+                const hPct   = apptHeightPct(appt)
+                const topPx  = (topPct / 100) * totalHeightPx
+                const hPx    = Math.max(28, (hPct / 100) * totalHeightPx)
+                const color  = STATUS_COLOR[appt.bookingStatus] || 'var(--accent)'
+                const isDone = appt.bookingStatus === 'completed'
+                const isShort = hPx < 52
+
+                return (
+                  <button
+                    key={appt.id}
+                    onClick={() => onApptClick(appt)}
+                    style={{
+                      position: 'absolute',
+                      top: topPx + 1,
+                      left: 54,
+                      right: 10,
+                      height: hPx - 2,
+                      borderRadius: 9,
+                      border: `1.5px solid ${color}44`,
+                      borderLeft: `3px solid ${color}`,
+                      background: isDone
+                        ? `${color}12`
+                        : `linear-gradient(135deg, ${color}18 0%, ${color}08 100%)`,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      padding: isShort ? '0 8px' : '6px 8px',
+                      display: 'flex',
+                      flexDirection: isShort ? 'row' : 'column',
+                      alignItems: isShort ? 'center' : 'flex-start',
+                      gap: isShort ? 6 : 2,
+                      overflow: 'hidden',
+                      ...F,
+                      transition: 'filter 0.15s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
+                    onMouseLeave={e => e.currentTarget.style.filter = 'none'}
+                  >
+                    <span style={{
+                      fontWeight: 700, fontSize: isShort ? 11 : 12,
+                      color: 'var(--text-pri)', whiteSpace: 'nowrap',
+                      overflow: 'hidden', textOverflow: 'ellipsis',
+                      maxWidth: '100%',
+                    }}>
+                      {appt.clientName}
+                    </span>
+                    {!isShort && (
+                      <span style={{
+                        fontSize: 10, color: 'var(--text-sec)',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>
+                        {appt.services?.map(s => s.name).join(', ')}
+                      </span>
+                    )}
+                    <span style={{
+                      fontSize: 10, color, fontWeight: 700,
+                      marginLeft: isShort ? 'auto' : 0, flexShrink: 0,
+                    }}>
+                      {formatTime(appt.startTime)} – {formatTime(appt.endTime)}
+                    </span>
+                  </button>
+                )
+              })}
+
+              {/* Current time line */}
+              {nowPct !== null && (
+                <div style={{
+                  position: 'absolute',
+                  top: (nowPct / 100) * totalHeightPx,
+                  left: 48, right: 10,
+                  height: 2,
+                  background: '#EF4444',
+                  borderRadius: 2,
+                  zIndex: 10,
+                  boxShadow: '0 0 6px #EF444488',
+                }}>
+                  <div style={{
+                    position: 'absolute', left: -5, top: -4,
+                    width: 10, height: 10, borderRadius: '50%',
+                    background: '#EF4444',
+                    boxShadow: '0 0 8px #EF4444AA',
+                  }} />
+                </div>
+              )}
+
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -482,6 +715,14 @@ useEffect(() => {
             <p style={{ color:'var(--accent)', fontWeight:800, fontSize:14, flexShrink:0 }}>{formatCurrency(appt.totalPrice)}</p>
           </button>
         ))}
+
+        {/* ── Timeline View ── */}
+        <DayTimeline
+          appointments={dayAppointments}
+          selectedDay={selectedDay}
+          onApptClick={setDetailAppt}
+          formatTime={formatTime}
+        />
       </div>
 
       {/* Detail Modal */}
