@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 // ✅ UNIFICADO: Solo una línea para firestore con todo lo que necesitas
 import { 
   collection, query, where, getDocs, 
@@ -23,7 +23,7 @@ import { createNotification } from '../../utils/notifications'
 import Modal from '../../components/ui/Modal'
 import {
   ChevronLeft, ChevronRight, CheckCircle, DollarSign,
-  XCircle, Calendar, RefreshCw, RotateCcw, ChevronDown, Clock
+  XCircle, Calendar, RefreshCw, RotateCcw, ChevronDown, Clock, ZoomIn, ZoomOut
 } from 'lucide-react'
 import { PageLoader } from '../../components/ui/Spinner'
 const F = { fontFamily: 'Monda, sans-serif' }
@@ -238,11 +238,12 @@ function RescheduleModal({ appt, appointments, availability, onClose, onSave, up
 
 // ── Day Timeline View ──────────────────────────────────────────────────────
 function DayTimeline({ appointments, selectedDay, onApptClick, formatTime }) {
-  const [open, setOpen] = useState(true)
-  const [nowPct, setNowPct] = useState(null)
-  const containerRef = useRef(null)
+  const [pxPerMin, setPxPerMin] = useState(2.5)
+  const [nowPct, setNowPct]     = useState(null)
 
-  // Build hour range from appointments or fall back to 8am–8pm
+  const MIN_PX = 1.2
+  const MAX_PX = 6
+
   const { startHour, endHour } = useMemo(() => {
     if (!appointments.length) return { startHour: 8, endHour: 20 }
     const mins = appointments.flatMap(a => {
@@ -250,36 +251,28 @@ function DayTimeline({ appointments, selectedDay, onApptClick, formatTime }) {
       const [eh, em] = a.endTime.split(':').map(Number)
       return [sh * 60 + sm, eh * 60 + em]
     })
-    const minH = Math.max(0,  Math.floor(Math.min(...mins) / 60) - 1)
-    const maxH = Math.min(24, Math.ceil(Math.max(...mins)  / 60) + 1)
-    return { startHour: minH, endHour: maxH }
+    return {
+      startHour: Math.max(0,  Math.floor(Math.min(...mins) / 60) - 1),
+      endHour:   Math.min(24, Math.ceil(Math.max(...mins)  / 60) + 1),
+    }
   }, [appointments])
 
-  const totalMinutes = (endHour - startHour) * 60
-  const PX_PER_MIN  = 2.5  // height scale
+  const totalMinutes  = (endHour - startHour) * 60
+  const totalHeightPx = totalMinutes * pxPerMin
 
-  // Current time indicator
+  // Current time line (today only)
   useEffect(() => {
     if (!isToday(selectedDay)) { setNowPct(null); return }
-    function update() {
-      const now = new Date()
+    function tick() {
+      const now    = new Date()
       const nowMin = now.getHours() * 60 + now.getMinutes()
-      const startMin = startHour * 60
-      const pct = ((nowMin - startMin) / totalMinutes) * 100
-      setNowPct(pct < 0 ? null : pct > 100 ? null : pct)
+      const pct    = ((nowMin - startHour * 60) / totalMinutes) * 100
+      setNowPct(pct >= 0 && pct <= 100 ? pct : null)
     }
-    update()
-    const iv = setInterval(update, 30000)
+    tick()
+    const iv = setInterval(tick, 30000)
     return () => clearInterval(iv)
   }, [selectedDay, startHour, totalMinutes])
-
-  // Scroll to current time on open
-  useEffect(() => {
-    if (open && nowPct !== null && containerRef.current) {
-      const scrollTarget = (nowPct / 100) * containerRef.current.scrollHeight - 80
-      containerRef.current.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' })
-    }
-  }, [open, nowPct])
 
   function timeToY(timeStr) {
     const [h, m] = timeStr.split(':').map(Number)
@@ -289,8 +282,7 @@ function DayTimeline({ appointments, selectedDay, onApptClick, formatTime }) {
   function apptHeightPct(appt) {
     const [sh, sm] = appt.startTime.split(':').map(Number)
     const [eh, em] = appt.endTime.split(':').map(Number)
-    const dur = (eh * 60 + em) - (sh * 60 + sm)
-    return (dur / totalMinutes) * 100
+    return (((eh * 60 + em) - (sh * 60 + sm)) / totalMinutes) * 100
   }
 
   const STATUS_COLOR = {
@@ -301,170 +293,157 @@ function DayTimeline({ appointments, selectedDay, onApptClick, formatTime }) {
   }
 
   const hours = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i)
-  const totalHeightPx = totalMinutes * PX_PER_MIN
+
+  if (!appointments.length) return (
+    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, padding:'32px 16px', textAlign:'center', ...F }}>
+      <Calendar size={22} style={{ color:'var(--text-sec)', opacity:0.3, display:'block', margin:'0 auto 8px' }}/>
+      <p style={{ color:'var(--text-sec)', fontSize:13, margin:0 }}>No appointments this day</p>
+    </div>
+  )
 
   return (
-    <div style={{ marginTop: 8 }}>
-      {/* Toggle header */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'var(--card)', border: '1px solid var(--border)', borderRadius: open ? '14px 14px 0 0' : 14,
-          padding: '11px 14px', cursor: 'pointer', ...F,
-          borderBottom: open ? '1px solid var(--border)' : '1px solid var(--border)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Clock size={14} style={{ color: 'var(--accent)' }} />
-          <span style={{ color: 'var(--text-pri)', fontWeight: 700, fontSize: 13 }}>
-            Timeline · {isToday(selectedDay) ? 'Today' : format(selectedDay, 'EEE, MMM d')}
+    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, overflow:'hidden' }}>
+
+      {/* Zoom controls */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 12px', borderBottom:'1px solid var(--border)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <Clock size={13} style={{ color:'var(--accent)' }}/>
+          <span style={{ color:'var(--text-sec)', fontSize:11, fontWeight:700, letterSpacing:'0.06em', ...F }}>
+            {isToday(selectedDay) ? 'TODAY' : format(selectedDay,'EEE, MMM d').toUpperCase()}
           </span>
-          {appointments.length > 0 && (
-            <span style={{
-              background: 'var(--accent)', color: 'var(--accent-inv)', fontSize: 10,
-              fontWeight: 800, padding: '1px 7px', borderRadius: 20,
-            }}>{appointments.length}</span>
-          )}
         </div>
-        <ChevronDown size={16} style={{
-          color: 'var(--text-sec)',
-          transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-          transition: 'transform 0.25s ease',
-        }} />
-      </button>
+        <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+          <button onClick={() => setPxPerMin(p => Math.max(MIN_PX, +(p - 0.6).toFixed(1)))}
+            disabled={pxPerMin <= MIN_PX}
+            style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center', cursor: pxPerMin<=MIN_PX ? 'not-allowed':'pointer', color: pxPerMin<=MIN_PX ? 'var(--border)':'var(--text-sec)' }}>
+            <ZoomOut size={13}/>
+          </button>
+          <span style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, minWidth:28, textAlign:'center', ...F }}>
+            {Math.round(pxPerMin / 2.5 * 100)}%
+          </span>
+          <button onClick={() => setPxPerMin(p => Math.min(MAX_PX, +(p + 0.6).toFixed(1)))}
+            disabled={pxPerMin >= MAX_PX}
+            style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center', cursor: pxPerMin>=MAX_PX ? 'not-allowed':'pointer', color: pxPerMin>=MAX_PX ? 'var(--border)':'var(--text-sec)' }}>
+            <ZoomIn size={13}/>
+          </button>
+        </div>
+      </div>
 
-      {/* Timeline body */}
-      {open && (
-        <div
-          ref={containerRef}
-          style={{
-            background: 'var(--card)', border: '1px solid var(--border)',
-            borderTop: 'none', borderRadius: '0 0 14px 14px',
-            maxHeight: 480, overflowY: 'auto', position: 'relative',
-          }}
-        >
-          {appointments.length === 0 ? (
-            <div style={{ padding: '32px 16px', textAlign: 'center' }}>
-              <Calendar size={22} style={{ color: 'var(--text-sec)', opacity: 0.3, marginBottom: 8, display: 'block', margin: '0 auto 8px' }} />
-              <p style={{ color: 'var(--text-sec)', fontSize: 13, margin: 0, ...F }}>No appointments this day</p>
+      {/* Timeline grid — no scroll, full height */}
+      <div style={{ position:'relative', height: totalHeightPx, padding:'0 10px 10px 54px' }}>
+
+        {/* Hour lines + labels */}
+        {hours.map(h => {
+          const topPx = ((h - startHour) / (endHour - startHour)) * totalHeightPx
+          return (
+            <div key={h} style={{ position:'absolute', left:0, right:0, top: topPx }}>
+              <span style={{
+                position:'absolute', left:6, top:-8,
+                fontSize:9, fontWeight:700, color:'var(--text-sec)',
+                fontFamily:'Monda,sans-serif', letterSpacing:'0.04em', whiteSpace:'nowrap',
+              }}>
+                {h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h-12}pm`}
+              </span>
+              <div style={{
+                position:'absolute', left:48, right:10, top:0,
+                height:1, background:'var(--border)', opacity:0.5,
+              }}/>
             </div>
-          ) : (
-            <div style={{ position: 'relative', height: totalHeightPx, padding: '0 10px 10px 54px' }}>
+          )
+        })}
 
-              {/* Hour lines + labels */}
-              {hours.map(h => {
-                const topPct = ((h - startHour) / (endHour - startHour)) * 100
-                const topPx  = (topPct / 100) * totalHeightPx
-                return (
-                  <div key={h} style={{ position: 'absolute', left: 0, right: 0, top: topPx }}>
-                    <span style={{
-                      position: 'absolute', left: 6, top: -8,
-                      fontSize: 9, fontWeight: 700, color: 'var(--text-sec)',
-                      fontFamily: 'Monda, sans-serif', letterSpacing: '0.04em',
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`}
-                    </span>
-                    <div style={{
-                      position: 'absolute', left: 48, right: 10, top: 0,
-                      height: 1, background: 'var(--border)', opacity: 0.6,
-                    }} />
-                  </div>
-                )
-              })}
+        {/* Appointment blocks */}
+        {appointments.map(appt => {
+          const topPct = timeToY(appt.startTime)
+          const hPct   = apptHeightPct(appt)
+          const topPx  = (topPct  / 100) * totalHeightPx
+          const hPx    = Math.max(20, (hPct / 100) * totalHeightPx - 2)
+          const color  = STATUS_COLOR[appt.bookingStatus] || 'var(--accent)'
+          const isDone = appt.bookingStatus === 'completed'
 
-              {/* Appointment blocks */}
-              {appointments.map(appt => {
-                const topPct = timeToY(appt.startTime)
-                const hPct   = apptHeightPct(appt)
-                const topPx  = (topPct / 100) * totalHeightPx
-                const hPx    = Math.max(28, (hPct / 100) * totalHeightPx)
-                const color  = STATUS_COLOR[appt.bookingStatus] || 'var(--accent)'
-                const isDone = appt.bookingStatus === 'completed'
-                const isShort = hPx < 52
+          // Adapt content to available height
+          const showServices = hPx >= 44
+          const showTime     = hPx >= 28
+          const bigName      = hPx >= 60
 
-                return (
-                  <button
-                    key={appt.id}
-                    onClick={() => onApptClick(appt)}
-                    style={{
-                      position: 'absolute',
-                      top: topPx + 1,
-                      left: 54,
-                      right: 10,
-                      height: hPx - 2,
-                      borderRadius: 9,
-                      border: `1.5px solid ${color}44`,
-                      borderLeft: `3px solid ${color}`,
-                      background: isDone
-                        ? `${color}12`
-                        : `linear-gradient(135deg, ${color}18 0%, ${color}08 100%)`,
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      padding: isShort ? '0 8px' : '6px 8px',
-                      display: 'flex',
-                      flexDirection: isShort ? 'row' : 'column',
-                      alignItems: isShort ? 'center' : 'flex-start',
-                      gap: isShort ? 6 : 2,
-                      overflow: 'hidden',
-                      ...F,
-                      transition: 'filter 0.15s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
-                    onMouseLeave={e => e.currentTarget.style.filter = 'none'}
-                  >
-                    <span style={{
-                      fontWeight: 700, fontSize: isShort ? 11 : 12,
-                      color: 'var(--text-pri)', whiteSpace: 'nowrap',
-                      overflow: 'hidden', textOverflow: 'ellipsis',
-                      maxWidth: '100%',
-                    }}>
-                      {appt.clientName}
-                    </span>
-                    {!isShort && (
-                      <span style={{
-                        fontSize: 10, color: 'var(--text-sec)',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      }}>
-                        {appt.services?.map(s => s.name).join(', ')}
-                      </span>
-                    )}
-                    <span style={{
-                      fontSize: 10, color, fontWeight: 700,
-                      marginLeft: isShort ? 'auto' : 0, flexShrink: 0,
-                    }}>
-                      {formatTime(appt.startTime)} – {formatTime(appt.endTime)}
-                    </span>
-                  </button>
-                )
-              })}
+          return (
+            <button
+              key={appt.id}
+              onClick={() => onApptClick(appt)}
+              style={{
+                position:'absolute',
+                top: topPx + 1,
+                left: 54,
+                right: 10,
+                height: hPx,
+                borderRadius: 8,
+                border: `1.5px solid ${color}55`,
+                borderLeft: `3px solid ${color}`,
+                background: isDone
+                  ? `${color}14`
+                  : `linear-gradient(135deg,${color}1A 0%,${color}08 100%)`,
+                cursor:'pointer', textAlign:'left',
+                padding: hPx < 28 ? '0 6px' : '4px 7px',
+                display:'flex', flexDirection: hPx < 28 ? 'row' : 'column',
+                alignItems: hPx < 28 ? 'center' : 'flex-start',
+                justifyContent: hPx < 28 ? 'space-between' : 'flex-start',
+                gap: 1, overflow:'hidden', ...F,
+                transition:'filter 0.12s, opacity 0.12s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.filter='brightness(1.12)'}
+              onMouseLeave={e => e.currentTarget.style.filter='none'}
+            >
+              <span style={{
+                fontWeight:700,
+                fontSize: bigName ? 12 : 10,
+                color:'var(--text-pri)',
+                whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                maxWidth:'100%', lineHeight:1.2,
+              }}>
+                {appt.clientName}
+              </span>
 
-              {/* Current time line */}
-              {nowPct !== null && (
-                <div style={{
-                  position: 'absolute',
-                  top: (nowPct / 100) * totalHeightPx,
-                  left: 48, right: 10,
-                  height: 2,
-                  background: '#EF4444',
-                  borderRadius: 2,
-                  zIndex: 10,
-                  boxShadow: '0 0 6px #EF444488',
+              {showServices && (
+                <span style={{
+                  fontSize:9, color:'var(--text-sec)',
+                  whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                  maxWidth:'100%', lineHeight:1.2,
                 }}>
-                  <div style={{
-                    position: 'absolute', left: -5, top: -4,
-                    width: 10, height: 10, borderRadius: '50%',
-                    background: '#EF4444',
-                    boxShadow: '0 0 8px #EF4444AA',
-                  }} />
-                </div>
+                  {appt.services?.map(s => s.name).join(', ')}
+                </span>
               )}
 
-            </div>
-          )}
-        </div>
-      )}
+              {showTime && (
+                <span style={{
+                  fontSize:9, color, fontWeight:700, lineHeight:1.2,
+                  marginTop: showServices ? 'auto' : undefined,
+                }}>
+                  {formatTime(appt.startTime)}–{formatTime(appt.endTime)}
+                </span>
+              )}
+            </button>
+          )
+        })}
+
+        {/* Current time red line */}
+        {nowPct !== null && (
+          <div style={{
+            position:'absolute',
+            top: (nowPct / 100) * totalHeightPx,
+            left:48, right:10,
+            height:2, background:'#EF4444',
+            borderRadius:2, zIndex:10,
+            boxShadow:'0 0 6px #EF444488',
+            pointerEvents:'none',
+          }}>
+            <div style={{
+              position:'absolute', left:-5, top:-4,
+              width:10, height:10, borderRadius:'50%',
+              background:'#EF4444', boxShadow:'0 0 8px #EF4444AA',
+            }}/>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -487,6 +466,7 @@ export default function BarberCalendar() {
   const [cancelReason, setCancelReason] = useState('')
   const [tipAmount, setTipAmount]       = useState('')
   const [updating, setUpdating]         = useState(false)
+  const [calOpen, setCalOpen]           = useState(false)
 
 useEffect(() => {
     if (!user) return
@@ -624,99 +604,92 @@ useEffect(() => {
   return (
     <BarberLayout>
       <div style={{ padding:'16px', maxWidth:560, margin:'0 auto', ...F }}>
-        {/* Month nav */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-          <button onClick={() => setCurrentMonth(m => subMonths(m,1))}
-            style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, width:36, height:36, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-pri)' }}>
-            <ChevronLeft size={18}/>
-          </button>
-          <h2 style={{ color:'var(--text-pri)', fontSize:18, fontWeight:800, margin:0 }}>
-            {format(currentMonth,'MMMM yyyy')}
-          </h2>
-          <button onClick={() => setCurrentMonth(m => addMonths(m,1))}
-            style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, width:36, height:36, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-pri)' }}>
-            <ChevronRight size={18}/>
-          </button>
-        </div>
 
-        {/* Calendar grid */}
-        <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:14, marginBottom:20 }}>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom:6 }}>
-            {['S','M','T','W','T','F','S'].map((d,i) => (
-              <div key={i} style={{ textAlign:'center', fontSize:10, fontWeight:700, color:'var(--text-sec)', padding:'4px 0' }}>{d}</div>
-            ))}
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:3 }}>
-            {calDays.map((date,i) => {
-              const count   = countForDay(date)
-              const inMonth = isSameMonth(date, currentMonth)
-              const sel     = isSameDay(date, selectedDay)
-              const tod     = isToday(date)
-              const isPast  = date < startOfDay(new Date())
-              return (
-                <button key={i} onClick={() => setSelectedDay(date)}
-                  style={{
-                    padding:'8px 2px', borderRadius:10, border:'none', cursor:'pointer',
-                    opacity: !inMonth ? 0.15 : isPast ? 0.4 : 1,
-                    background: sel ? 'var(--accent)' : tod ? 'var(--accent)22' : 'transparent',
-                    display:'flex', flexDirection:'column', alignItems:'center', gap:3,
-                    filter: isPast && !sel ? 'grayscale(0.7)' : 'none',
-                  }}>
-                  <span style={{ fontSize:13, fontWeight:700, color: sel?'var(--accent-inv)': tod?'var(--accent)': isPast?'var(--text-sec)':'var(--text-pri)' }}>
-                    {date.getDate()}
-                  </span>
-                  {count > 0 && inMonth && (
-                    <span style={{ fontSize:9, fontWeight:700, color: sel?'var(--accent-inv)': isPast?'var(--text-sec)':'#22C55E' }}>
-                      {count}
-                    </span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        {/* ── Collapsible Calendar ── */}
+        <div style={{ marginBottom:16 }}>
 
-        {/* Day list */}
-        <h3 style={{ color:'var(--text-pri)', fontSize:16, fontWeight:800, marginBottom:12 }}>
-          {isToday(selectedDay) ? 'Today' : format(selectedDay,'EEE, MMM d')}
-          {dayAppointments.length > 0 && <span style={{ color:'var(--accent)', fontSize:13, fontWeight:600, marginLeft:8 }}>· {dayAppointments.length}</span>}
-        </h3>
-
-        {dayAppointments.length === 0 ? (
-          <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:32, textAlign:'center' }}>
-            <Calendar size={24} style={{ color:'var(--text-sec)', opacity:0.4, margin:'0 auto 8px', display:'block' }}/>
-            <p style={{ color:'var(--text-sec)', margin:0 }}>No appointments</p>
-          </div>
-        ) : dayAppointments.map(appt => (
-          <button key={appt.id} onClick={() => setDetailAppt(appt)}
+          {/* Calendar toggle header */}
+          <button
+            onClick={() => setCalOpen(o => !o)}
             style={{
-              width:'100%', background: appt.bookingStatus==='completed'?'rgba(34,197,94,0.08)':'var(--card)',
-              border: appt.bookingStatus==='completed'?'1px solid rgba(34,197,94,0.25)':'1px solid var(--border)',
-              borderLeft:`3px solid ${appt.bookingStatus==='completed'?'#22C55E': appt.isGuest?'#8B5CF6':'var(--accent)'}`,
-              borderRadius:14, padding:'12px 14px', cursor:'pointer',
-              display:'flex', alignItems:'center', gap:12, textAlign:'left', marginBottom:8, ...F,
-            }}>
-            <div style={{ flexShrink:0, minWidth:44 }}>
-              <p style={{ color:'var(--accent)', fontWeight:700, fontSize:13, margin:0 }}>{formatTime(appt.startTime)}</p>
-              <p style={{ color:'var(--text-sec)', fontSize:11, margin:0 }}>{formatTime(appt.endTime)}</p>
+              width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between',
+              background:'var(--card)', border:'1px solid var(--border)',
+              borderRadius: calOpen ? '14px 14px 0 0' : 14,
+              padding:'12px 16px', cursor:'pointer', ...F,
+            }}
+          >
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <Calendar size={15} style={{ color:'var(--accent)' }}/>
+              <span style={{ color:'var(--text-pri)', fontWeight:800, fontSize:15 }}>
+                {format(currentMonth,'MMMM yyyy')}
+              </span>
+              <span style={{ color:'var(--accent)', fontWeight:700, fontSize:13 }}>
+                · {isToday(selectedDay) ? 'Today' : format(selectedDay,'MMM d')}
+              </span>
             </div>
-            <div style={{ width:1, height:36, background:'var(--border)', flexShrink:0 }}/>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:14, margin:0 }}>{appt.clientName}</p>
-                {appt.isGuest && <span style={{ background:'rgba(139,92,246,0.15)', color:'#7C3AED', fontSize:10, padding:'1px 6px', borderRadius:10, fontWeight:700 }}>Guest</span>}
-                {appt.bookingStatus==='completed' && <span style={{ width:8, height:8, borderRadius:'50%', background:'#22C55E', display:'inline-block' }}/>}
-                {appt.paymentStatus==='paid' && <span style={{ background:'var(--accent)20', color:'var(--accent)', fontSize:10, padding:'1px 6px', borderRadius:10, fontWeight:700 }}>Paid</span>}
-              </div>
-              <p style={{ color:'var(--text-sec)', fontSize:12, margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                {appt.services?.map(s=>s.name).join(', ')}
-              </p>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              {/* Month nav arrows — only visible when open */}
+              {calOpen && (
+                <>
+                  <span onClick={e => { e.stopPropagation(); setCurrentMonth(m => subMonths(m,1)) }}
+                    style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-pri)' }}>
+                    <ChevronLeft size={14}/>
+                  </span>
+                  <span onClick={e => { e.stopPropagation(); setCurrentMonth(m => addMonths(m,1)) }}
+                    style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-pri)' }}>
+                    <ChevronRight size={14}/>
+                  </span>
+                </>
+              )}
+              <ChevronDown size={16} style={{
+                color:'var(--text-sec)',
+                transform: calOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition:'transform 0.25s ease',
+              }}/>
             </div>
-            <p style={{ color:'var(--accent)', fontWeight:800, fontSize:14, flexShrink:0 }}>{formatCurrency(appt.totalPrice)}</p>
           </button>
-        ))}
 
-        {/* ── Timeline View ── */}
+          {/* Calendar grid — collapses */}
+          {calOpen && (
+            <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderTop:'none', borderRadius:'0 0 14px 14px', padding:'10px 14px 14px' }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom:6 }}>
+                {['S','M','T','W','T','F','S'].map((d,i) => (
+                  <div key={i} style={{ textAlign:'center', fontSize:10, fontWeight:700, color:'var(--text-sec)', padding:'4px 0' }}>{d}</div>
+                ))}
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:3 }}>
+                {calDays.map((date,i) => {
+                  const count   = countForDay(date)
+                  const inMonth = isSameMonth(date, currentMonth)
+                  const sel     = isSameDay(date, selectedDay)
+                  const tod     = isToday(date)
+                  const isPast  = date < startOfDay(new Date())
+                  return (
+                    <button key={i} onClick={() => { setSelectedDay(date); setCalOpen(false) }}
+                      style={{
+                        padding:'8px 2px', borderRadius:10, border:'none', cursor:'pointer',
+                        opacity: !inMonth ? 0.15 : isPast ? 0.4 : 1,
+                        background: sel ? 'var(--accent)' : tod ? 'var(--accent)22' : 'transparent',
+                        display:'flex', flexDirection:'column', alignItems:'center', gap:3,
+                        filter: isPast && !sel ? 'grayscale(0.7)' : 'none',
+                      }}>
+                      <span style={{ fontSize:13, fontWeight:700, color: sel?'var(--accent-inv)': tod?'var(--accent)': isPast?'var(--text-sec)':'var(--text-pri)' }}>
+                        {date.getDate()}
+                      </span>
+                      {count > 0 && inMonth && (
+                        <span style={{ fontSize:9, fontWeight:700, color: sel?'var(--accent-inv)': isPast?'var(--text-sec)':'#22C55E' }}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Timeline (always visible) ── */}
         <DayTimeline
           appointments={dayAppointments}
           selectedDay={selectedDay}
