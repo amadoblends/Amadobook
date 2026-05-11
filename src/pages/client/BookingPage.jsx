@@ -1,5 +1,5 @@
 /**
- * BookingPage — iPhone optimized, B&W, working date+time picker
+ * BookingPage — combo-aware service selection + premium time picker
  */
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -13,14 +13,12 @@ import toast from 'react-hot-toast'
 const F = { fontFamily:"'Monda',system-ui,sans-serif" }
 
 const CSS = `
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
-  .fade-up { animation: fadeUp 0.25s ease both; }
-
+  @keyframes spin  { to { transform: rotate(360deg); } }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes shimmer { 0% { opacity:1; } 50% { opacity:0.6; } 100% { opacity:1; } }
+  .fade-up  { animation: fadeUp 0.22s ease both; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   button { touch-action:manipulation; }
-
-  /* iPhone: font-size ≥16px prevents zoom on input focus */
   input, select, textarea { font-size:16px !important; font-family:'Monda',system-ui,sans-serif; }
 
   .field-label {
@@ -33,7 +31,7 @@ const CSS = `
     padding:10px 0 8px; font-size:16px; outline:none;
     transition:border-color 0.2s;
   }
-  .field-input:focus { border-bottom-color:#0A0A0A; }
+  .field-input:focus  { border-bottom-color:#0A0A0A; }
   .field-input::placeholder { color:#C0C0C0; }
   .field-wrap { margin-bottom:20px; }
 
@@ -46,14 +44,22 @@ const CSS = `
     -webkit-appearance:none;
   }
   .btn-primary:disabled { opacity:0.35; cursor:not-allowed; }
-  .btn-primary:active { opacity:0.85; }
-  .btn-outline {
-    width:100%; background:transparent; color:#0A0A0A;
-    border:1.5px solid #E0E0E0; border-radius:22px; padding:16px 24px;
-    font-size:15px; font-weight:600; cursor:pointer;
-    display:flex; align-items:center; justify-content:center; gap:8px;
+  .btn-primary:active   { opacity:0.85; }
+
+  .time-slot-btn {
+    padding:13px 4px; border-radius:12px;
+    border:1.5px solid #E5E5E5;
+    background:#fff; color:#333;
+    font-weight:700; font-size:13px; cursor:pointer;
     font-family:'Monda',system-ui,sans-serif;
+    transition:all 0.15s;
   }
+  .time-slot-btn:hover  { border-color:#999; }
+  .time-slot-btn.active {
+    background:#0A0A0A; color:#fff; border-color:#0A0A0A;
+  }
+  .svc-card-btn { transition: all 0.15s; }
+  .svc-card-btn:active { transform: scale(0.98); }
 `
 
 // ── Icons ─────────────────────────────────────────────────────────────────
@@ -78,7 +84,6 @@ const ClockIcon = () => (
   </svg>
 )
 
-// ── Step dots ─────────────────────────────────────────────────────────────
 function StepDots({ step, total = 4 }) {
   return (
     <div style={{ display:'flex', gap:5 }}>
@@ -89,29 +94,89 @@ function StepDots({ step, total = 4 }) {
   )
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────
+/**
+ * Check if a combo already includes this service/extra by matching name keywords.
+ * More robust: barbers can add `includesIds` array on combos in Firestore.
+ */
+function comboIncludes(combo, svc) {
+  if (!combo) return false
+  // 1) explicit includesIds field
+  if (Array.isArray(combo.includesIds) && combo.includesIds.includes(svc.id)) return true
+  // 2) name match inside description or combo name (lowercase)
+  const haystack = `${combo.name} ${combo.description || ''}`.toLowerCase()
+  const needle   = svc.name.toLowerCase()
+  return haystack.includes(needle)
+}
+
+function calcSinglesTotalForCombo(combo, allSingles, allExtras) {
+  // Find which singles/extras are mentioned in the combo, sum their prices
+  const all = [...allSingles, ...allExtras]
+  const included = all.filter(s => comboIncludes(combo, s))
+  return included.reduce((sum, s) => sum + (s.price || 0), 0)
+}
+
 // ── Service card ──────────────────────────────────────────────────────────
-function SvcCard({ svc, selected, onClick, disabled }) {
+function SvcCard({ svc, selected, onClick, disabled, tag, tagColor, saveBadge }) {
+  const isIncluded = tag === 'included'
   return (
-    <button onClick={onClick} disabled={disabled} style={{
-      width:'100%', textAlign:'left', cursor:disabled?'not-allowed':'pointer',
-      background: selected ? '#0A0A0A' : '#F7F7F7',
-      border: `1.5px solid ${selected?'#0A0A0A':'#E8E8E8'}`,
-      borderRadius:16, padding:'14px 16px', marginBottom:10,
-      opacity:disabled?0.3:1, display:'flex', alignItems:'center',
-      justifyContent:'space-between', transition:'all 0.15s', ...F,
-    }}>
+    <button
+      className="svc-card-btn"
+      onClick={onClick}
+      disabled={disabled || isIncluded}
+      style={{
+        width:'100%', textAlign:'left',
+        cursor: isIncluded ? 'default' : disabled ? 'not-allowed' : 'pointer',
+        background: selected ? '#0A0A0A' : isIncluded ? '#F0F0F0' : '#F7F7F7',
+        border: `1.5px solid ${selected ? '#0A0A0A' : isIncluded ? '#DDD' : '#E8E8E8'}`,
+        borderRadius:16, padding:'14px 16px', marginBottom:10,
+        opacity: disabled && !isIncluded ? 0.28 : 1,
+        display:'flex', alignItems:'flex-start',
+        justifyContent:'space-between',
+        ...F,
+        position:'relative', overflow:'hidden',
+      }}
+    >
+      {/* Save badge on combos */}
+      {saveBadge > 0 && (
+        <div style={{
+          position:'absolute', top:10, right:50,
+          background:'#16A34A', color:'#fff',
+          fontSize:9, fontWeight:800, padding:'2px 7px',
+          borderRadius:20, letterSpacing:'0.04em',
+        }}>
+          SAVE {formatCurrency(saveBadge)}
+        </div>
+      )}
+
       <div style={{ flex:1, minWidth:0 }}>
-        <p style={{ color:selected?'#fff':'#0A0A0A', fontWeight:700, fontSize:15, margin:'0 0 3px' }}>{svc.name}</p>
-        <p style={{ color:selected?'rgba(255,255,255,0.6)':'#888', fontSize:12, margin:0, display:'flex', alignItems:'center', gap:4 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:3 }}>
+          <p style={{ color:selected?'#fff': isIncluded?'#999':'#0A0A0A', fontWeight:700, fontSize:15, margin:0 }}>{svc.name}</p>
+          {tag && (
+            <span style={{
+              fontSize:9, fontWeight:800, padding:'2px 6px', borderRadius:20,
+              letterSpacing:'0.05em',
+              background: isIncluded ? '#E0E0E0' : `${tagColor}18`,
+              color:       isIncluded ? '#888'    : tagColor,
+            }}>
+              {tag === 'included' ? '✓ INCLUDED' : tag.toUpperCase()}
+            </span>
+          )}
+        </div>
+        <p style={{ color:selected?'rgba(255,255,255,0.55)': isIncluded?'#bbb':'#888', fontSize:12, margin:0, display:'flex', alignItems:'center', gap:4 }}>
           <ClockIcon/>{formatDuration(svc.duration)}
           {svc.description && ` · ${svc.description}`}
         </p>
       </div>
-      <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0, marginLeft:12 }}>
-        <p style={{ color:selected?'#fff':'#0A0A0A', fontWeight:900, fontSize:16 }}>{formatCurrency(svc.price)}</p>
-        <div style={{ width:22, height:22, borderRadius:'50%', border:`2px solid ${selected?'rgba(255,255,255,0.6)':'#CCC'}`, background:selected?'rgba(255,255,255,0.2)':'transparent', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          {selected && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>}
-        </div>
+      <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0, marginLeft:12, paddingTop:2 }}>
+        <p style={{ color:selected?'#fff': isIncluded?'#bbb':'#0A0A0A', fontWeight:900, fontSize:16, margin:0, textDecoration: isIncluded?'line-through':undefined }}>
+          {formatCurrency(svc.price)}
+        </p>
+        {!isIncluded && (
+          <div style={{ width:22, height:22, borderRadius:'50%', border:`2px solid ${selected?'rgba(255,255,255,0.5)':'#CCC'}`, background:selected?'rgba(255,255,255,0.15)':'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            {selected && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>}
+          </div>
+        )}
       </div>
     </button>
   )
@@ -120,17 +185,17 @@ function SvcCard({ svc, selected, onClick, disabled }) {
 // ── Date strip ────────────────────────────────────────────────────────────
 function DateStrip({ availability, barberAppts, duration, selected, onSelect }) {
   const [page, setPage] = useState(0)
-  const today    = startOfDay(new Date())
-  const advance  = availability?.advanceDays || 30
-  const allDays  = Array.from({length:advance}, (_,i) => addDays(today,i))
-  const perPage  = 7
-  const maxPage  = Math.ceil(allDays.length / perPage) - 1
-  const visible  = allDays.slice(page*perPage, (page+1)*perPage)
+  const today   = startOfDay(new Date())
+  const advance = availability?.advanceDays || 30
+  const allDays = Array.from({length:advance}, (_,i) => addDays(today,i))
+  const perPage = 7
+  const maxPage = Math.ceil(allDays.length / perPage) - 1
+  const visible = allDays.slice(page*perPage, (page+1)*perPage)
 
   function slotCount(date) {
     const dayIdx = date.getDay()
     const ds = availability?.schedule?.[dayIdx] ?? {
-      enabled: (availability?.workingDays||[1,2,3,4,5,6]).includes(dayIdx),
+      enabled:   (availability?.workingDays||[1,2,3,4,5,6]).includes(dayIdx),
       startTime: availability?.startTime||'09:00',
       endTime:   availability?.endTime  ||'18:00',
       breaks:    availability?.breaks   ||[],
@@ -144,17 +209,13 @@ function DateStrip({ availability, barberAppts, duration, selected, onSelect }) 
     let slots = generateTimeSlots(ds.startTime, ds.endTime, duration, ds.breaks||[], existing)
     if (isSameDay(date, new Date())) {
       const nm = new Date().getHours()*60 + new Date().getMinutes() + 15
-      slots = slots.filter(sl => {
-        const [h,m] = sl.startTime.split(':').map(Number)
-        return h*60+m > nm
-      })
+      slots = slots.filter(sl => { const [h,m]=sl.startTime.split(':').map(Number); return h*60+m>nm })
     }
     return slots.length
   }
 
   return (
     <div>
-      {/* Week nav */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
         <button onClick={()=>setPage(p=>Math.max(0,p-1))} disabled={page===0}
           style={{ background:page===0?'#F0F0F0':'#0A0A0A', border:'none', borderRadius:9, width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', cursor:page===0?'not-allowed':'pointer', color:page===0?'#CCC':'#fff', opacity:page===0?0.4:1 }}>
@@ -168,8 +229,6 @@ function DateStrip({ availability, barberAppts, duration, selected, onSelect }) 
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
         </button>
       </div>
-
-      {/* Day buttons */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:5 }}>
         {visible.map((date,i) => {
           const count = slotCount(date)
@@ -200,25 +259,27 @@ export default function BookingPage() {
   const [step, setStep]         = useState(0)
   const [barber, setBarber]     = useState(null)
   const [services, setServices] = useState([])
-  const [availability, setAvailability] = useState(null)
-  const [barberAppts, setBarberAppts]   = useState([])
+  const [availability, setAvailability]   = useState(null)
+  const [barberAppts, setBarberAppts]     = useState([])
   const [loading, setLoading]   = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
   const [selectedServices, setSelectedServices] = useState([])
-  const [selectedDate, setSelectedDate]         = useState(null)
-  const [selectedSlot, setSelectedSlot]         = useState(null)
-  const [availableSlots, setAvailableSlots]     = useState([])
-  const [name, setName]   = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
+  const [selectedDate, setSelectedDate]   = useState(null)
+  const [selectedSlot, setSelectedSlot]   = useState(null)
+  const [availableSlots, setAvailableSlots] = useState([])
+  const [name, setName]     = useState('')
+  const [email, setEmail]   = useState('')
+  const [phone, setPhone]   = useState('')
   const [payMethod, setPayMethod] = useState('cash')
-  const [guestMode, setGuestMode] = useState(!!user) // if logged in, skip guest prompt
+  const [guestMode, setGuestMode] = useState(!!user)
 
   const totalDuration = selectedServices.reduce((s,v)=>s+(v.duration||0),0)
   const totalPrice    = selectedServices.reduce((s,v)=>s+(v.price||0),0)
 
-  // Load barber data once
+  const activeCombo = selectedServices.find(s=>s.serviceType==='combo') || null
+  const hasCombo    = !!activeCombo
+
   useEffect(() => {
     async function load() {
       try {
@@ -241,7 +302,6 @@ export default function BookingPage() {
     load()
   }, [barberSlug])
 
-  // Prefill user info
   useEffect(() => {
     if (user && userData) {
       setName(`${userData.firstName||''} ${userData.lastName||''}`.trim())
@@ -251,18 +311,17 @@ export default function BookingPage() {
     }
   }, [user?.uid])
 
-  // Compute slots when date changes
   useEffect(() => {
     if (!selectedDate || !availability || totalDuration===0) { setAvailableSlots([]); return }
     const dayIdx = selectedDate.getDay()
     const ds = availability.schedule?.[dayIdx] ?? {
-      enabled: (availability.workingDays||[1,2,3,4,5,6]).includes(dayIdx),
+      enabled:   (availability.workingDays||[1,2,3,4,5,6]).includes(dayIdx),
       startTime: availability.startTime||'09:00',
       endTime:   availability.endTime  ||'18:00',
       breaks:    availability.breaks   ||[],
     }
     if (!ds.enabled) { setAvailableSlots([]); return }
-    const dateStr = format(selectedDate,'yyyy-MM-dd')
+    const dateStr  = format(selectedDate,'yyyy-MM-dd')
     const existing = barberAppts
       .filter(a=>a.date===dateStr&&a.bookingStatus!=='cancelled')
       .map(a=>({startTime:a.startTime,endTime:a.endTime}))
@@ -277,10 +336,19 @@ export default function BookingPage() {
 
   function toggleService(svc) {
     if (svc.serviceType==='combo') {
-      setSelectedServices(p=>p.find(s=>s.id===svc.id)?[]:[svc])
+      // Toggle combo — clears everything else
+      setSelectedServices(p => p.find(s=>s.id===svc.id) ? [] : [svc])
+    } else if (svc.serviceType==='extra') {
+      // Extras: toggleable freely
+      setSelectedServices(p =>
+        p.find(s=>s.id===svc.id) ? p.filter(s=>s.id!==svc.id) : [...p, svc]
+      )
     } else {
-      if (selectedServices.some(s=>s.serviceType==='combo')) return
-      setSelectedServices(p=>p.find(s=>s.id===svc.id)?p.filter(s=>s.id!==svc.id):[...p,svc])
+      // Singles: only if no combo active
+      if (hasCombo) return
+      setSelectedServices(p =>
+        p.find(s=>s.id===svc.id) ? p.filter(s=>s.id!==svc.id) : [...p, svc]
+      )
     }
   }
 
@@ -329,16 +397,16 @@ export default function BookingPage() {
     <div style={{ minHeight:'100dvh', background:'#fff', display:'flex', flexDirection:'column', ...F }}>
       <style>{CSS}</style>
 
-      {/* ── Header ── always black ── */}
+      {/* ── Header ── */}
       <div style={{ position:'sticky', top:0, zIndex:20, background:'#0A0A0A', padding:'14px 20px', paddingTop:'max(14px, env(safe-area-inset-top))' }}>
         <div style={{ maxWidth:480, margin:'0 auto', display:'flex', alignItems:'center', gap:14 }}>
           <button
             onClick={() => step>0 ? setStep(s=>s-1) : navigate(user?`/b/${barberSlug}/dashboard`:`/b/${barberSlug}`)}
-            style={{ background:'rgba(255,255,255,0.12)', border:'none', borderRadius:10, width:38, height:38, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#fff', flexShrink:0 }}>
+            style={{ background:'rgba(255,255,255,0.1)', border:'none', borderRadius:10, width:38, height:38, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#fff', flexShrink:0 }}>
             <BackIcon/>
           </button>
           <div style={{ flex:1 }}>
-            <p style={{ color:'rgba(255,255,255,0.45)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', margin:'0 0 6px' }}>
+            <p style={{ color:'rgba(255,255,255,0.4)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', margin:'0 0 6px' }}>
               {['SELECT SERVICE','PICK DATE & TIME','YOUR INFO','CONFIRM'][step]}
             </p>
             <StepDots step={step}/>
@@ -350,46 +418,97 @@ export default function BookingPage() {
       </div>
 
       {/* ── Content ── */}
-      <div className="fade-up" style={{ flex:1, padding:'28px 20px 140px', maxWidth:480, width:'100%', alignSelf:'center', boxSizing:'border-box' }}>
+      <div className="fade-up" key={step} style={{ flex:1, padding:'26px 20px 140px', maxWidth:480, width:'100%', alignSelf:'center', boxSizing:'border-box' }}>
 
-        {/* STEP 0 — Services */}
+        {/* ──────────────── STEP 0 — Services ──────────────── */}
         {step===0 && (
           <div>
-            <h2 style={{ color:'#0A0A0A', fontSize:24, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.3px' }}>
-              Choose a service
-            </h2>
-            <p style={{ color:'#888', fontSize:14, margin:'0 0 22px' }}>Select what you need</p>
+            <h2 style={{ color:'#0A0A0A', fontSize:24, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.3px' }}>Choose a service</h2>
+            <p style={{ color:'#888', fontSize:14, margin:'0 0 24px' }}>Select what you need</p>
 
+            {/* Combos */}
             {combos.length>0 && (
-              <div style={{ marginBottom:16 }}>
+              <div style={{ marginBottom:20 }}>
                 <p style={{ color:'#888', fontSize:10, fontWeight:700, letterSpacing:'0.1em', marginBottom:10 }}>COMBOS</p>
-                {combos.map(s=><SvcCard key={s.id} svc={s} selected={!!selectedServices.find(sv=>sv.id===s.id)} onClick={()=>toggleService(s)}/>)}
+                {combos.map(s => {
+                  const singlesTotal = calcSinglesTotalForCombo(s, singles, extras)
+                  const saving = singlesTotal > s.price ? singlesTotal - s.price : 0
+                  return (
+                    <SvcCard key={s.id} svc={s}
+                      selected={!!selectedServices.find(sv=>sv.id===s.id)}
+                      onClick={()=>toggleService(s)}
+                      saveBadge={saving}
+                    />
+                  )
+                })}
               </div>
             )}
+
+            {/* Singles */}
             {singles.length>0 && (
-              <div style={{ marginBottom:16 }}>
+              <div style={{ marginBottom:20 }}>
                 {combos.length>0 && <p style={{ color:'#888', fontSize:10, fontWeight:700, letterSpacing:'0.1em', marginBottom:10 }}>SERVICES</p>}
-                {singles.map(s=><SvcCard key={s.id} svc={s} selected={!!selectedServices.find(sv=>sv.id===s.id)} onClick={()=>toggleService(s)} disabled={selectedServices.some(x=>x.serviceType==='combo')}/>)}
+                {singles.map(s => {
+                  const included = hasCombo && comboIncludes(activeCombo, s)
+                  const blocked  = hasCombo && !included
+                  return (
+                    <SvcCard key={s.id} svc={s}
+                      selected={!!selectedServices.find(sv=>sv.id===s.id)}
+                      onClick={()=>toggleService(s)}
+                      disabled={blocked}
+                      tag={included ? 'included' : undefined}
+                    />
+                  )
+                })}
+                {hasCombo && (
+                  <p style={{ color:'#aaa', fontSize:12, marginTop:6, fontStyle:'italic' }}>
+                    Deselect the combo to pick individual services.
+                  </p>
+                )}
               </div>
             )}
+
+            {/* Extras / Add-ons — shown whenever there's a selection */}
             {extras.length>0 && selectedServices.length>0 && (
               <div>
                 <p style={{ color:'#888', fontSize:10, fontWeight:700, letterSpacing:'0.1em', marginBottom:10 }}>ADD-ONS</p>
-                {extras.map(s=><SvcCard key={s.id} svc={s} selected={!!selectedServices.find(sv=>sv.id===s.id)} onClick={()=>toggleService(s)}/>)}
+                {extras.map(s => {
+                  const included = hasCombo && comboIncludes(activeCombo, s)
+                  return (
+                    <SvcCard key={s.id} svc={s}
+                      selected={!!selectedServices.find(sv=>sv.id===s.id)}
+                      onClick={()=>toggleService(s)}
+                      disabled={false}
+                      tag={included ? 'included' : undefined}
+                    />
+                  )
+                })}
               </div>
             )}
           </div>
         )}
 
-        {/* STEP 1 — Date & Time */}
+        {/* ──────────────── STEP 1 — Date & Time ──────────────── */}
         {step===1 && (
           <div>
-            <h2 style={{ color:'#0A0A0A', fontSize:24, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.3px' }}>
-              Pick a date & time
-            </h2>
+            <h2 style={{ color:'#0A0A0A', fontSize:24, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.3px' }}>Pick a date & time</h2>
             <p style={{ color:'#888', fontSize:14, margin:'0 0 22px' }}>
               Numbers = available slots for {formatDuration(totalDuration)}
             </p>
+
+            {/* Selected slot banner — shown ABOVE the date grid */}
+            {selectedSlot && selectedDate && (
+              <div style={{ background:'#0A0A0A', borderRadius:16, padding:'14px 18px', marginBottom:18, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div>
+                  <p style={{ color:'rgba(255,255,255,0.45)', fontSize:10, fontWeight:700, letterSpacing:'0.09em', margin:'0 0 3px' }}>SELECTED TIME</p>
+                  <p style={{ color:'#fff', fontWeight:900, fontSize:20, margin:0, letterSpacing:'-0.5px' }}>{selectedSlot.startTime} – {selectedSlot.endTime}</p>
+                </div>
+                <div style={{ textAlign:'right' }}>
+                  <p style={{ color:'rgba(255,255,255,0.45)', fontSize:10, fontWeight:700, letterSpacing:'0.09em', margin:'0 0 3px' }}>DATE</p>
+                  <p style={{ color:'#fff', fontWeight:700, fontSize:14, margin:0 }}>{format(selectedDate,'EEE, MMM d')}</p>
+                </div>
+              </div>
+            )}
 
             {/* Date strip */}
             <div style={{ background:'#F7F7F7', borderRadius:18, padding:16, marginBottom:20 }}>
@@ -415,25 +534,13 @@ export default function BookingPage() {
                   </div>
                 ) : (
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
-                    {availableSlots.map(slot => {
-                      const isSel = selectedSlot?.startTime===slot.startTime
-                      return (
-                        <button key={slot.startTime} onClick={()=>setSelectedSlot(slot)}
-                          style={{ padding:'14px 2px', borderRadius:13, border:`1.5px solid ${isSel?'#0A0A0A':'#E5E5E5'}`, background:isSel?'#0A0A0A':'#fff', color:isSel?'#fff':'#333', fontWeight:700, fontSize:13, cursor:'pointer', ...F, transition:'all 0.15s' }}>
-                          {slot.startTime}
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {selectedSlot && (
-                  <div style={{ marginTop:14, background:'#F0F0F0', borderRadius:13, padding:'12px 16px', display:'flex', alignItems:'center', gap:10 }}>
-                    <ClockIcon/>
-                    <div>
-                      <p style={{ color:'#0A0A0A', fontWeight:800, fontSize:15, margin:0 }}>{selectedSlot.startTime} – {selectedSlot.endTime}</p>
-                      <p style={{ color:'#888', fontSize:12, margin:0 }}>{format(selectedDate,'MMMM d, yyyy')}</p>
-                    </div>
+                    {availableSlots.map(slot => (
+                      <button key={slot.startTime}
+                        className={`time-slot-btn${selectedSlot?.startTime===slot.startTime?' active':''}`}
+                        onClick={()=>setSelectedSlot(slot)}>
+                        {slot.startTime}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -445,41 +552,32 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* STEP 2 — Info */}
+        {/* ──────────────── STEP 2 — Info ──────────────── */}
         {step===2 && (
           <div>
             <h2 style={{ color:'#0A0A0A', fontSize:24, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.3px' }}>Your info</h2>
             <p style={{ color:'#888', fontSize:14, margin:'0 0 24px' }}>How we'll confirm your appointment</p>
 
             {user ? (
-              /* Logged in */
-              <div style={{ background:'#F0FFF4', border:'1px solid #BBF7D0', borderRadius:14, padding:'14px 16px', marginBottom:20 }}>
-                <p style={{ color:'#16A34A', fontWeight:800, fontSize:14, margin:'0 0 2px' }}>Signed in ✓</p>
+              <div style={{ background:'#F7F7F7', border:'1px solid #E5E5E5', borderRadius:14, padding:'14px 16px', marginBottom:20 }}>
+                <p style={{ color:'#0A0A0A', fontWeight:800, fontSize:14, margin:'0 0 2px' }}>Signed in ✓</p>
                 <p style={{ color:'#555', fontSize:13, margin:0 }}>{userData?.firstName} {userData?.lastName}</p>
               </div>
             ) : !guestMode ? (
-              /* Choose auth or guest */
               <div style={{ background:'#F7F7F7', border:'1px solid #E5E5E5', borderRadius:18, padding:'20px', marginBottom:16 }}>
                 <p style={{ color:'#0A0A0A', fontWeight:700, fontSize:16, margin:'0 0 6px' }}>Want reminders?</p>
                 <p style={{ color:'#888', fontSize:14, margin:'0 0 18px' }}>Sign in to track history and get booking reminders.</p>
-                <button className="btn-primary" onClick={()=>navigate(`/b/${barberSlug}/auth`)} style={{ marginBottom:10 }}>
-                  Sign In / Sign Up
-                </button>
-                <button className="btn-outline" onClick={()=>setGuestMode(true)}>
+                <button className="btn-primary" onClick={()=>navigate(`/b/${barberSlug}/auth`)} style={{ marginBottom:10 }}>Sign In / Sign Up</button>
+                <button style={{ width:'100%', background:'transparent', color:'#0A0A0A', border:'1.5px solid #E0E0E0', borderRadius:22, padding:'16px 24px', fontSize:15, fontWeight:600, cursor:'pointer', ...F }} onClick={()=>setGuestMode(true)}>
                   Continue as Guest
                 </button>
               </div>
             ) : (
-              /* Guest / user form */
               <div>
-                {!user && (
-                  <p style={{ color:'#888', fontSize:12, margin:'0 0 18px', display:'flex', alignItems:'center', gap:5 }}>
-                    Guest — info used for this booking only
-                  </p>
-                )}
+                {!user && <p style={{ color:'#999', fontSize:12, margin:'0 0 18px' }}>Guest — info used for this booking only</p>}
                 <div className="field-wrap">
                   <label className="field-label">Full Name</label>
-                  <input className="field-input" value={name} onChange={e=>setName(e.target.value)} placeholder="Angelo Ferreras" autoComplete="name"/>
+                  <input className="field-input" value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" autoComplete="name"/>
                 </div>
                 <div className="field-wrap">
                   <label className="field-label">Email</label>
@@ -492,7 +590,6 @@ export default function BookingPage() {
               </div>
             )}
 
-            {/* Payment */}
             {(user || guestMode) && (
               <div style={{ marginTop:24 }}>
                 <p style={{ color:'#888', fontSize:10, fontWeight:700, letterSpacing:'0.09em', marginBottom:12 }}>PAYMENT METHOD</p>
@@ -509,41 +606,44 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* STEP 3 — Confirm */}
+        {/* ──────────────── STEP 3 — Confirm ──────────────── */}
         {step===3 && (
           <div>
             <h2 style={{ color:'#0A0A0A', fontSize:24, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.3px' }}>Confirm</h2>
             <p style={{ color:'#888', fontSize:14, margin:'0 0 22px' }}>Review your appointment</p>
 
-            <div style={{ background:'#F7F7F7', border:'1px solid #E5E5E5', borderRadius:18, padding:'18px', marginBottom:12 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #E8E8E8' }}>
-                <span style={{ color:'#888', fontSize:14 }}>Date</span>
-                <span style={{ color:'#0A0A0A', fontWeight:700 }}>{selectedDate && format(selectedDate,'EEE, MMM d, yyyy')}</span>
+            {/* Time summary — prominent at top */}
+            <div style={{ background:'#0A0A0A', borderRadius:16, padding:'16px 20px', marginBottom:12, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <p style={{ color:'rgba(255,255,255,0.4)', fontSize:10, fontWeight:700, letterSpacing:'0.09em', margin:'0 0 4px' }}>DATE & TIME</p>
+                <p style={{ color:'#fff', fontWeight:900, fontSize:18, margin:'0 0 2px', letterSpacing:'-0.3px' }}>
+                  {selectedSlot?.startTime} – {selectedSlot?.endTime}
+                </p>
+                <p style={{ color:'rgba(255,255,255,0.5)', fontSize:13, margin:0 }}>
+                  {selectedDate && format(selectedDate,'EEEE, MMMM d, yyyy')}
+                </p>
               </div>
-              <div style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #E8E8E8' }}>
-                <span style={{ color:'#888', fontSize:14 }}>Time</span>
-                <span style={{ color:'#0A0A0A', fontWeight:700 }}>{selectedSlot?.startTime} – {selectedSlot?.endTime}</span>
+              <div style={{ textAlign:'right' }}>
+                <p style={{ color:'rgba(255,255,255,0.4)', fontSize:10, fontWeight:700, letterSpacing:'0.09em', margin:'0 0 4px' }}>DURATION</p>
+                <p style={{ color:'#fff', fontWeight:700, fontSize:15, margin:0 }}>{formatDuration(totalDuration)}</p>
               </div>
-              <div style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #E8E8E8' }}>
-                <span style={{ color:'#888', fontSize:14 }}>Duration</span>
-                <span style={{ color:'#0A0A0A', fontWeight:700 }}>{formatDuration(totalDuration)}</span>
-              </div>
-              <div style={{ height:1, background:'#E0E0E0', margin:'8px 0' }}/>
+            </div>
+
+            <div style={{ background:'#F7F7F7', border:'1px solid #E5E5E5', borderRadius:18, padding:'16px 18px', marginBottom:12 }}>
               {selectedServices.map(s=>(
-                <div key={s.id} style={{ display:'flex', justifyContent:'space-between', padding:'6px 0' }}>
+                <div key={s.id} style={{ display:'flex', justifyContent:'space-between', padding:'7px 0', borderBottom:'1px solid #ECECEC' }}>
                   <span style={{ color:'#333', fontSize:14 }}>{s.name}</span>
                   <span style={{ color:'#0A0A0A', fontWeight:700 }}>{formatCurrency(s.price)}</span>
                 </div>
               ))}
-              <div style={{ height:1, background:'#E0E0E0', margin:'8px 0' }}/>
-              <div style={{ display:'flex', justifyContent:'space-between', padding:'6px 0' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', padding:'10px 0 0' }}>
                 <span style={{ color:'#0A0A0A', fontWeight:800, fontSize:17 }}>Total</span>
                 <span style={{ color:'#0A0A0A', fontWeight:900, fontSize:20 }}>{formatCurrency(totalPrice)}</span>
               </div>
             </div>
 
             <div style={{ background:'#F7F7F7', border:'1px solid #E5E5E5', borderRadius:14, padding:'12px 16px', marginBottom:12 }}>
-              <p style={{ color:'#888', fontSize:11, margin:'0 0 3px' }}>CLIENT</p>
+              <p style={{ color:'#999', fontSize:11, margin:'0 0 3px' }}>CLIENT</p>
               <p style={{ color:'#0A0A0A', fontWeight:700, margin:'0 0 2px' }}>
                 {user ? `${userData?.firstName} ${userData?.lastName}` : name}
               </p>
@@ -553,7 +653,7 @@ export default function BookingPage() {
         )}
       </div>
 
-      {/* ── Fixed bottom button ── */}
+      {/* ── Fixed bottom CTA ── */}
       <div style={{ position:'fixed', bottom:0, left:0, right:0, padding:'16px 20px', paddingBottom:'max(24px,env(safe-area-inset-bottom))', background:'linear-gradient(to top,#fff 75%,transparent)', zIndex:30 }}>
         <div style={{ maxWidth:480, margin:'0 auto' }}>
           {step<3 ? (
@@ -569,7 +669,7 @@ export default function BookingPage() {
           ) : (
             <button className="btn-primary" onClick={submit} disabled={submitting}>
               {submitting
-                ? <div style={{width:18,height:18,border:'2.5px solid rgba(255,255,255,0.4)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin 0.75s linear infinite'}}/>
+                ? <div style={{ width:18, height:18, border:'2.5px solid rgba(255,255,255,0.4)', borderTopColor:'#fff', borderRadius:'50%', animation:'spin 0.75s linear infinite' }}/>
                 : <CheckIcon/>}
               {submitting?'Booking…':'Confirm Appointment'}
             </button>

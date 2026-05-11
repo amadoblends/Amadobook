@@ -1,10 +1,8 @@
 import { useEffect, useState, useRef } from 'react'
-// ✅ UNIFICADO: Todo lo de Firestore en una sola línea y sin repeticiones
 import { 
   collection, query, where, getDocs, 
   doc, updateDoc, onSnapshot 
 } from 'firebase/firestore'
-
 import { storage, db } from '../../lib/firebase'
 import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { useClientAuth as useAuth } from '../../hooks/useClientAuth'
@@ -25,10 +23,20 @@ import PhoneInput from '../../components/ui/PhoneInput'
 import { 
   Scissors, User, X, Navigation, RefreshCw, 
   ChevronLeft, ChevronRight, Bell, ArrowLeft, 
-  Check, DollarSign, Calendar, Clock 
+  Check, DollarSign, Calendar, Clock, Sparkles
 } from 'lucide-react'
+
 const F  = { fontFamily:'Monda,sans-serif' }
-const SC = { pending:'#f59e0b', confirmed:'#16A34A', completed:'#3b82f6', cancelled:'#ef4444' }
+const SC = { pending:'#f59e0b', confirmed:'#ffffff', completed:'#22C55E', cancelled:'#ef4444' }
+
+const STYLES = `
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+  .fade-up { animation: fadeUp 0.3s ease both; }
+  .appt-hover:hover { filter: brightness(1.05); }
+  .btn-hover:hover { opacity: 0.85; }
+`
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -51,12 +59,10 @@ function NotifBell({ userId, onOpen }) {
     return () => clearInterval(iv)
   }, [userId])
   return (
-    <button onClick={onOpen} style={{ position:'relative', background:'none', border:'none', cursor:'pointer', padding:6, color:'var(--text-sec)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <Bell size={20}/>
+    <button onClick={onOpen} style={{ position:'relative', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, cursor:'pointer', padding:'8px 9px', color:'#888', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s' }}>
+      <Bell size={18} strokeWidth={1.5}/>
       {count > 0 && (
-        <div style={{ position:'absolute', top:2, right:2, width:16, height:16, borderRadius:'50%', background:'var(--accent)', color:'white', fontSize:9, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          {count > 9 ? '9+' : count}
-        </div>
+        <div style={{ position:'absolute', top:4, right:4, width:8, height:8, borderRadius:'50%', background:'#fff', border:'1.5px solid var(--bg)' }}/>
       )}
     </button>
   )
@@ -67,7 +73,6 @@ function NotificationsPanel({ userId, onClose }) {
   const [notifs, setNotifs] = useState([])
   const [loading, setLoading] = useState(true)
   const typeIcon = { broadcast:'📢', reschedule:'📅', cancel:'❌', booking:'✅', system:'ℹ️' }
-  const typeColor = { broadcast:'#3b82f6', reschedule:'#f59e0b', cancel:'#ef4444', booking:'#16A34A', system:'#8b5cf6' }
 
   useEffect(() => {
     if (!userId) return
@@ -77,37 +82,35 @@ function NotificationsPanel({ userId, onClose }) {
           .sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))
         setNotifs(all)
         setLoading(false)
-        // Mark all as read
         snap.docs.filter(d=>!d.data().read).forEach(d => updateDoc(doc(db,'notifications',d.id),{read:true}))
       })
   }, [userId])
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:60, background:'rgba(0,0,0,0.7)' }} onClick={onClose}>
-      <div style={{ position:'absolute', top:0, right:0, bottom:0, width:Math.min(320, window.innerWidth), background:'var(--surface)', borderLeft:'1px solid var(--border)', display:'flex', flexDirection:'column' }} onClick={e=>e.stopPropagation()}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
-          <p style={{ color:'var(--text-pri)', fontWeight:800, fontSize:17, margin:0, ...F }}>Notifications</p>
-          <button onClick={onClose} style={{ background:'none', border:'none', color:'var(--text-sec)', cursor:'pointer' }}><X size={18}/></button>
+    <div style={{ position:'fixed', inset:0, zIndex:60, background:'rgba(0,0,0,0.85)' }} onClick={onClose}>
+      <div style={{ position:'absolute', top:0, right:0, bottom:0, width:Math.min(320, window.innerWidth), background:'#111', borderLeft:'1px solid #222', display:'flex', flexDirection:'column' }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px', borderBottom:'1px solid #222', flexShrink:0 }}>
+          <p style={{ color:'#fff', fontWeight:800, fontSize:16, margin:0, ...F }}>Notifications</p>
+          <button onClick={onClose} style={{ background:'#222', border:'none', borderRadius:8, color:'#888', cursor:'pointer', padding:'6px 7px', display:'flex' }}><X size={16}/></button>
         </div>
         <div style={{ flex:1, overflowY:'auto', padding:'12px' }}>
           {loading ? (
-            <div style={{ textAlign:'center', padding:40 }}><div style={{ width:24, height:24, border:'3px solid var(--accent)', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite', margin:'0 auto' }}/></div>
+            <div style={{ textAlign:'center', padding:40 }}>
+              <div style={{ width:22, height:22, border:'2px solid #333', borderTopColor:'#fff', borderRadius:'50%', animation:'spin 0.8s linear infinite', margin:'0 auto' }}/>
+            </div>
           ) : notifs.length === 0 ? (
             <div style={{ textAlign:'center', padding:40 }}>
-              <Bell size={32} style={{ color:'var(--border)', margin:'0 auto 10px', display:'block' }}/>
-              <p style={{ color:'var(--text-sec)', ...F }}>No notifications yet</p>
+              <Bell size={28} style={{ color:'#333', margin:'0 auto 10px', display:'block' }}/>
+              <p style={{ color:'#555', ...F, fontSize:13 }}>No notifications yet</p>
             </div>
           ) : notifs.map(n => (
-            <div key={n.id} style={{ background:n.read?'var(--card)':'var(--accent)08', border:`1px solid ${n.read?'var(--border)':'var(--accent)22'}`, borderRadius:14, padding:'12px 14px', marginBottom:8 }}>
+            <div key={n.id} style={{ background:'#161616', border:'1px solid #222', borderRadius:12, padding:'12px 14px', marginBottom:8 }}>
               <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
-                <span style={{ fontSize:18, flexShrink:0 }}>{typeIcon[n.type]||'ℹ️'}</span>
+                <span style={{ fontSize:16, flexShrink:0 }}>{typeIcon[n.type]||'ℹ️'}</span>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:14, margin:'0 0 3px', ...F }}>{n.title}</p>
-                  <p style={{ color:'var(--text-sec)', fontSize:13, margin:'0 0 4px', lineHeight:1.4 }}>{n.message}</p>
-                  {n.data?.fullMessage && n.data.fullMessage !== n.message && (
-                    <p style={{ color:'var(--text-sec)', fontSize:12, margin:0, lineHeight:1.4, fontStyle:'italic' }}>{n.data.fullMessage}</p>
-                  )}
-                  <p style={{ color:'var(--text-sec)', fontSize:10, margin:'4px 0 0', fontWeight:700 }}>
+                  <p style={{ color:'#fff', fontWeight:700, fontSize:13, margin:'0 0 3px', ...F }}>{n.title}</p>
+                  <p style={{ color:'#888', fontSize:12, margin:'0 0 4px', lineHeight:1.5 }}>{n.message}</p>
+                  <p style={{ color:'#444', fontSize:10, margin:'4px 0 0', fontWeight:700 }}>
                     {n.createdAt?.toDate?.()?.toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) || ''}
                   </p>
                 </div>
@@ -133,31 +136,33 @@ function SpendDetail({ appointments, onBack }) {
   const totalSpent = appointments.filter(a=>a.paymentStatus==='paid').reduce((s,a)=>s+(a.totalPrice||0),0)
 
   return (
-    <div style={{ padding:'20px', maxWidth:520, margin:'0 auto', ...F }}>
-      <button onClick={onBack} style={{ display:'flex', alignItems:'center', gap:6, color:'var(--accent)', fontWeight:700, fontSize:13, background:'none', border:'none', cursor:'pointer', marginBottom:20, ...F }}>
+    <div style={{ padding:'24px 20px', maxWidth:520, margin:'0 auto', ...F }}>
+      <button onClick={onBack} style={{ display:'flex', alignItems:'center', gap:6, color:'#fff', fontWeight:700, fontSize:13, background:'none', border:'none', cursor:'pointer', marginBottom:24, ...F, opacity:0.6 }}>
         <ArrowLeft size={15}/> Back
       </button>
-      <h2 style={{ color:'var(--text-pri)', fontWeight:900, fontSize:22, marginBottom:4 }}>Spending</h2>
-      <p style={{ color:'var(--text-sec)', fontSize:13, marginBottom:20 }}>Your barbershop history</p>
-      <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'16px', marginBottom:16 }}>
-        <p style={{ color:'var(--text-sec)', fontSize:11, fontWeight:700, letterSpacing:'0.08em', marginBottom:6 }}>ALL-TIME SPENT</p>
-        <p style={{ color:'var(--accent)', fontWeight:900, fontSize:32, margin:0 }}>{formatCurrency(totalSpent)}</p>
+      <h2 style={{ color:'var(--text-pri)', fontWeight:900, fontSize:24, marginBottom:4, letterSpacing:'-0.5px' }}>Spending</h2>
+      <p style={{ color:'var(--text-sec)', fontSize:13, marginBottom:24 }}>Your barbershop history</p>
+
+      <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:18, padding:'20px', marginBottom:12 }}>
+        <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', marginBottom:8 }}>ALL-TIME SPENT</p>
+        <p style={{ color:'var(--text-pri)', fontWeight:900, fontSize:36, margin:0, letterSpacing:'-1px' }}>{formatCurrency(totalSpent)}</p>
       </div>
-      <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'16px', marginBottom:16 }}>
-        <p style={{ color:'var(--text-sec)', fontSize:11, fontWeight:700, letterSpacing:'0.08em', marginBottom:14 }}>BY MONTH</p>
-        <div style={{ display:'flex', alignItems:'flex-end', gap:6, height:80, marginBottom:10 }}>
+
+      <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:18, padding:'20px', marginBottom:12 }}>
+        <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', marginBottom:16 }}>BY MONTH</p>
+        <div style={{ display:'flex', alignItems:'flex-end', gap:6, height:80, marginBottom:14 }}>
           {monthlyData.map((m,i) => (
             <div key={i} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-              <div style={{ width:'100%', borderRadius:'4px 4px 0 0', background:i===monthlyData.length-1?'var(--accent)':'var(--accent)44', height:m.spent>0?`${Math.max((m.spent/maxSpend)*64,4)}px`:'4px', transition:'height 0.3s' }}/>
+              <div style={{ width:'100%', borderRadius:'4px 4px 0 0', background:i===monthlyData.length-1?'var(--text-pri)':'var(--border)', height:m.spent>0?`${Math.max((m.spent/maxSpend)*64,4)}px`:'4px', transition:'height 0.4s' }}/>
               <span style={{ color:'var(--text-sec)', fontSize:8, fontWeight:700 }}>{format(months[i],'MMM')}</span>
             </div>
           ))}
         </div>
         {monthlyData.filter(m=>m.spent>0).map(m => (
-          <div key={m.key} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid var(--border)' }}>
+          <div key={m.key} style={{ display:'flex', justifyContent:'space-between', padding:'10px 0', borderBottom:'1px solid var(--border)' }}>
             <span style={{ color:'var(--text-pri)', fontSize:13 }}>{m.label}</span>
             <div style={{ textAlign:'right' }}>
-              <span style={{ color:'var(--accent)', fontWeight:700, fontSize:13 }}>{formatCurrency(m.spent)}</span>
+              <span style={{ color:'var(--text-pri)', fontWeight:700, fontSize:13 }}>{formatCurrency(m.spent)}</span>
               <span style={{ color:'var(--text-sec)', fontSize:11, marginLeft:8 }}>{m.count} visit{m.count!==1?'s':''}</span>
             </div>
           </div>
@@ -172,33 +177,64 @@ function VisitHistory({ appointments, onBack }) {
   const done = appointments
     .filter(a => a.bookingStatus==='completed'||isPast(new Date(`${a.date}T${a.startTime}`)))
     .sort((a,b)=>b.date?.localeCompare(a.date)||0)
+
+  function ApptCard({ a }) {
+    const isCancelled  = a.bookingStatus === 'cancelled'
+    const isCompleted  = a.bookingStatus === 'completed'
+
+    let cardBg     = 'var(--card)'
+    let cardBorder = '1px solid var(--border)'
+    let leftBorder = '3px solid #333'
+    let cardOpacity = 1
+
+    if (isCancelled) {
+      cardBg     = 'rgba(239,68,68,0.06)'
+      cardBorder = '1px solid rgba(239,68,68,0.18)'
+      leftBorder = '3px solid rgba(239,68,68,0.5)'
+      cardOpacity = 0.7
+    } else if (isCompleted) {
+      cardBg     = 'rgba(34,197,94,0.05)'
+      cardBorder = '1px solid rgba(34,197,94,0.15)'
+      leftBorder = '3px solid rgba(34,197,94,0.4)'
+    }
+
+    return (
+      <div style={{ background:cardBg, border:cardBorder, borderLeft:leftBorder, borderRadius:14, padding:'14px 16px', marginBottom:8, opacity:cardOpacity, transition:'all 0.2s' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+          <div>
+            <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:14, margin:'0 0 2px' }}>{a.date?format(parseLocalDate(a.date),'EEE, MMM d, yyyy'):'—'}</p>
+            <p style={{ color:'var(--text-sec)', fontSize:12, margin:0 }}>{a.startTime} · {formatDuration(a.totalDuration)}</p>
+          </div>
+          <div style={{ textAlign:'right' }}>
+            <p style={{ color:'var(--text-pri)', fontWeight:800, fontSize:14, margin:'0 0 3px' }}>{formatCurrency(a.totalPrice)}</p>
+            <span style={{
+              fontSize:9, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em',
+              padding:'2px 7px', borderRadius:20,
+              background: isCancelled ? 'rgba(239,68,68,0.12)' : isCompleted ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.06)',
+              color: isCancelled ? '#ef4444' : isCompleted ? '#22C55E' : '#888',
+            }}>
+              {a.bookingStatus}
+            </span>
+          </div>
+        </div>
+        {a.services?.length>0 && <p style={{ color:'var(--text-sec)', fontSize:12, margin:'4px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.services.map(s=>s.name).join(', ')}</p>}
+        {a.tip>0 && <p style={{ color:'#22C55E', fontSize:11, marginTop:4 }}>+ {formatCurrency(a.tip)} tip</p>}
+      </div>
+    )
+  }
+
   return (
-    <div style={{ padding:'20px', maxWidth:520, margin:'0 auto', ...F }}>
-      <button onClick={onBack} style={{ display:'flex', alignItems:'center', gap:6, color:'var(--accent)', fontWeight:700, fontSize:13, background:'none', border:'none', cursor:'pointer', marginBottom:20, ...F }}>
+    <div style={{ padding:'24px 20px', maxWidth:520, margin:'0 auto', ...F }}>
+      <button onClick={onBack} style={{ display:'flex', alignItems:'center', gap:6, color:'var(--text-pri)', fontWeight:700, fontSize:13, background:'none', border:'none', cursor:'pointer', marginBottom:24, ...F, opacity:0.6 }}>
         <ArrowLeft size={15}/> Back
       </button>
-      <h2 style={{ color:'var(--text-pri)', fontWeight:900, fontSize:22, marginBottom:4 }}>All Visits</h2>
+      <h2 style={{ color:'var(--text-pri)', fontWeight:900, fontSize:24, marginBottom:4, letterSpacing:'-0.5px' }}>All Visits</h2>
       <p style={{ color:'var(--text-sec)', fontSize:13, marginBottom:20 }}>{done.length} total appointment{done.length!==1?'s':''}</p>
       {done.length===0 ? (
-        <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:40, textAlign:'center' }}>
-          <p style={{ color:'var(--text-sec)', margin:0 }}>No visits yet</p>
+        <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:18, padding:40, textAlign:'center' }}>
+          <p style={{ color:'var(--text-sec)', margin:0, fontSize:13 }}>No visits yet</p>
         </div>
-      ) : done.map(a => (
-        <div key={a.id} style={{ background:'var(--card)', border:'1px solid var(--border)', borderLeft:`3px solid ${SC[a.bookingStatus]||'#555'}`, borderRadius:14, padding:'13px 16px', marginBottom:8 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-            <div>
-              <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:14, margin:'0 0 2px' }}>{a.date?format(parseLocalDate(a.date),'EEE, MMM d, yyyy'):'—'}</p>
-              <p style={{ color:'var(--text-sec)', fontSize:12, margin:0 }}>{a.startTime} · {formatDuration(a.totalDuration)}</p>
-            </div>
-            <div style={{ textAlign:'right' }}>
-              <p style={{ color:'var(--accent)', fontWeight:800, fontSize:14, margin:'0 0 2px' }}>{formatCurrency(a.totalPrice)}</p>
-              <p style={{ color:SC[a.bookingStatus], fontSize:10, fontWeight:700, textTransform:'uppercase', margin:0 }}>{a.bookingStatus}</p>
-            </div>
-          </div>
-          {a.services?.length>0 && <p style={{ color:'var(--text-sec)', fontSize:12, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.services.map(s=>s.name).join(', ')}</p>}
-          {a.tip>0 && <p style={{ color:'#16A34A', fontSize:11, marginTop:3 }}>Tip: +{formatCurrency(a.tip)}</p>}
-        </div>
-      ))}
+      ) : done.map(a => <ApptCard key={a.id} a={a}/>)}
     </div>
   )
 }
@@ -234,9 +270,8 @@ function ProfileView({ user, userData, onSave, onSignOut }) {
   return (
     <div style={{ position:'fixed', inset:0, bottom:70, background:BG, overflowY:'auto', zIndex:10 }}>
       <div style={{ maxWidth:520, margin:'0 auto', padding:'28px 20px 60px' }}>
-        <h2 style={{ color:TXT, fontWeight:900, fontSize:22, marginBottom:24, fontFamily:"'Monda',system-ui,sans-serif" }}>Profile</h2>
+        <h2 style={{ color:TXT, fontWeight:900, fontSize:22, marginBottom:24, ...F }}>Profile</h2>
 
-        {/* Avatar */}
         <div style={{ textAlign:'center', marginBottom:24 }}>
           <div style={{ position:'relative', display:'inline-block', cursor:'pointer' }} onClick={()=>photoRef.current?.click()}>
             <div style={{ width:80, height:80, borderRadius:'50%', overflow:'hidden', background:CARD, border:`2px solid ${BDR}`, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:26, color:TXT }}>
@@ -264,14 +299,13 @@ function ProfileView({ user, userData, onSave, onSignOut }) {
           <p style={{ color:TXT2, fontSize:12, marginTop:8 }}>Tap to change photo</p>
         </div>
 
-        {/* Fields */}
         <div style={{ background:CARD, border:`1px solid ${BDR}`, borderRadius:16, padding:'16px 18px', marginBottom:12 }}>
           {[['FIRST NAME','firstName'],['LAST NAME','lastName']].map(([lbl,key]) => (
             <div key={key} style={{ marginBottom:16 }}>
               <p style={{ color:TXT2, fontSize:10, fontWeight:700, letterSpacing:'0.09em', marginBottom:6 }}>{lbl}</p>
               <div style={{ borderBottom:`1.5px solid ${BDR}`, paddingBottom:8 }}>
                 <input type="text" value={form[key]||''} onChange={e=>setForm(p=>({...p,[key]:e.target.value}))}
-                  style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:TXT, fontSize:16, fontFamily:"'Monda',system-ui,sans-serif" }}/>
+                  style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:TXT, fontSize:16, ...F }}/>
               </div>
             </div>
           ))}
@@ -279,18 +313,17 @@ function ProfileView({ user, userData, onSave, onSignOut }) {
             <p style={{ color:TXT2, fontSize:10, fontWeight:700, letterSpacing:'0.09em', marginBottom:6 }}>PHONE</p>
             <div style={{ borderBottom:`1.5px solid ${BDR}`, paddingBottom:8 }}>
               <input type="tel" value={form.phone||''} onChange={e=>setForm(p=>({...p,phone:e.target.value}))}
-                style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:TXT, fontSize:16, fontFamily:"'Monda',system-ui,sans-serif" }}/>
+                style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:TXT, fontSize:16, ...F }}/>
             </div>
           </div>
         </div>
 
         <button onClick={save} disabled={saving}
-          style={{ width:'100%', background:BTN, border:'none', borderRadius:13, padding:'15px', color:BTNI, fontWeight:700, fontSize:15, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:12, fontFamily:"'Monda',system-ui,sans-serif" }}>
+          style={{ width:'100%', background:BTN, border:'none', borderRadius:13, padding:'15px', color:BTNI, fontWeight:700, fontSize:15, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:12, ...F }}>
           {saving && <div style={{width:16,height:16,border:`2px solid ${BTNI}44`,borderTopColor:BTNI,borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/>}
-          {saving?'Saving\u2026':'Save Changes'}
+          {saving?'Saving…':'Save Changes'}
         </button>
 
-        {/* Appearance */}
         <div style={{ background:CARD, border:`1px solid ${BDR}`, borderRadius:16, padding:'16px 18px', marginBottom:12 }}>
           <p style={{ color:TXT2, fontSize:10, fontWeight:700, letterSpacing:'0.09em', marginBottom:16 }}>APPEARANCE</p>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
@@ -304,7 +337,7 @@ function ProfileView({ user, userData, onSave, onSignOut }) {
           <div style={{ display:'flex', background:BG, borderRadius:12, padding:3, border:`1px solid ${BDR}` }}>
             {[['12h','12h (AM/PM)'],['24h','24h']].map(([val,lbl]) => (
               <button key={val} onClick={()=>setTimeFormat(val)}
-                style={{ flex:1, padding:'9px', borderRadius:10, fontWeight:700, fontSize:13, background:timeFormat===val?BTN:'transparent', color:timeFormat===val?BTNI:TXT2, border:'none', cursor:'pointer', fontFamily:"'Monda',system-ui,sans-serif", transition:'all 0.15s' }}>
+                style={{ flex:1, padding:'9px', borderRadius:10, fontWeight:700, fontSize:13, background:timeFormat===val?BTN:'transparent', color:timeFormat===val?BTNI:TXT2, border:'none', cursor:'pointer', ...F, transition:'all 0.15s' }}>
                 {lbl}
               </button>
             ))}
@@ -312,8 +345,151 @@ function ProfileView({ user, userData, onSave, onSignOut }) {
         </div>
 
         <button onClick={onSignOut}
-          style={{ width:'100%', background:'none', border:`1px solid ${BDR}`, borderRadius:13, padding:'14px', color:'#EF4444', fontWeight:600, fontSize:14, cursor:'pointer', fontFamily:"'Monda',system-ui,sans-serif" }}>
+          style={{ width:'100%', background:'none', border:`1px solid ${BDR}`, borderRadius:13, padding:'14px', color:'#EF4444', fontWeight:600, fontSize:14, cursor:'pointer', ...F }}>
           Sign Out
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Appointment card with premium status states ─────────────────────────────
+function ApptCard({ a, formatTime, onReschedule, onCancel, barberInfo, onMaps, isNext }) {
+  const isCancelled = a.bookingStatus === 'cancelled'
+  const isCompleted = a.bookingStatus === 'completed'
+  const isPending   = a.bookingStatus === 'pending'
+
+  if (isCancelled) {
+    return (
+      <div style={{
+        background:'rgba(239,68,68,0.05)',
+        border:'1px solid rgba(239,68,68,0.14)',
+        borderLeft:'3px solid rgba(239,68,68,0.35)',
+        borderRadius:14, padding:'13px 15px', marginBottom:8,
+        opacity:0.6, transition:'opacity 0.2s',
+      }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+          <div>
+            <p style={{ color:'var(--text-pri)', fontWeight:600, fontSize:13, margin:'0 0 2px', textDecoration:'line-through', opacity:0.6 }}>
+              {a.date?format(parseLocalDate(a.date),'MMM d'):''} · {formatTime(a.startTime)}
+            </p>
+            <p style={{ color:'#888', fontSize:11, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:180 }}>
+              {a.services?.map(s=>s.name).join(', ')}
+            </p>
+          </div>
+          <div style={{ textAlign:'right' }}>
+            <p style={{ color:'#888', fontWeight:700, fontSize:13, margin:'0 0 3px', textDecoration:'line-through' }}>{formatCurrency(a.totalPrice)}</p>
+            <span style={{ background:'rgba(239,68,68,0.12)', color:'#ef4444', fontSize:9, fontWeight:800, padding:'2px 7px', borderRadius:20, letterSpacing:'0.06em' }}>CANCELLED</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (isCompleted) {
+    return (
+      <div style={{
+        background:'rgba(34,197,94,0.04)',
+        border:'1px solid rgba(34,197,94,0.12)',
+        borderLeft:'3px solid rgba(34,197,94,0.3)',
+        borderRadius:14, padding:'13px 15px', marginBottom:8,
+      }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+          <div>
+            <p style={{ color:'var(--text-pri)', fontWeight:600, fontSize:13, margin:'0 0 2px' }}>
+              {a.date?format(parseLocalDate(a.date),'MMM d, yyyy'):''} · {formatTime(a.startTime)}
+            </p>
+            <p style={{ color:'var(--text-sec)', fontSize:11, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:200 }}>
+              {a.services?.map(s=>s.name).join(', ')}
+            </p>
+          </div>
+          <div style={{ textAlign:'right' }}>
+            <p style={{ color:'var(--text-pri)', fontWeight:800, fontSize:14, margin:'0 0 4px' }}>{formatCurrency(a.totalPrice)}</p>
+            <span style={{ background:'rgba(34,197,94,0.1)', color:'#22C55E', fontSize:9, fontWeight:800, padding:'2px 7px', borderRadius:20, letterSpacing:'0.06em' }}>COMPLETED</span>
+          </div>
+        </div>
+        {a.tip>0 && <p style={{ color:'#22C55E', fontSize:11, margin:'5px 0 0' }}>+ {formatCurrency(a.tip)} tip</p>}
+      </div>
+    )
+  }
+
+  // Active / upcoming
+  if (isNext) {
+    return (
+      <div style={{
+        background:'var(--card)',
+        border:'1px solid var(--border)',
+        borderLeft:'3px solid var(--text-pri)',
+        borderRadius:16, padding:'18px', marginBottom:16,
+      }}>
+        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:12 }}>
+          <div>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+              {barberInfo?.photoURL && <img src={barberInfo.photoURL} style={{width:22,height:22,borderRadius:6,objectFit:'cover'}} alt=""/>}
+              <p style={{ color:'var(--text-pri)', fontWeight:800, fontSize:15, margin:0 }}>{a.barberName}</p>
+            </div>
+            <p style={{ color:'var(--text-sec)', fontWeight:600, fontSize:13, margin:'0 0 2px' }}>
+              {a.date?format(parseLocalDate(a.date),'EEE, MMM d'):''} · {formatTime(a.startTime)}
+            </p>
+            <p style={{ color:'var(--text-sec)', fontSize:12, margin:0 }}>{formatDuration(a.totalDuration)}</p>
+          </div>
+          <div style={{ textAlign:'right' }}>
+            <p style={{ color:'var(--text-pri)', fontWeight:900, fontSize:20, margin:'0 0 5px' }}>{formatCurrency(a.totalPrice)}</p>
+            <span style={{
+              fontSize:10, fontWeight:800, letterSpacing:'0.05em',
+              padding:'3px 9px', borderRadius:20,
+              background: isToday(parseLocalDate(a.date)) ? 'rgba(255,255,255,0.08)' : 'transparent',
+              color: isToday(parseLocalDate(a.date)) ? 'var(--text-pri)' : '#22C55E',
+              border: isToday(parseLocalDate(a.date)) ? '1px solid rgba(255,255,255,0.12)' : 'none',
+            }}>
+              {differenceInDays(new Date(`${a.date}T${a.startTime}`),new Date())===0?'Today!':`In ${differenceInDays(new Date(`${a.date}T${a.startTime}`),new Date())} days`}
+            </span>
+          </div>
+        </div>
+        {a.services?.length>0 && (
+          <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:12 }}>
+            {a.services.map((s,i)=>(
+              <span key={i} style={{ background:'rgba(255,255,255,0.05)', color:'var(--text-sec)', fontSize:11, padding:'4px 10px', borderRadius:20, border:'1px solid var(--border)' }}>{s.name}</span>
+            ))}
+          </div>
+        )}
+        {barberInfo?.address && (
+          <button onClick={()=>onMaps(barberInfo.address)} style={{ display:'flex', alignItems:'center', gap:5, background:'none', border:'none', color:'var(--text-sec)', fontSize:12, cursor:'pointer', padding:'4px 0', marginBottom:10, ...F }}>
+            <Navigation size={12}/> Directions
+          </button>
+        )}
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={()=>onReschedule(a)} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, padding:'8px 14px', color:'var(--text-pri)', fontSize:12, fontWeight:700, cursor:'pointer', ...F, display:'flex', alignItems:'center', gap:5 }}>
+            <RefreshCw size={11}/> Reschedule
+          </button>
+          <button onClick={()=>onCancel(a.id)} style={{ background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.15)', borderRadius:10, padding:'8px 14px', color:'#ef4444', fontSize:12, fontWeight:700, cursor:'pointer', ...F, display:'flex', alignItems:'center', gap:5 }}>
+            <X size={11}/> Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Secondary upcoming
+  return (
+    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderLeft:'2px solid rgba(255,255,255,0.15)', borderRadius:12, padding:'13px 15px', marginBottom:8 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:7 }}>
+        <div>
+          <p style={{ color:'var(--text-pri)', fontWeight:600, fontSize:13, margin:'0 0 2px' }}>
+            {a.date?format(parseLocalDate(a.date),'MMM d'):''} · {formatTime(a.startTime)}
+          </p>
+          <p style={{ color:'var(--text-sec)', fontSize:11, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:180 }}>
+            {a.services?.map(s=>s.name).join(', ')}
+          </p>
+        </div>
+        <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:13, flexShrink:0 }}>{formatCurrency(a.totalPrice)}</p>
+      </div>
+      <div style={{ display:'flex', gap:8 }}>
+        <button onClick={()=>onReschedule(a)} style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:'6px 11px', color:'var(--text-sec)', fontSize:11, fontWeight:700, cursor:'pointer', ...F, display:'flex', alignItems:'center', gap:4 }}>
+          <RefreshCw size={10}/> Reschedule
+        </button>
+        <button onClick={()=>onCancel(a.id)} style={{ background:'rgba(239,68,68,0.05)', border:'1px solid rgba(239,68,68,0.12)', borderRadius:8, padding:'6px 11px', color:'#ef4444', fontSize:11, fontWeight:700, cursor:'pointer', ...F }}>
+          Cancel
         </button>
       </div>
     </div>
@@ -328,7 +504,7 @@ export default function ClientDashboard() {
   const highlightDate = location.state?.highlightDate || null
   const { formatTime } = useTheme()
   const navigate = useNavigate()
-  const [view, setView]           = useState('home')  // home | profile | spend | visits
+  const [view, setView]           = useState('home')
   const [appointments, setAppointments] = useState([])
   const [barberInfo, setBarberInfo]     = useState(null)
   const [availability, setAvailability] = useState(null)
@@ -342,43 +518,34 @@ export default function ClientDashboard() {
   const [reschedNote, setReschedNote]     = useState('')
   const [reschedPage, setReschedPage]     = useState(0)
   const [showNotifs, setShowNotifs]       = useState(false)
-  const refreshRef = useRef(null)
 
   useEffect(() => {
     if (authLoading) return
     if (!user) navigate(`/b/${barberSlug}/auth`)
   }, [user, authLoading])
 
-  async function loadAppts() {
+  useEffect(() => {
     if (!user) return
-    const snap = await getDocs(query(collection(db,'appointments'), where('clientId','==',user.uid)))
-    const all  = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))
-    setAppointments(all)
-    setLoading(false)
-    if (all.length>0 && !barberInfo) {
-      const bSnap = await getDocs(query(collection(db,'barbers'), where('slug','==',barberSlug)))
-      if (!bSnap.empty) {
-        const b = {id:bSnap.docs[0].id,...bSnap.docs[0].data()}
-        setBarberInfo(b)
-        const aSnap = await getDocs(query(collection(db,'availability'), where('barberId','==',b.id)))
-        if (!aSnap.empty) setAvailability(aSnap.docs[0].data())
-        const apptSnap = await getDocs(query(collection(db,'appointments'), where('barberId','==',b.id)))
-        setBarberAppts(apptSnap.docs.map(d=>d.data()))
+    const q = query(collection(db,'appointments'), where('clientId','==',user.uid))
+    const unsub = onSnapshot(q, async (snap) => {
+      const all = snap.docs.map(d=>({id:d.id,...d.data()}))
+      setAppointments(all)
+      setLoading(false)
+      if (all.length>0 && !barberInfo) {
+        const bSnap = await getDocs(query(collection(db,'barbers'), where('slug','==',barberSlug)))
+        if (!bSnap.empty) {
+          const b = {id:bSnap.docs[0].id,...bSnap.docs[0].data()}
+          setBarberInfo(b)
+          const aSnap  = await getDocs(query(collection(db,'availability'), where('barberId','==',b.id)))
+          const apSnap = await getDocs(query(collection(db,'appointments'), where('barberId','==',b.id)))
+          if (!aSnap.empty) setAvailability(aSnap.docs[0].data())
+          setBarberAppts(apSnap.docs.map(d=>d.data()))
+        }
       }
-    }
-  }
+    })
+    return () => unsub()
+  }, [user])
 
-useEffect(() => {
-  if (!user) return;
-  const q = query(collection(db, 'appointments'), where('clientId', '==', user.uid));
-  const unsubscribe = onSnapshot(q, (snap) => {
-    const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    setAppointments(all);
-    setLoading(false);
-  });
-  return () => unsubscribe();
-}, [user]);
-  // Reschedule slots
   useEffect(() => {
     if (!reschedDate||!reschedAppt||!availability) { setReschedSlots([]); return }
     const dayIdx = reschedDate.getDay()
@@ -433,16 +600,17 @@ useEffect(() => {
 
   if (authLoading || loading) return (
     <div style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ width:28, height:28, border:'3px solid var(--accent)', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
+      <div style={{ width:26, height:26, border:'2px solid #333', borderTopColor:'var(--text-pri)', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 
   return (
     <div style={{ minHeight:'100vh', background:'var(--bg)', ...F, paddingBottom:90 }}>
-      {/* Sub-views */}
-      {view==='spend'  && <SpendDetail  appointments={appointments} onBack={()=>setView('home')}/>}
-      {view==='visits' && <VisitHistory appointments={appointments} onBack={()=>setView('home')}/>}
+      <style>{STYLES}</style>
+
+      {view==='spend'   && <SpendDetail  appointments={appointments} onBack={()=>setView('home')}/>}
+      {view==='visits'  && <VisitHistory appointments={appointments} onBack={()=>setView('home')}/>}
       {view==='profile' && (
         <ProfileView user={user} userData={userData}
           onSave={async()=>{ await refreshUserData() }}
@@ -450,174 +618,155 @@ useEffect(() => {
         />
       )}
 
-      {/* HOME view */}
+      {/* HOME */}
       {view==='home' && (
-        <div style={{ padding:'20px', maxWidth:520, margin:'0 auto' }}>
-          {/* Header row */}
-          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:20 }}>
+        <div className="fade-up" style={{ padding:'24px 20px', maxWidth:520, margin:'0 auto' }}>
+
+          {/* Header */}
+          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:28 }}>
             <div>
-              <p style={{ color:'var(--text-sec)', fontSize:13, fontWeight:600, margin:'0 0 2px' }}>{greetText} {greetEmoji}</p>
-              <h1 style={{ color:'var(--text-pri)', fontWeight:900, fontSize:28, margin:0, lineHeight:1, textTransform:'lowercase' }}>{userData?.firstName}!</h1>
+              <p style={{ color:'var(--text-sec)', fontSize:12, fontWeight:500, margin:'0 0 3px', letterSpacing:'0.02em' }}>{greetText} {greetEmoji}</p>
+              <h1 style={{ color:'var(--text-pri)', fontWeight:900, fontSize:32, margin:0, lineHeight:1, letterSpacing:'-1px', textTransform:'lowercase' }}>
+                {userData?.firstName}<span style={{ color:'var(--text-sec)', fontWeight:300 }}>.</span>
+              </h1>
             </div>
             <NotifBell userId={user?.uid} onOpen={()=>setShowNotifs(true)}/>
           </div>
 
-          {/* Highlighted date from confirmed booking */}
+          {/* Confirmed banner */}
           {highlightDate && (() => {
             const highlighted = appointments.find(a=>a.date===highlightDate && a.bookingStatus!=='cancelled')
             if (!highlighted) return null
             return (
-              <div style={{ background:'var(--card)', border:'1.5px solid var(--accent)', borderRadius:16, padding:'14px 16px', marginBottom:16 }}>
-                <p style={{ color:'var(--accent)', fontSize:10, fontWeight:700, letterSpacing:'0.09em', margin:'0 0 8px' }}>✓ APPOINTMENT CONFIRMED</p>
+              <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:16, padding:'14px 16px', marginBottom:20 }}>
+                <p style={{ color:'var(--text-pri)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', margin:'0 0 6px', opacity:0.5 }}>✓ CONFIRMED</p>
                 <p style={{ color:'var(--text-pri)', fontWeight:800, fontSize:15, margin:'0 0 3px' }}>{highlighted.date?format(parseLocalDate(highlighted.date),'EEEE, MMMM d'):''}</p>
                 <p style={{ color:'var(--text-sec)', fontSize:13, margin:0 }}>{formatTime(highlighted.startTime)} – {formatTime(highlighted.endTime)} · {highlighted.services?.map(s=>s.name).join(', ')}</p>
               </div>
             )
           })()}
 
-          {/* Stats — tappable */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:16 }}>
+          {/* Stats */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:24 }}>
             <button onClick={()=>setView('visits')}
-              style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, padding:'14px 10px', textAlign:'center', cursor:'pointer', ...F }}>
-              <p style={{ color:'var(--text-pri)', fontWeight:900, fontSize:22, margin:'0 0 3px' }}>{totalVisits}</p>
-              <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:600, margin:0 }}>Visits</p>
+              style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'16px 10px', textAlign:'center', cursor:'pointer', ...F }}>
+              <p style={{ color:'var(--text-pri)', fontWeight:900, fontSize:24, margin:'0 0 4px', letterSpacing:'-0.5px' }}>{totalVisits}</p>
+              <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:600, margin:0, letterSpacing:'0.04em' }}>VISITS</p>
             </button>
-            <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, padding:'14px 10px', textAlign:'center' }}>
-              <p style={{ color:'var(--text-pri)', fontWeight:900, fontSize:22, margin:'0 0 3px' }}>{upcoming.length}</p>
-              <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:600, margin:0 }}>Upcoming</p>
+            <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'16px 10px', textAlign:'center' }}>
+              <p style={{ color:'var(--text-pri)', fontWeight:900, fontSize:24, margin:'0 0 4px', letterSpacing:'-0.5px' }}>{upcoming.length}</p>
+              <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:600, margin:0, letterSpacing:'0.04em' }}>UPCOMING</p>
             </div>
             <button onClick={()=>setView('spend')}
-              style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, padding:'14px 10px', textAlign:'center', cursor:'pointer', ...F }}>
-              <p style={{ color:'var(--text-pri)', fontWeight:900, fontSize:20, margin:'0 0 3px' }}>${(totalSpent||0).toFixed(0)}</p>
-              <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:600, margin:0 }}>Spent</p>
+              style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'16px 10px', textAlign:'center', cursor:'pointer', ...F }}>
+              <p style={{ color:'var(--text-pri)', fontWeight:900, fontSize:20, margin:'0 0 4px', letterSpacing:'-0.5px' }}>${(totalSpent||0).toFixed(0)}</p>
+              <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:600, margin:0, letterSpacing:'0.04em' }}>SPENT</p>
             </button>
           </div>
 
           {/* Next appointment */}
           {next && (
-            <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderLeft:'3px solid var(--accent)', borderRadius:16, padding:'16px', marginBottom:16 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
-                <div>
-                  <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:3 }}>
-                    {barberInfo?.photoURL && <img src={barberInfo.photoURL} style={{width:24,height:24,borderRadius:6,objectFit:'cover'}} alt=""/>}
-                    <p style={{ color:'var(--text-pri)', fontWeight:800, fontSize:15, margin:0 }}>{next.barberName}</p>
-                  </div>
-                  <p style={{ color:'var(--accent)', fontWeight:600, fontSize:13, margin:'0 0 2px' }}>{next.date?format(parseLocalDate(next.date),'EEE, MMM d'):''} · {formatTime(next.startTime)}</p>
-                  <p style={{ color:'var(--text-sec)', fontSize:12, margin:0 }}>{formatDuration(next.totalDuration)}</p>
-                </div>
-                <div style={{ textAlign:'right' }}>
-                  <p style={{ color:'var(--accent)', fontWeight:900, fontSize:18, margin:'0 0 4px' }}>{formatCurrency(next.totalPrice)}</p>
-                  <p style={{ color:'#16A34A', fontSize:11, fontWeight:700 }}>
-                    {differenceInDays(new Date(`${next.date}T${next.startTime}`),new Date())===0?'Today!':`In ${differenceInDays(new Date(`${next.date}T${next.startTime}`),new Date())} days`}
-                  </p>
-                </div>
-              </div>
-              {next.services?.length>0 && <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:10 }}>{next.services.map((s,i)=><span key={i} style={{background:'var(--bg)',color:'var(--text-sec)',fontSize:11,padding:'3px 9px',borderRadius:20,border:'1px solid var(--border)'}}>{s.name}</span>)}</div>}
-              {barberInfo?.address && <button onClick={()=>openMaps(barberInfo.address)} style={{display:'flex',alignItems:'center',gap:5,background:'none',border:'none',color:'var(--accent)',fontSize:12,cursor:'pointer',padding:'4px 0',marginBottom:8,...F}}><Navigation size={12}/> Directions</button>}
-              <div style={{ display:'flex', gap:8 }}>
-                <button onClick={()=>{setReschedAppt(next);setReschedDate(null);setReschedSlot(null);setReschedNote('')}}
-                  style={{background:'var(--accent)15',border:'1px solid var(--accent)25',borderRadius:8,padding:'7px 12px',color:'var(--accent)',fontSize:12,fontWeight:700,cursor:'pointer',...F,display:'flex',alignItems:'center',gap:4}}>
-                  <RefreshCw size={10}/> Reschedule
-                </button>
-                <button onClick={()=>setCancelTarget(next.id)}
-                  style={{background:'#ef444410',border:'1px solid #ef444425',borderRadius:8,padding:'7px 12px',color:'#ef4444',fontSize:12,fontWeight:700,cursor:'pointer',...F,display:'flex',alignItems:'center',gap:4}}>
-                  <X size={10}/> Cancel
-                </button>
-              </div>
+            <ApptCard
+              a={next} formatTime={formatTime} isNext
+              onReschedule={a=>{setReschedAppt(a);setReschedDate(null);setReschedSlot(null);setReschedNote('')}}
+              onCancel={id=>setCancelTarget(id)}
+              barberInfo={barberInfo}
+              onMaps={openMaps}
+            />
+          )}
+
+          {/* More upcoming */}
+          {upcoming.slice(1).length>0 && (
+            <div style={{ marginBottom:20 }}>
+              <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', marginBottom:10 }}>UPCOMING</p>
+              {upcoming.slice(1).map(a=>(
+                <ApptCard key={a.id} a={a} formatTime={formatTime}
+                  onReschedule={a=>{setReschedAppt(a);setReschedDate(null);setReschedSlot(null);setReschedNote('')}}
+                  onCancel={id=>setCancelTarget(id)}
+                  barberInfo={barberInfo} onMaps={openMaps}
+                />
+              ))}
             </div>
           )}
 
-          {/* Upcoming list */}
-          {upcoming.slice(1).length>0 && (
-            <div style={{ marginBottom:16 }}>
-              <p style={{ color:'var(--text-sec)', fontSize:11, fontWeight:700, letterSpacing:'0.08em', marginBottom:8 }}>UPCOMING</p>
-              {upcoming.slice(1).map(a=>(
-                <div key={a.id} style={{background:'var(--card)',border:'1px solid var(--border)',borderLeft:'2px solid var(--accent)',borderRadius:12,padding:'12px 14px',marginBottom:8}}>
-                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
-                    <div>
-                      <p style={{color:'var(--text-pri)',fontWeight:600,fontSize:13,margin:'0 0 2px'}}>{a.date?format(parseLocalDate(a.date),'MMM d'):''} · {formatTime(a.startTime)}</p>
-                      <p style={{color:'var(--text-sec)',fontSize:11,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:160}}>{a.services?.map(s=>s.name).join(', ')}</p>
-                    </div>
-                    <p style={{color:'var(--accent)',fontWeight:700,fontSize:13,flexShrink:0}}>{formatCurrency(a.totalPrice)}</p>
-                  </div>
-                  <div style={{display:'flex',gap:8}}>
-                    <button onClick={()=>{setReschedAppt(a);setReschedDate(null);setReschedSlot(null);setReschedNote('')}}
-                      style={{background:'var(--accent)15',border:'1px solid var(--accent)25',borderRadius:8,padding:'5px 10px',color:'var(--accent)',fontSize:11,fontWeight:700,cursor:'pointer',...F,display:'flex',alignItems:'center',gap:3}}>
-                      <RefreshCw size={10}/> Reschedule
-                    </button>
-                    <button onClick={()=>setCancelTarget(a.id)}
-                      style={{background:'#ef444410',border:'1px solid #ef444425',borderRadius:8,padding:'5px 10px',color:'#ef4444',fontSize:11,fontWeight:700,cursor:'pointer',...F}}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ))}
+          {/* No upcoming — elegant empty */}
+          {upcoming.length===0 && (
+            <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:18, padding:'28px 20px', marginBottom:20, textAlign:'center' }}>
+              <Scissors size={24} style={{ color:'var(--text-sec)', opacity:0.2, marginBottom:10, display:'block', margin:'0 auto 12px' }} strokeWidth={1.5}/>
+              <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:15, margin:'0 0 4px' }}>No upcoming appointments</p>
+              <p style={{ color:'var(--text-sec)', fontSize:13, margin:'0 0 18px' }}>Ready for a fresh cut?</p>
+              <button onClick={()=>navigate(`/b/${barberSlug}/book`)}
+                style={{ background:'var(--text-pri)', color:'var(--bg)', border:'none', borderRadius:22, padding:'12px 28px', fontWeight:700, fontSize:14, cursor:'pointer', ...F }}>
+                Book Now
+              </button>
             </div>
           )}
 
           {/* Recent history */}
           {history.slice(0,3).length>0 && (
             <div>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-                <p style={{ color:'var(--text-sec)', fontSize:11, fontWeight:700, letterSpacing:'0.08em', margin:0 }}>RECENT</p>
-                <button onClick={()=>setView('visits')} style={{color:'var(--accent)',fontSize:12,fontWeight:700,background:'none',border:'none',cursor:'pointer',...F}}>See all</button>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', margin:0 }}>RECENT</p>
+                <button onClick={()=>setView('visits')} style={{ color:'var(--text-sec)', fontSize:12, fontWeight:600, background:'none', border:'none', cursor:'pointer', ...F }}>See all</button>
               </div>
               {history.slice(0,3).map(a=>(
-                <div key={a.id} style={{background:'var(--card)',border:'1px solid var(--border)',borderLeft:`2px solid ${SC[a.bookingStatus]||'#555'}`,borderRadius:12,padding:'11px 13px',marginBottom:8,display:'flex',justifyContent:'space-between',opacity:a.bookingStatus==='cancelled'?0.5:1}}>
-                  <div>
-                    <p style={{color:'var(--text-pri)',fontWeight:600,fontSize:13,margin:'0 0 2px'}}>{a.date?format(parseLocalDate(a.date),'MMM d, yyyy'):''}</p>
-                    <p style={{color:'var(--text-sec)',fontSize:11,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:170}}>{a.services?.map(s=>s.name).join(', ')}</p>
-                  </div>
-                  <div style={{textAlign:'right'}}>
-                    <p style={{color:'var(--accent)',fontWeight:700,fontSize:13,margin:'0 0 2px'}}>{formatCurrency(a.totalPrice)}</p>
-                    <p style={{color:SC[a.bookingStatus],fontSize:10,fontWeight:700,textTransform:'uppercase',margin:0}}>{a.bookingStatus}</p>
-                  </div>
-                </div>
+                <ApptCard key={a.id} a={a} formatTime={formatTime}
+                  onReschedule={()=>{}} onCancel={()=>{}} barberInfo={barberInfo} onMaps={openMaps}
+                />
               ))}
             </div>
           )}
         </div>
       )}
 
-      {/* ── Bottom nav — 3 buttons, center elevated ── */}
-      <div style={{ position:'fixed', bottom:0, left:0, right:0, background:'var(--surface)', borderTop:'1px solid var(--border)', paddingBottom:'max(8px,env(safe-area-inset-bottom))', display:'flex', alignItems:'center', justifyContent:'space-around', padding:'8px 24px max(8px,env(safe-area-inset-bottom))' }}>
-        {/* Home */}
+      {/* ── Bottom nav ── */}
+      <div style={{ position:'fixed', bottom:0, left:0, right:0, background:'var(--surface)', borderTop:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-around', padding:'10px 24px max(14px,env(safe-area-inset-bottom))' }}>
         <button onClick={()=>setView('home')}
-          style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3, background:'none', border:'none', cursor:'pointer', color:view==='home'?'var(--accent)':'var(--text-sec)', flex:1, ...F }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill={view==='home'?'var(--accent)':'none'} stroke="currentColor" strokeWidth="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-          <span style={{ fontSize:9, fontWeight:700, letterSpacing:'0.04em' }}>HOME</span>
+          style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, background:'none', border:'none', cursor:'pointer', color:view==='home'?'var(--text-pri)':'var(--text-sec)', flex:1, ...F, transition:'color 0.2s' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill={view==='home'?'var(--text-pri)':'none'} stroke="currentColor" strokeWidth="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+          <span style={{ fontSize:9, fontWeight:700, letterSpacing:'0.05em' }}>HOME</span>
         </button>
 
-        {/* Book — center, elevated accent button */}
+        {/* Elegant center book button */}
         <div style={{ flex:1, display:'flex', justifyContent:'center', position:'relative' }}>
-          <button onClick={()=>navigate(`/b/${barberSlug}/book`)}
-            style={{ width:60, height:60, borderRadius:'50%', background:'linear-gradient(135deg,var(--accent),#FF9000)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 20px rgba(255,92,0,0.5)', marginTop:-20, position:'relative', zIndex:1 }}>
-            <Scissors size={24} color="white"/>
+          <button
+            onClick={()=>navigate(`/b/${barberSlug}/book`)}
+            style={{
+              position:'relative', marginTop:-28,
+              width:54, height:54, borderRadius:'50%',
+              background:'var(--text-pri)',
+              border:'none', cursor:'pointer',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              boxShadow:'0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px var(--border)',
+              transition:'transform 0.2s, box-shadow 0.2s',
+              zIndex:1,
+            }}
+            onMouseEnter={e=>{e.currentTarget.style.transform='scale(1.06)'; e.currentTarget.style.boxShadow='0 6px 32px rgba(0,0,0,0.5), 0 0 0 1px var(--border)'}}
+            onMouseLeave={e=>{e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.boxShadow='0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px var(--border)'}}
+          >
+            <Scissors size={22} color="var(--bg)" strokeWidth={2}/>
           </button>
         </div>
 
-        {/* Profile */}
         <button onClick={()=>setView('profile')}
-          style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3, background:'none', border:'none', cursor:'pointer', color:view==='profile'?'var(--accent)':'var(--text-sec)', flex:1, ...F }}>
-          <User size={22} fill={view==='profile'?'var(--accent)':'none'} stroke="currentColor"/>
-          <span style={{ fontSize:9, fontWeight:700, letterSpacing:'0.04em' }}>PROFILE</span>
+          style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, background:'none', border:'none', cursor:'pointer', color:view==='profile'?'var(--text-pri)':'var(--text-sec)', flex:1, ...F, transition:'color 0.2s' }}>
+          <User size={20} fill={view==='profile'?'var(--text-pri)':'none'} stroke="currentColor" strokeWidth={1.8}/>
+          <span style={{ fontSize:9, fontWeight:700, letterSpacing:'0.05em' }}>PROFILE</span>
         </button>
       </div>
 
       {/* Cancel modal */}
       {cancelTarget && (
         <Overlay onClose={()=>setCancelTarget(null)}>
-          <p style={{color:'var(--text-pri)',fontWeight:900,fontSize:17,marginBottom:8,...F}}>Cancel appointment?</p>
-          <p style={{color:'var(--text-sec)',fontSize:14,marginBottom:18}}>This cannot be undone. Would you prefer to reschedule?</p>
-          <div style={{display:'flex',gap:10,marginBottom:8}}>
-            <button onClick={()=>{setCancelTarget(null);const a=appointments.find(a=>a.id===cancelTarget);if(a){setReschedAppt(a);setReschedDate(null);setReschedSlot(null)}}}
-              style={{flex:1,padding:'13px',borderRadius:12,background:'var(--accent)15',color:'var(--accent)',fontWeight:700,border:'1px solid var(--accent)25',cursor:'pointer',...F}}>
-              Reschedule Instead
-            </button>
-          </div>
-          <div style={{display:'flex',gap:10}}>
-            <button onClick={()=>setCancelTarget(null)} style={{flex:1,padding:'13px',borderRadius:12,background:'var(--card)',color:'var(--text-sec)',fontWeight:600,border:'1px solid var(--border)',cursor:'pointer',...F}}>Keep It</button>
-            <button onClick={handleCancel} style={{flex:1,padding:'13px',borderRadius:12,background:'#ef444415',color:'#ef4444',fontWeight:700,border:'1px solid #ef444433',cursor:'pointer',...F}}>Cancel</button>
+          <p style={{ color:'var(--text-pri)', fontWeight:900, fontSize:18, marginBottom:6, ...F, letterSpacing:'-0.3px' }}>Cancel appointment?</p>
+          <p style={{ color:'var(--text-sec)', fontSize:14, marginBottom:20, lineHeight:1.5 }}>This action cannot be undone. Would you prefer to reschedule instead?</p>
+          <button onClick={()=>{setCancelTarget(null);const a=appointments.find(a=>a.id===cancelTarget);if(a){setReschedAppt(a);setReschedDate(null);setReschedSlot(null)}}}
+            style={{ width:'100%', padding:'13px', borderRadius:12, background:'rgba(255,255,255,0.05)', color:'var(--text-pri)', fontWeight:700, border:'1px solid var(--border)', cursor:'pointer', ...F, marginBottom:10 }}>
+            Reschedule Instead
+          </button>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={()=>setCancelTarget(null)} style={{ flex:1, padding:'13px', borderRadius:12, background:'transparent', color:'var(--text-sec)', fontWeight:600, border:'1px solid var(--border)', cursor:'pointer', ...F }}>Keep It</button>
+            <button onClick={handleCancel} style={{ flex:1, padding:'13px', borderRadius:12, background:'rgba(239,68,68,0.08)', color:'#ef4444', fontWeight:700, border:'1px solid rgba(239,68,68,0.2)', cursor:'pointer', ...F }}>Cancel It</button>
           </div>
         </Overlay>
       )}
@@ -625,61 +774,66 @@ useEffect(() => {
       {/* Reschedule modal */}
       {reschedAppt && (
         <Overlay onClose={()=>setReschedAppt(null)}>
-          <p style={{color:'var(--text-pri)',fontWeight:900,fontSize:17,marginBottom:4,...F}}>Reschedule</p>
-          <p style={{color:'var(--text-sec)',fontSize:13,marginBottom:14}}>{reschedAppt.services?.map(s=>s.name).join(', ')} · {formatDuration(reschedAppt.totalDuration||0)}</p>
-          {/* Day selector */}
+          <p style={{ color:'var(--text-pri)', fontWeight:900, fontSize:18, marginBottom:4, ...F, letterSpacing:'-0.3px' }}>Reschedule</p>
+          <p style={{ color:'var(--text-sec)', fontSize:13, marginBottom:16 }}>{reschedAppt.services?.map(s=>s.name).join(', ')} · {formatDuration(reschedAppt.totalDuration||0)}</p>
           {(()=>{
             const today2=startOfDay(new Date()); const advance=availability?.advanceDays||30
             const days=Array.from({length:advance},(_,i)=>addDays(today2,i))
             const perPage=7; const visible=days.slice(reschedPage*perPage,(reschedPage+1)*perPage)
-            return (<div style={{marginBottom:14}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                <button onClick={()=>setReschedPage(p=>Math.max(0,p-1))} disabled={reschedPage===0} style={{background:'none',border:'none',color:reschedPage===0?'var(--border)':'var(--text-pri)',cursor:'pointer',padding:4}}><ChevronLeft size={15}/></button>
-                <span style={{color:'var(--text-sec)',fontSize:12}}>{visible[0]&&format(visible[0],'MMM d')} – {visible[visible.length-1]&&format(visible[visible.length-1],'MMM d')}</span>
-                <button onClick={()=>setReschedPage(p=>(p+1)*perPage<advance?p+1:p)} style={{background:'none',border:'none',color:(reschedPage+1)*perPage>=advance?'var(--border)':'var(--text-pri)',cursor:'pointer',padding:4}}><ChevronRight size={15}/></button>
+            return (
+              <div style={{ marginBottom:14 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                  <button onClick={()=>setReschedPage(p=>Math.max(0,p-1))} disabled={reschedPage===0} style={{ background:'none', border:'none', color:reschedPage===0?'var(--border)':'var(--text-pri)', cursor:'pointer', padding:4 }}><ChevronLeft size={15}/></button>
+                  <span style={{ color:'var(--text-sec)', fontSize:12 }}>{visible[0]&&format(visible[0],'MMM d')} – {visible[visible.length-1]&&format(visible[visible.length-1],'MMM d')}</span>
+                  <button onClick={()=>setReschedPage(p=>(p+1)*perPage<advance?p+1:p)} style={{ background:'none', border:'none', color:(reschedPage+1)*perPage>=advance?'var(--border)':'var(--text-pri)', cursor:'pointer', padding:4 }}><ChevronRight size={15}/></button>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4 }}>
+                  {visible.map((date,i)=>{
+                    const isSel=reschedDate&&isSameDay(date,reschedDate)
+                    return (
+                      <button key={i} onClick={()=>setReschedDate(date)}
+                        style={{ background:isSel?'var(--text-pri)':'var(--card)', border:`1px solid ${isSel?'var(--text-pri)':'var(--border)'}`, borderRadius:10, padding:'7px 2px', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:2, ...F }}>
+                        <span style={{ color:isSel?'var(--bg)':'var(--text-sec)', fontSize:9, fontWeight:700 }}>{format(date,'EEE').toUpperCase()}</span>
+                        <span style={{ color:isSel?'var(--bg)':'var(--text-pri)', fontSize:13, fontWeight:800 }}>{format(date,'d')}</span>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:4}}>
-                {visible.map((date,i)=>{
-                  const isSel=reschedDate&&isSameDay(date,reschedDate)
-                  return(<button key={i} onClick={()=>setReschedDate(date)} style={{background:isSel?'var(--accent)':'var(--card)',border:`1px solid ${isSel?'var(--accent)':'var(--border)'}`,borderRadius:10,padding:'7px 2px',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:2,...F}}>
-                    <span style={{color:isSel?'#fff':'var(--text-sec)',fontSize:9,fontWeight:700}}>{format(date,'EEE').toUpperCase()}</span>
-                    <span style={{color:isSel?'#fff':'var(--text-pri)',fontSize:13,fontWeight:800}}>{format(date,'d')}</span>
-                  </button>)
-                })}
-              </div>
-            </div>)
+            )
           })()}
           {reschedDate&&(<>
-            <p style={{color:'var(--text-sec)',fontSize:10,fontWeight:700,letterSpacing:'0.08em',marginBottom:8}}>{format(reschedDate,'EEE, MMM d').toUpperCase()}</p>
-            {reschedSlots.length===0?<p style={{color:'var(--text-sec)',fontSize:13,marginBottom:14}}>No slots available.</p>:(
-              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:14}}>
+            <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, letterSpacing:'0.08em', marginBottom:8 }}>{format(reschedDate,'EEE, MMM d').toUpperCase()}</p>
+            {reschedSlots.length===0 ? (
+              <p style={{ color:'var(--text-sec)', fontSize:13, marginBottom:14 }}>No slots available.</p>
+            ) : (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginBottom:14 }}>
                 {reschedSlots.map(slot=>(
                   <button key={slot.startTime} onClick={()=>setReschedSlot(slot)}
-                    style={{padding:'10px 3px',borderRadius:10,border:`1.5px solid ${reschedSlot?.startTime===slot.startTime?'var(--accent)':'var(--border)'}`,background:reschedSlot?.startTime===slot.startTime?'var(--accent)':'var(--card)',color:reschedSlot?.startTime===slot.startTime?'white':'var(--text-pri)',fontWeight:700,fontSize:12,cursor:'pointer',...F}}>
+                    style={{ padding:'10px 3px', borderRadius:10, border:`1.5px solid ${reschedSlot?.startTime===slot.startTime?'var(--text-pri)':'var(--border)'}`, background:reschedSlot?.startTime===slot.startTime?'var(--text-pri)':'var(--card)', color:reschedSlot?.startTime===slot.startTime?'var(--bg)':'var(--text-pri)', fontWeight:700, fontSize:12, cursor:'pointer', ...F }}>
                     {formatTime(slot.startTime)}
                   </button>
                 ))}
               </div>
             )}
           </>)}
-          <div style={{marginBottom:14}}>
-            <p style={{color:'var(--text-sec)',fontSize:10,fontWeight:700,letterSpacing:'0.08em',marginBottom:6}}>NOTE (optional)</p>
+          <div style={{ marginBottom:14 }}>
+            <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, letterSpacing:'0.08em', marginBottom:6 }}>NOTE (optional)</p>
             <textarea value={reschedNote} onChange={e=>setReschedNote(e.target.value)} rows={2} placeholder="Reason for rescheduling..."
-              style={{width:'100%',background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',color:'var(--text-pri)',fontSize:14,resize:'none',outline:'none',...F,boxSizing:'border-box'}}/>
+              style={{ width:'100%', background:'var(--card)', border:'1px solid var(--border)', borderRadius:10, padding:'10px 12px', color:'var(--text-pri)', fontSize:14, resize:'none', outline:'none', ...F, boxSizing:'border-box' }}/>
           </div>
-          <div style={{display:'flex',gap:10}}>
-            <button onClick={()=>setReschedAppt(null)} style={{flex:1,padding:'13px',borderRadius:12,background:'var(--card)',color:'var(--text-sec)',fontWeight:600,border:'1px solid var(--border)',cursor:'pointer',...F}}>Cancel</button>
-            <button onClick={handleReschedule} disabled={!reschedSlot} style={{flex:1,padding:'13px',borderRadius:12,background:reschedSlot?'var(--accent)':'var(--border)',color:'white',fontWeight:700,border:'none',cursor:reschedSlot?'pointer':'not-allowed',...F}}>Confirm</button>
+          <div style={{ display:'flex', gap:10 }}>
+            <button onClick={()=>setReschedAppt(null)} style={{ flex:1, padding:'13px', borderRadius:12, background:'transparent', color:'var(--text-sec)', fontWeight:600, border:'1px solid var(--border)', cursor:'pointer', ...F }}>Cancel</button>
+            <button onClick={handleReschedule} disabled={!reschedSlot}
+              style={{ flex:1, padding:'13px', borderRadius:12, background:reschedSlot?'var(--text-pri)':'var(--border)', color:reschedSlot?'var(--bg)':'var(--text-sec)', fontWeight:700, border:'none', cursor:reschedSlot?'pointer':'not-allowed', ...F }}>
+              Confirm
+            </button>
           </div>
         </Overlay>
       )}
 
-      {/* Important message floating popup */}
       <ImportantMessagePopup userId={user?.uid}/>
-
-      {/* Notifications panel */}
       {showNotifs && <NotificationsPanel userId={user?.uid} onClose={()=>setShowNotifs(false)}/>}
-
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
@@ -687,8 +841,8 @@ useEffect(() => {
 
 function Overlay({ children, onClose }) {
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:50,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-      <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:20,padding:22,width:'100%',maxWidth:380,...F,maxHeight:'80vh',overflowY:'auto'}}>
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:22, padding:22, width:'100%', maxWidth:380, ...F, maxHeight:'82vh', overflowY:'auto' }}>
         {children}
       </div>
     </div>
