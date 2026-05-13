@@ -28,60 +28,60 @@ export default function BookingConfirmedPage() {
   }
 
   return (
-    <div style={{ minHeight:'100dvh', background:'#0D0D0D', display:'flex', flexDirection:'column', alignItems: 'center', justifyContent: 'center', padding: '24px', ...F }}>
+    <div style={{ minHeight:'100dvh', background:'#0D0D0D', display:'flex', flexDirection:'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px', ...F }}>
       <style>{CSS}</style>
 
-      <div style={{ width: '100%', maxWidth: 440, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div style={{ width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         
         {/* Glowing Check */}
-        <div className="scale-in" style={{ width: 88, height: 88, borderRadius: '50%', background: '#FF6B1A', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 32, animation: 'glow 2.5s infinite' }}>
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <div className="scale-in" style={{ width: 72, height: 72, borderRadius: '50%', background: '#FF6B1A', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28, animation: 'glow 2.5s infinite' }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20 6L9 17l-5-5"/>
           </svg>
         </div>
 
-        <div className="fade-up" style={{ textAlign: 'center', marginBottom: 40, animationDelay: '0.1s' }}>
-          <h1 style={{ color: '#F5F5F5', fontSize: 36, fontWeight: 900, margin: '0 0 8px', letterSpacing: '-1px' }}>
+        <div className="fade-up" style={{ textAlign: 'center', marginBottom: 32, animationDelay: '0.1s' }}>
+          <h1 style={{ color: '#F5F5F5', fontSize: 32, fontWeight: 900, margin: '0 0 6px', letterSpacing: '-1px' }}>
             You're booked.
           </h1>
-          <p style={{ color: '#FF6B1A', fontSize: 16, fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <p style={{ color: '#FF6B1A', fontSize: 14, fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             {name.split(' ')[0]}, see you soon
           </p>
         </div>
 
         {/* Details Card */}
-        <div className="fade-up" style={{ background: '#171717', border: '1px solid #2A2A2A', borderRadius: 20, padding: '24px', width: '100%', marginBottom: 32, animationDelay: '0.2s' }}>
+        <div className="fade-up" style={{ background: '#171717', border: '1px solid #2A2A2A', borderRadius: 16, padding: '16px 20px', width: '100%', marginBottom: 28, animationDelay: '0.2s' }}>
           {(dateStr||time) ? (
             <div>
               {dateStr && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1.5px solid #2A2A2A', marginBottom: 16 }}>
-                  <span style={{ color: '#888888', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em' }}>DATE</span>
-                  <span style={{ color: '#F5F5F5', fontSize: 15, fontWeight: 800 }}>{dateStr}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '1.5px solid #2A2A2A', marginBottom: 12 }}>
+                  <span style={{ color: '#888888', fontSize: 13, fontWeight: 700, letterSpacing: '0.05em' }}>DATE</span>
+                  <span style={{ color: '#F5F5F5', fontSize: 14, fontWeight: 800 }}>{dateStr}</span>
                 </div>
               )}
               {time && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: '#888888', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em' }}>TIME</span>
-                  <span style={{ color: '#FF6B1A', fontSize: 18, fontWeight: 900 }}>{time}</span>
+                  <span style={{ color: '#888888', fontSize: 13, fontWeight: 700, letterSpacing: '0.05em' }}>TIME</span>
+                  <span style={{ color: '#FF6B1A', fontSize: 16, fontWeight: 900 }}>{time}</span>
                 </div>
               )}
             </div>
           ) : (
-            <p style={{ color: '#888', fontSize: 14, margin: 0, textAlign: 'center', fontWeight: 500 }}>
+            <p style={{ color: '#888', fontSize: 13, margin: 0, textAlign: 'center', fontWeight: 500 }}>
               Your appointment details have been saved successfully.
             </p>
           )}
         </div>
 
         {/* Actions */}
-        <div className="fade-up" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16, animationDelay: '0.3s' }}>
+        <div className="fade-up" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12, animationDelay: '0.3s' }}>
           <button onClick={goToDashboard}
-            style={{ width: '100%', background: '#FF6B1A', color: '#fff', border: 'none', borderRadius: 22, padding: '18px', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 28px rgba(255,107,26,0.3)', ...F }}>
+            style={{ width: '100%', background: '#FF6B1A', color: '#fff', border: 'none', borderRadius: 18, padding: '14px', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 24px rgba(255,107,26,0.3)', ...F }}>
             View My Appointments →
           </button>
 
           <button onClick={() => navigate(`/b/${barberSlug}/book`)}
-            style={{ width: '100%', background: 'transparent', color: '#888888', border: '1.5px solid #2A2A2A', borderRadius: 22, padding: '16px', fontSize: 15, fontWeight: 700, cursor: 'pointer', ...F }}>
+            style={{ width: '100%', background: 'transparent', color: '#888888', border: '1.5px solid #2A2A2A', borderRadius: 18, padding: '14px', fontSize: 14, fontWeight: 700, cursor: 'pointer', ...F }}>
             Book Another →
           </button>
         </div>
