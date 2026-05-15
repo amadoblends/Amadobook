@@ -1,9 +1,13 @@
+/**
+ * BarberDashboard — greeting removed from top
+ * (it's now in the side drawer)
+ * Header starts directly with Today's Overview
+ */
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { doc, updateDoc, addDoc, collection, serverTimestamp, getDocs, query, where } from 'firebase/firestore'
+import { doc, updateDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useBarberData } from '../../hooks/useBarberData'
-import { useBarberAuth as useAuth } from '../../hooks/useBarberAuth'
 import { formatCurrency, formatDuration, parseLocalDate, generateTimeSlots } from '../../utils/helpers'
 import { format, isToday, isTomorrow, differenceInSeconds, startOfDay, addDays, isSameDay } from 'date-fns'
 import BarberLayout from '../../components/layout/BarberLayout'
@@ -66,7 +70,6 @@ function Countdown({appt}){
   return<span style={{fontVariantNumeric:'tabular-nums'}}>{label}</span>
 }
 
-// ── Centered modal ──────────────────────────────────────────────────────────
 function Modal({children,onClose,maxWidth=380}){
   return(
     <div style={{position:'fixed',inset:0,zIndex:70,background:'rgba(0,0,0,0.88)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,animation:'fadeIn 0.15s ease'}} onClick={onClose}>
@@ -77,34 +80,22 @@ function Modal({children,onClose,maxWidth=380}){
   )
 }
 
-// ── NEW APPOINTMENT MODAL ───────────────────────────────────────────────────
-// Lets barbero choose: Walk-in (new client) OR Existing client from DB
 function NewApptModal({onClose,barber,activeServices,availability,appointments,clients}){
-  const[mode,setMode]=useState(null) // null | 'walkin' | 'existing'
+  const[mode,setMode]=useState(null)
   const[step,setStep]=useState(1)
-
-  // Client info
   const[name,setName]=useState(''),[phone,setPhone]=useState(''),[email,setEmail]=useState(''),[notes,setNotes]=useState('')
-  const[search,setSearch]=useState('')
-  const[selClient,setSelClient]=useState(null)
-
-  // Service + time
+  const[search,setSearch]=useState(''),[selClient,setSelClient]=useState(null)
   const[selSvc,setSelSvc]=useState(null)
   const[selDate,setSelDate]=useState(new Date()),[selSlot,setSelSlot]=useState(null)
-  const[weekOff,setWeekOff]=useState(0)
-  const[saving,setSaving]=useState(false)
+  const[weekOff,setWeekOff]=useState(0),[saving,setSaving]=useState(false)
 
   const today=startOfDay(new Date()),advance=availability?.advanceDays||30
   const weekDays=Array.from({length:7},(_,i)=>addDays(today,weekOff*7+i)).filter(d=>d<=addDays(today,advance))
 
-  // When existing client selected, pre-fill their top service
   useEffect(()=>{
     if(selClient&&activeServices.length>0){
       const topSvcName=Object.entries(selClient.services||{}).sort((a,b)=>b[1]-a[1])[0]?.[0]
-      if(topSvcName){
-        const found=activeServices.find(s=>s.name===topSvcName)
-        if(found)setSelSvc(found)
-      }
+      if(topSvcName){const found=activeServices.find(s=>s.name===topSvcName);if(found)setSelSvc(found)}
     }
   },[selClient])
 
@@ -136,55 +127,43 @@ function NewApptModal({onClose,barber,activeServices,availability,appointments,c
     if(!selSvc||!selSlot)return
     setSaving(true)
     try{
-      const clientName = mode==='existing'&&selClient ? selClient.name : name.trim()
-      const clientPhone= mode==='existing'&&selClient ? selClient.phone||phone : phone.trim()
-      const clientEmail= mode==='existing'&&selClient ? selClient.email||email : email.trim()
-      const clientId   = mode==='existing'&&selClient ? selClient.clientId||null : null
-
+      const clientName=mode==='existing'&&selClient?selClient.name:name.trim()
+      const clientPhone=mode==='existing'&&selClient?selClient.phone||phone:phone.trim()
+      const clientEmail=mode==='existing'&&selClient?selClient.email||email:email.trim()
+      const clientId=mode==='existing'&&selClient?selClient.clientId||null:null
       await addDoc(collection(db,'appointments'),{
         barberId:barber.id,barberName:barber.name,
-        clientId, clientName, clientPhone, clientEmail,
-        isGuest:!clientId, isWalkIn:true,
+        clientId,clientName,clientPhone,clientEmail,
+        isGuest:!clientId,isWalkIn:true,
         services:[{id:selSvc.id,name:selSvc.name,price:selSvc.price,duration:selSvc.duration}],
         date:format(selDate,'yyyy-MM-dd'),startTime:selSlot.startTime,endTime:selSlot.endTime,
         totalDuration:selSvc.duration,totalPrice:selSvc.price,
         paymentMethod:'cash',paymentStatus:'pending',bookingStatus:'confirmed',
         notes:notes.trim()||null,createdAt:serverTimestamp(),
       })
-      toast.success('Appointment created ✂️'); onClose()
+      toast.success('Appointment created ✂️');onClose()
     }catch{toast.error('Could not create')}
     finally{setSaving(false)}
   }
 
-  // ── Step labels based on mode
-  const totalSteps = mode ? 3 : 1
-  const stepLabel = !mode ? 'Choose Type' : step===1 ? (mode==='walkin'?'Client Info':'Select Client') : step===2 ? 'Service' : 'Date & Time'
-
-  const canNext = !mode ? false
-    : step===1 ? (mode==='walkin'?name.trim().length>0:!!selClient)
-    : step===2 ? !!selSvc
-    : !!selSlot
+  const canNext=!mode?false:step===1?(mode==='walkin'?name.trim().length>0:!!selClient):step===2?!!selSvc:!!selSlot
+  const stepLabel=!mode?'Choose Type':step===1?(mode==='walkin'?'Client Info':'Select Client'):step===2?'Service':'Date & Time'
 
   return(
     <Modal onClose={onClose} maxWidth={400}>
-      {/* Header */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'13px 15px',borderBottom:`1px solid ${BORDER}`}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           {(mode&&step>1)&&<button onClick={()=>setStep(s=>s-1)} style={{background:'none',border:'none',color:TXT2,cursor:'pointer',display:'flex',padding:0}}><ChevronLeft size={17}/></button>}
           {mode&&step===1&&<button onClick={()=>{setMode(null);setStep(1)}} style={{background:'none',border:'none',color:TXT2,cursor:'pointer',display:'flex',padding:0}}><ChevronLeft size={17}/></button>}
           <div>
             <p style={{color:TXT,fontWeight:700,fontSize:14,margin:'0 0 2px'}}>{stepLabel}</p>
-            {mode&&(
-              <div style={{display:'flex',gap:4}}>{[1,2,3].map(s=><div key={s} style={{width:s===step?12:4,height:4,borderRadius:2,background:s<=step?ORANGE:BORDER,transition:'all 0.2s'}}/>)}</div>
-            )}
+            {mode&&<div style={{display:'flex',gap:4}}>{[1,2,3].map(s=><div key={s} style={{width:s===step?12:4,height:4,borderRadius:2,background:s<=step?ORANGE:BORDER,transition:'all 0.2s'}}/>)}</div>}
           </div>
         </div>
         <button onClick={onClose} style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:8,padding:'5px 6px',color:TXT2,cursor:'pointer',display:'flex'}}><X size={14}/></button>
       </div>
 
       <div style={{padding:'13px 15px 20px'}}>
-
-        {/* ── Mode selector ── */}
         {!mode&&(
           <div style={{display:'flex',flexDirection:'column',gap:8}}>
             <p style={{color:TXT2,fontSize:12,margin:'0 0 8px',textAlign:'center'}}>How do you want to add this appointment?</p>
@@ -211,7 +190,6 @@ function NewApptModal({onClose,barber,activeServices,availability,appointments,c
           </div>
         )}
 
-        {/* ── Step 1: Walk-in — client info ── */}
         {mode==='walkin'&&step===1&&(
           <div style={{display:'flex',flexDirection:'column',gap:10}}>
             {[{l:'Name *',v:name,s:setName,t:'text',p:'Client name'},{l:'Phone',v:phone,s:setPhone,t:'tel',p:'(305) 000-0000'},{l:'Email',v:email,s:setEmail,t:'email',p:'optional'}].map(f=>(
@@ -231,55 +209,47 @@ function NewApptModal({onClose,barber,activeServices,availability,appointments,c
           </div>
         )}
 
-        {/* ── Step 1: Existing client — search ── */}
         {mode==='existing'&&step===1&&(
           <div>
             <div style={{display:'flex',alignItems:'center',gap:8,background:CARD2,border:`1px solid ${BORDER}`,borderRadius:10,padding:'9px 11px',marginBottom:10}}>
               <Search size={13} color={TXT3}/>
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, phone, email…" autoFocus
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, phone…" autoFocus
                 style={{flex:1,background:'transparent',border:'none',outline:'none',color:TXT,fontSize:14,...F}}/>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:6}}>
-              {filteredClients.length===0?(
-                <p style={{color:TXT2,fontSize:12,textAlign:'center',padding:'16px 0'}}>No clients found</p>
-              ):filteredClients.map(c=>{
-                const topSvcName=Object.entries(c.services||{}).sort((a,b)=>b[1]-a[1])[0]?.[0]
-                const sel=selClient?.id===c.id
-                return(
-                  <button key={c.id} onClick={()=>setSelClient(c)}
-                    style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:11,background:sel?`${ORANGE}12`:CARD2,border:`1.5px solid ${sel?ORANGE:BORDER}`,cursor:'pointer',textAlign:'left',...F,width:'100%'}}>
-                    <Avatar name={c.name} photoURL={c.photoURL} size={34} fontSize={11}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <p style={{color:TXT,fontWeight:700,fontSize:13,margin:'0 0 2px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.name}</p>
-                      <p style={{color:TXT2,fontSize:10,margin:0}}>
-                        {c.visits} visit{c.visits!==1?'s':''}{topSvcName?` · Fav: ${topSvcName}`:''}
-                      </p>
-                    </div>
-                    <div style={{width:18,height:18,borderRadius:'50%',border:`2px solid ${sel?ORANGE:BORDER}`,background:sel?ORANGE:'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                      {sel&&<Check size={10} color="#fff"/>}
-                    </div>
-                  </button>
-                )
-              })}
+              {filteredClients.length===0
+                ?<p style={{color:TXT2,fontSize:12,textAlign:'center',padding:'16px 0'}}>No clients found</p>
+                :filteredClients.map(c=>{
+                  const topSvcName=Object.entries(c.services||{}).sort((a,b)=>b[1]-a[1])[0]?.[0]
+                  const sel=selClient?.id===c.id
+                  return(
+                    <button key={c.id} onClick={()=>setSelClient(c)}
+                      style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:11,background:sel?`${ORANGE}12`:CARD2,border:`1.5px solid ${sel?ORANGE:BORDER}`,cursor:'pointer',textAlign:'left',...F,width:'100%'}}>
+                      <Avatar name={c.name} photoURL={c.photoURL} size={34} fontSize={11}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <p style={{color:TXT,fontWeight:700,fontSize:13,margin:'0 0 2px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.name}</p>
+                        <p style={{color:TXT2,fontSize:10,margin:0}}>{c.visits} visit{c.visits!==1?'s':''}{topSvcName?` · Fav: ${topSvcName}`:''}</p>
+                      </div>
+                      <div style={{width:18,height:18,borderRadius:'50%',border:`2px solid ${sel?ORANGE:BORDER}`,background:sel?ORANGE:'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                        {sel&&<Check size={10} color="#fff"/>}
+                      </div>
+                    </button>
+                  )
+                })}
             </div>
           </div>
         )}
 
-        {/* ── Step 2: Service ── */}
         {mode&&step===2&&(
           <div style={{display:'flex',flexDirection:'column',gap:7}}>
-            {/* Show recommended service for existing client */}
             {mode==='existing'&&selClient&&(()=>{
               const topSvcName=Object.entries(selClient.services||{}).sort((a,b)=>b[1]-a[1])[0]?.[0]
               if(!topSvcName)return null
-              return(
-                <div style={{background:`${ORANGE}08`,border:`1px solid ${ORANGE}20`,borderRadius:10,padding:'8px 11px',marginBottom:4}}>
-                  <p style={{color:ORANGE,fontSize:10,fontWeight:700,margin:'0 0 1px'}}>⭐ RECOMMENDED</p>
-                  <p style={{color:TXT2,fontSize:11,margin:0}}>Based on {selClient.name}'s history: <strong style={{color:TXT}}>{topSvcName}</strong></p>
-                </div>
-              )
+              return<div style={{background:`${ORANGE}08`,border:`1px solid ${ORANGE}20`,borderRadius:10,padding:'8px 11px',marginBottom:4}}>
+                <p style={{color:ORANGE,fontSize:10,fontWeight:700,margin:'0 0 1px'}}>⭐ RECOMMENDED</p>
+                <p style={{color:TXT2,fontSize:11,margin:0}}>Based on history: <strong style={{color:TXT}}>{topSvcName}</strong></p>
+              </div>
             })()}
-
             {activeServices.map(svc=>{
               const sel=selSvc?.id===svc.id
               const topSvcName=mode==='existing'&&selClient?Object.entries(selClient.services||{}).sort((a,b)=>b[1]-a[1])[0]?.[0]:null
@@ -296,7 +266,7 @@ function NewApptModal({onClose,barber,activeServices,availability,appointments,c
                     <p style={{color:TXT2,fontSize:11,margin:'1px 0 0'}}>{formatDuration(svc.duration)}</p>
                   </div>
                   <div style={{display:'flex',alignItems:'center',gap:7,flexShrink:0}}>
-                    <p style={{color:sel?ORANGE:ORANGE,fontWeight:800,fontSize:13,margin:0}}>{formatCurrency(svc.price)}</p>
+                    <p style={{color:ORANGE,fontWeight:800,fontSize:13,margin:0}}>{formatCurrency(svc.price)}</p>
                     <div style={{width:16,height:16,borderRadius:'50%',border:`2px solid ${sel?ORANGE:BORDER}`,background:sel?ORANGE:'transparent',display:'flex',alignItems:'center',justifyContent:'center'}}>
                       {sel&&<Check size={9} color="#fff"/>}
                     </div>
@@ -307,7 +277,6 @@ function NewApptModal({onClose,barber,activeServices,availability,appointments,c
           </div>
         )}
 
-        {/* ── Step 3: Date & Time ── */}
         {mode&&step===3&&(
           <div>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:9}}>
@@ -336,31 +305,24 @@ function NewApptModal({onClose,barber,activeServices,availability,appointments,c
             <p style={{color:TXT3,fontSize:9,fontWeight:700,letterSpacing:'0.08em',marginBottom:8}}>{format(selDate,'EEE, MMM d').toUpperCase()}</p>
             {slots.length===0
               ?<p style={{color:TXT2,fontSize:12,textAlign:'center',padding:'10px 0'}}>No available times</p>
-              :<div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:5,marginBottom:10}}>
+              :<div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:5}}>
                 {slots.map(slot=>{
                   const sel=selSlot?.startTime===slot.startTime
-                  return(
-                    <button key={slot.startTime} onClick={()=>setSelSlot(slot)}
-                      style={{padding:'9px 3px',borderRadius:9,border:`1.5px solid ${sel?ORANGE:BORDER}`,background:sel?ORANGE:CARD2,color:sel?'#fff':TXT2,fontWeight:700,fontSize:11,cursor:'pointer',...F}}>
-                      {slot.startTime}
-                    </button>
-                  )
+                  return<button key={slot.startTime} onClick={()=>setSelSlot(slot)}
+                    style={{padding:'9px 3px',borderRadius:9,border:`1.5px solid ${sel?ORANGE:BORDER}`,background:sel?ORANGE:CARD2,color:sel?'#fff':TXT2,fontWeight:700,fontSize:11,cursor:'pointer',...F}}>
+                    {slot.startTime}
+                  </button>
                 })}
               </div>}
-            {selSlot&&(
-              <div style={{background:`${ORANGE}10`,border:`1px solid ${ORANGE}28`,borderRadius:9,padding:'9px 11px',marginTop:6}}>
-                <p style={{color:ORANGE,fontWeight:700,fontSize:12,margin:0}}>{format(selDate,'MMM d')} · {selSlot.startTime}–{selSlot.endTime}</p>
-                <p style={{color:TXT2,fontSize:10,margin:'2px 0 0'}}>{selSvc?.name} · {formatCurrency(selSvc?.price)}</p>
-              </div>
-            )}
+            {selSlot&&<div style={{background:`${ORANGE}10`,border:`1px solid ${ORANGE}28`,borderRadius:9,padding:'9px 11px',marginTop:10}}>
+              <p style={{color:ORANGE,fontWeight:700,fontSize:12,margin:0}}>{format(selDate,'MMM d')} · {selSlot.startTime}–{selSlot.endTime}</p>
+              <p style={{color:TXT2,fontSize:10,margin:'2px 0 0'}}>{selSvc?.name} · {formatCurrency(selSvc?.price)}</p>
+            </div>}
           </div>
         )}
 
-        {/* CTA */}
         {mode&&(
-          <button
-            onClick={step<3?()=>canNext&&setStep(s=>s+1):create}
-            disabled={!canNext||saving}
+          <button onClick={step<3?()=>canNext&&setStep(s=>s+1):create} disabled={!canNext||saving}
             style={{width:'100%',marginTop:14,background:canNext?ORANGE:BORDER,border:'none',borderRadius:20,padding:'13px',color:canNext?'#fff':TXT3,fontWeight:700,fontSize:14,cursor:canNext?'pointer':'not-allowed',...F,display:'flex',alignItems:'center',justifyContent:'center',gap:6,boxShadow:canNext?`0 4px 14px ${ORANGE}38`:'none'}}>
             {saving&&<div style={{width:14,height:14,border:'2px solid rgba(255,255,255,0.4)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin 0.75s linear infinite'}}/>}
             {step<3?'Continue →':saving?'Booking…':'✓ Confirm Appointment'}
@@ -371,7 +333,6 @@ function NewApptModal({onClose,barber,activeServices,availability,appointments,c
   )
 }
 
-// ── Appointment detail modal ────────────────────────────────────────────────
 function ClientModal({appt,allAppts,onClose,onReschedule,onCancel}){
   const{formatTime}=useTheme()
   if(!appt)return null
@@ -379,7 +340,6 @@ function ClientModal({appt,allAppts,onClose,onReschedule,onCancel}){
   const related=allAppts.filter(a=>(appt.clientId&&a.clientId===appt.clientId)||(!appt.clientId&&a.clientPhone&&a.clientPhone===appt.clientPhone&&a.clientPhone)).sort((a,b)=>b.date?.localeCompare(a.date))
   const visits=related.filter(a=>a.bookingStatus==='completed').length
   const spent=related.filter(a=>a.paymentStatus==='paid').reduce((s,a)=>s+(a.totalWithTip||a.totalPrice||0),0)
-
   return(
     <Modal onClose={onClose}>
       <div style={{padding:'12px 14px',borderBottom:`1px solid ${BORDER}`}}>
@@ -396,30 +356,20 @@ function ClientModal({appt,allAppts,onClose,onReschedule,onCancel}){
           </div>
           <button onClick={onClose} style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:8,padding:'5px 6px',color:TXT2,cursor:'pointer',display:'flex'}}><X size={14}/></button>
         </div>
-        {isNow&&(
-          <div style={{background:`${ORANGE}14`,borderRadius:8,padding:'6px 10px',marginTop:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-            <div style={{display:'flex',alignItems:'center',gap:6}}>
-              <div style={{width:6,height:6,borderRadius:'50%',background:ORANGE,animation:'pulse 1.5s infinite'}}/>
-              <span style={{color:ORANGE,fontWeight:700,fontSize:11}}>NOW SERVING</span>
-            </div>
-            <span style={{color:ORANGE,fontSize:11,fontWeight:600}}><Countdown appt={appt}/></span>
-          </div>
-        )}
+        {isNow&&<div style={{background:`${ORANGE}14`,borderRadius:8,padding:'6px 10px',marginTop:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div style={{display:'flex',alignItems:'center',gap:6}}><div style={{width:6,height:6,borderRadius:'50%',background:ORANGE,animation:'pulse 1.5s infinite'}}/><span style={{color:ORANGE,fontWeight:700,fontSize:11}}>NOW SERVING</span></div>
+          <span style={{color:ORANGE,fontSize:11,fontWeight:600}}><Countdown appt={appt}/></span>
+        </div>}
       </div>
       <div style={{padding:'12px 14px 16px'}}>
-        {(appt.clientEmail||appt.clientPhone)&&(
-          <div style={{display:'flex',flexDirection:'column',gap:5,marginBottom:10}}>
-            {appt.clientEmail&&<div style={{display:'flex',alignItems:'center',gap:8,background:CARD2,borderRadius:8,padding:'7px 10px'}}><Mail size={11} color={TXT3}/><span style={{color:TXT2,fontSize:12}}>{appt.clientEmail}</span></div>}
-            {appt.clientPhone&&<div style={{display:'flex',alignItems:'center',gap:8,background:CARD2,borderRadius:8,padding:'7px 10px'}}><Phone size={11} color={TXT3}/><a href={`tel:${appt.clientPhone}`} style={{color:ORANGE,fontSize:12,textDecoration:'none',fontWeight:600}}>{appt.clientPhone}</a></div>}
-          </div>
-        )}
+        {(appt.clientEmail||appt.clientPhone)&&<div style={{display:'flex',flexDirection:'column',gap:5,marginBottom:10}}>
+          {appt.clientEmail&&<div style={{display:'flex',alignItems:'center',gap:8,background:CARD2,borderRadius:8,padding:'7px 10px'}}><Mail size={11} color={TXT3}/><span style={{color:TXT2,fontSize:12}}>{appt.clientEmail}</span></div>}
+          {appt.clientPhone&&<div style={{display:'flex',alignItems:'center',gap:8,background:CARD2,borderRadius:8,padding:'7px 10px'}}><Phone size={11} color={TXT3}/><a href={`tel:${appt.clientPhone}`} style={{color:ORANGE,fontSize:12,textDecoration:'none',fontWeight:600}}>{appt.clientPhone}</a></div>}
+        </div>}
         <div style={{background:BG,border:`1px solid ${BORDER}`,borderRadius:10,padding:'10px 12px',marginBottom:10}}>
           {appt.services?.map((s,i)=>(
             <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',borderBottom:i<appt.services.length-1?`1px solid ${BORDER}`:'none'}}>
-              <div>
-                <p style={{color:TXT,fontWeight:600,fontSize:12,margin:'0 0 1px'}}>{s.name}</p>
-                <p style={{color:TXT2,fontSize:10,margin:0}}>{formatDuration(s.duration)}</p>
-              </div>
+              <div><p style={{color:TXT,fontWeight:600,fontSize:12,margin:'0 0 1px'}}>{s.name}</p><p style={{color:TXT2,fontSize:10,margin:0}}>{formatDuration(s.duration)}</p></div>
               <p style={{color:ORANGE,fontWeight:800,fontSize:13,margin:0}}>{formatCurrency(s.price)}</p>
             </div>
           ))}
@@ -442,9 +392,7 @@ function ClientModal({appt,allAppts,onClose,onReschedule,onCancel}){
             <button onClick={()=>onReschedule(appt)} style={{flex:1,padding:'10px 8px',borderRadius:10,background:CARD2,border:`1px solid ${BORDER}`,color:TXT,fontWeight:600,fontSize:12,cursor:'pointer',...F,display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
               <Calendar size={12}/> Reschedule
             </button>
-            <button onClick={()=>onCancel(appt)} style={{flex:1,padding:'10px 8px',borderRadius:10,background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.15)',color:'#EF4444',fontWeight:600,fontSize:12,cursor:'pointer',...F}}>
-              Cancel
-            </button>
+            <button onClick={()=>onCancel(appt)} style={{flex:1,padding:'10px 8px',borderRadius:10,background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.15)',color:'#EF4444',fontWeight:600,fontSize:12,cursor:'pointer',...F}}>Cancel</button>
           </div>
         )}
       </div>
@@ -455,9 +403,7 @@ function ClientModal({appt,allAppts,onClose,onReschedule,onCancel}){
 function CancelModal({appt,onClose,onDone}){
   const[reason,setReason]=useState('');const[saving,setSaving]=useState(false)
   async function confirm(){
-    setSaving(true)
-    try{await updateDoc(doc(db,'appointments',appt.id),{bookingStatus:'cancelled',cancelReason:reason});onDone()}
-    catch{}setSaving(false);onClose()
+    setSaving(true);try{await updateDoc(doc(db,'appointments',appt.id),{bookingStatus:'cancelled',cancelReason:reason});onDone()}catch{}setSaving(false);onClose()
   }
   return(
     <Modal onClose={onClose}>
@@ -468,30 +414,23 @@ function CancelModal({appt,onClose,onDone}){
           style={{width:'100%',background:CARD2,border:`1px solid ${BORDER}`,borderRadius:9,padding:'9px 11px',color:TXT,fontSize:14,outline:'none',marginBottom:12,...F}}/>
         <div style={{display:'flex',gap:7}}>
           <button onClick={onClose} style={{flex:1,padding:'10px',borderRadius:10,background:'transparent',border:`1px solid ${BORDER}`,color:TXT2,fontWeight:600,cursor:'pointer',...F,fontSize:13}}>Keep</button>
-          <button onClick={confirm} disabled={saving} style={{flex:1,padding:'10px',borderRadius:10,background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.2)',color:'#EF4444',fontWeight:700,cursor:'pointer',...F,fontSize:13}}>
-            {saving?'…':'Cancel it'}
-          </button>
+          <button onClick={confirm} disabled={saving} style={{flex:1,padding:'10px',borderRadius:10,background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.2)',color:'#EF4444',fontWeight:700,cursor:'pointer',...F,fontSize:13}}>{saving?'…':'Cancel it'}</button>
         </div>
       </div>
     </Modal>
   )
 }
 
-// ── Build client list from appointments ────────────────────────────────────
 function buildClients(appts){
   const map={}
   appts.forEach(a=>{
-    const key=a.clientId||a.clientEmail||a.clientName
-    if(!key)return
+    const key=a.clientId||a.clientEmail||a.clientName;if(!key)return
     if(!map[key])map[key]={id:key,clientId:a.clientId,name:a.clientName,email:a.clientEmail,phone:a.clientPhone,photoURL:a.clientPhotoURL,visits:0,services:{}}
-    const c=map[key]
-    c.visits++
-    a.services?.forEach(s=>{c.services[s.name]=(c.services[s.name]||0)+1})
+    map[key].visits++;a.services?.forEach(s=>{map[key].services[s.name]=(map[key].services[s.name]||0)+1})
   })
   return Object.values(map).sort((a,b)=>b.visits-a.visits)
 }
 
-// ── Appointment row ─────────────────────────────────────────────────────────
 function ApptRow({a,onClick,isCurrent,formatTime}){
   const isDone=a.bookingStatus==='completed'
   return(
@@ -519,31 +458,18 @@ function ApptRow({a,onClick,isCurrent,formatTime}){
   )
 }
 
-// ── MAIN ────────────────────────────────────────────────────────────────────
 export default function BarberDashboard(){
   const{barber,appointments,activeServices,availability,loading,todayAppts,upcomingAppts,todayEarned,todayProjected,efficiency}=useBarberData()
   const{formatTime}=useTheme()
   const navigate=useNavigate()
-
-  const[selectedAppt,setSelectedAppt]=useState(null)
-  const[cancelAppt,setCancelAppt]=useState(null)
-  const[showNewAppt,setShowNewAppt]=useState(false)
-
+  const[selectedAppt,setSelectedAppt]=useState(null),[cancelAppt,setCancelAppt]=useState(null),[showNewAppt,setShowNewAppt]=useState(false)
   const clients=useMemo(()=>buildClients(appointments),[appointments])
 
-  if(loading)return(
-    <BarberLayout>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh'}}>
-        <div style={{width:20,height:20,border:`2px solid #333`,borderTopColor:ORANGE,borderRadius:'50%',animation:'spin 0.65s linear infinite'}}/>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      </div>
-    </BarberLayout>
-  )
+  if(loading)return<BarberLayout><div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh'}}><div style={{width:20,height:20,border:`2px solid #333`,borderTopColor:ORANGE,borderRadius:'50%',animation:'spin 0.65s linear infinite'}}/><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div></BarberLayout>
 
   const now=new Date()
   const currentAppt=todayAppts.find(a=>now>=apptStart(a)&&now<=apptEnd(a))
   const nextAppt=todayAppts.find(a=>apptStart(a)>now)
-  const greeting=now.getHours()<12?'Good morning,':now.getHours()<17?'Good afternoon,':'Good evening,'
 
   return(
     <BarberLayout>
@@ -551,27 +477,10 @@ export default function BarberDashboard(){
       <div style={{background:BG,minHeight:'100%',paddingBottom:16,...F}}>
         <div style={{padding:'14px 16px',maxWidth:540,margin:'0 auto'}}>
 
-          {/* ── Header — bigger name like template ── */}
-          <div className="fu" style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
-            <div style={{display:'flex',alignItems:'center',gap:12}}>
-              <Avatar name={barber?.name} photoURL={barber?.photoURL} size={44} fontSize={15}/>
-              <div>
-                <p style={{color:TXT2,fontSize:12,fontWeight:500,margin:'0 0 2px'}}>{greeting}</p>
-                {/* Bigger name — like template */}
-                <p style={{color:TXT,fontWeight:900,fontSize:22,margin:0,letterSpacing:'-0.5px'}}>{barber?.name||'Barber'}</p>
-                <p style={{color:TXT3,fontSize:9,margin:'1px 0 0',fontWeight:700,letterSpacing:'0.08em'}}>BARBER</p>
-              </div>
-            </div>
-            <div style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:10,padding:'6px 10px',textAlign:'right'}}>
-              <p style={{color:TXT3,fontSize:9,fontWeight:700,letterSpacing:'0.06em',margin:'0 0 1px'}}>TODAY</p>
-              <p style={{color:TXT2,fontSize:10,fontWeight:600,margin:0}}>{format(now,'MMM d, yyyy')}</p>
-            </div>
-          </div>
-
-          {/* ── Stats ── */}
+          {/* ── Today's Overview — starts directly, no greeting here ── */}
           <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'12px 14px',marginBottom:10}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-              <p style={{color:TXT,fontWeight:600,fontSize:13,margin:0}}>Today's Overview</p>
+              <p style={{color:TXT,fontWeight:700,fontSize:14,margin:0}}>Today's Overview</p>
               <span style={{color:TXT2,fontSize:10,fontWeight:600}}>{format(now,'MMM d, yyyy')}</span>
             </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
@@ -599,7 +508,6 @@ export default function BarberDashboard(){
             )}
           </div>
 
-          {/* ── Now Serving ── */}
           {currentAppt&&(
             <button className="fu" onClick={()=>setSelectedAppt(currentAppt)}
               style={{width:'100%',background:`linear-gradient(135deg,${ORANGE},#FF8C42)`,borderRadius:14,padding:'14px',marginBottom:10,border:'none',cursor:'pointer',textAlign:'left',...F,boxShadow:`0 5px 20px ${ORANGE}38`}}>
@@ -624,7 +532,6 @@ export default function BarberDashboard(){
             </button>
           )}
 
-          {/* ── Next Up ── */}
           {!currentAppt&&nextAppt&&(
             <button className="fu" onClick={()=>setSelectedAppt(nextAppt)}
               style={{width:'100%',background:CARD,border:`1px solid ${BORDER}`,borderLeft:`3px solid ${ORANGE}`,borderRadius:12,padding:'11px 13px',marginBottom:10,cursor:'pointer',textAlign:'left',...F}}>
@@ -642,7 +549,6 @@ export default function BarberDashboard(){
             </button>
           )}
 
-          {/* ── Today's Appointments ── */}
           <div className="fu" style={{marginBottom:10}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
               <p style={{color:TXT,fontWeight:700,fontSize:14,margin:0}}>Today's Appointments</p>
@@ -657,20 +563,16 @@ export default function BarberDashboard(){
                 <p style={{color:TXT2,fontWeight:600,fontSize:12,margin:'0 0 2px'}}>No appointments today</p>
                 <p style={{color:TXT3,fontSize:11,margin:0}}>Tap "New Appointment" to add one</p>
               </div>
-            ):(
-              todayAppts.map(a=>(
-                <ApptRow key={a.id} a={a} onClick={()=>setSelectedAppt(a)} isCurrent={currentAppt?.id===a.id} formatTime={formatTime}/>
-              ))
-            )}
+            ):(todayAppts.map(a=>(
+              <ApptRow key={a.id} a={a} onClick={()=>setSelectedAppt(a)} isCurrent={currentAppt?.id===a.id} formatTime={formatTime}/>
+            )))}
           </div>
 
-          {/* ── New Appointment CTA ── */}
           <button className="fu" onClick={()=>setShowNewAppt(true)}
             style={{width:'100%',background:ORANGE,color:'#fff',border:'none',borderRadius:22,padding:'14px',fontWeight:700,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:7,...F,boxShadow:`0 4px 16px ${ORANGE}38`,marginBottom:10}}>
             <Plus size={16}/> New Appointment
           </button>
 
-          {/* ── Upcoming ── */}
           {upcomingAppts.slice(0,5).length>0&&(
             <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,padding:'12px 14px'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
@@ -703,23 +605,9 @@ export default function BarberDashboard(){
         </div>
       </div>
 
-      {selectedAppt&&(
-        <ClientModal appt={selectedAppt} allAppts={appointments}
-          onClose={()=>setSelectedAppt(null)}
-          onReschedule={a=>{setSelectedAppt(null);navigate('/barber/calendar',{state:{rescheduleId:a.id}})}}
-          onCancel={a=>{setSelectedAppt(null);setCancelAppt(a)}}/>
-      )}
+      {selectedAppt&&<ClientModal appt={selectedAppt} allAppts={appointments} onClose={()=>setSelectedAppt(null)} onReschedule={a=>{setSelectedAppt(null);navigate('/barber/calendar',{state:{rescheduleId:a.id}})}} onCancel={a=>{setSelectedAppt(null);setCancelAppt(a)}}/>}
       {cancelAppt&&<CancelModal appt={cancelAppt} onClose={()=>setCancelAppt(null)} onDone={()=>setCancelAppt(null)}/>}
-      {showNewAppt&&barber&&(
-        <NewApptModal
-          onClose={()=>setShowNewAppt(false)}
-          barber={barber}
-          activeServices={activeServices}
-          availability={availability}
-          appointments={appointments}
-          clients={clients}
-        />
-      )}
+      {showNewAppt&&barber&&<NewApptModal onClose={()=>setShowNewAppt(false)} barber={barber} activeServices={activeServices} availability={availability} appointments={appointments} clients={clients}/>}
     </BarberLayout>
   )
 }
