@@ -1,11 +1,13 @@
 /**
- * BarberLayout — fixed version
- * Uses useBarberData safely (checks context before calling)
+ * BarberLayout — header matches template exactly
+ * Left: ✂️ icon + "AmadoBlends" name
+ * Right: Bell + Avatar
+ * Profile sheet has greeting + barber info (3 lines hamburger style)
  */
 import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useBarberAuth as useAuth } from '../../hooks/useBarberAuth'
-import { LayoutDashboard, CalendarDays, ClipboardList, Users, Bell, X, LogOut, User, Settings, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, ClipboardList, Users, Bell, X, LogOut, User, Settings, ChevronRight, Menu } from 'lucide-react'
 import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 
@@ -15,7 +17,7 @@ const F={fontFamily:"'DM Sans',system-ui,sans-serif"}
 const CSS=`
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap');
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-100%)}to{opacity:1;transform:translateX(0)}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 ::-webkit-scrollbar{display:none}
@@ -23,10 +25,17 @@ input,textarea{font-size:16px!important}
 `
 
 const NAV=[
-  {to:'/barber/dashboard',    icon:LayoutDashboard, label:'Home'},
+  {to:'/barber/dashboard',    icon:LayoutDashboard, label:'Dashboard'},
   {to:'/barber/calendar',     icon:CalendarDays,    label:'Calendar'},
-  {to:'/barber/appointments', icon:ClipboardList,   label:'Appts'},
+  {to:'/barber/appointments', icon:ClipboardList,   label:'Appointments'},
   {to:'/barber/clients',      icon:Users,           label:'Clients'},
+]
+
+const MORE_NAV=[
+  {to:'/barber/services',     label:'Services'},
+  {to:'/barber/availability', label:'Availability'},
+  {to:'/barber/reports',      label:'Reports'},
+  {to:'/barber/broadcast',    label:'Broadcast'},
 ]
 
 function useUnread(userId){
@@ -40,28 +49,94 @@ function useUnread(userId){
   return n
 }
 
-function ProfileSheet({onClose,userData,barberName,navigate}){
+// ── Side drawer / profile sheet ─────────────────────────────────────────────
+function SideDrawer({onClose,userData,barberName,barberData,navigate}){
   const{signOut}=useAuth()
   const initials=`${userData?.firstName?.[0]||''}${userData?.lastName?.[0]||''}`.toUpperCase()
+
   async function handleSignOut(){
     localStorage.removeItem('ab_last_active')
     await signOut()
     navigate('/barber/login')
   }
+
   return(
-    <div style={{position:'fixed',inset:0,zIndex:70,background:'rgba(0,0,0,0.85)',animation:'fadeIn 0.15s ease'}} onClick={onClose}>
-      <div style={{position:'absolute',bottom:0,left:0,right:0,background:CARD,borderRadius:'20px 20px 0 0',border:`1px solid ${BORDER}`,paddingBottom:'max(28px,env(safe-area-inset-bottom))',animation:'slideUp 0.25s cubic-bezier(0.22,1,0.36,1)',...F}} onClick={e=>e.stopPropagation()}>
-        <div style={{width:36,height:4,borderRadius:2,background:BORDER,margin:'10px auto 0'}}/>
-        <div style={{display:'flex',alignItems:'center',gap:12,padding:'16px 18px 14px',borderBottom:`1px solid ${BORDER}`}}>
-          <div style={{width:44,height:44,borderRadius:'50%',overflow:'hidden',background:CARD2,border:`2px solid ${ORANGE}`,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:15,color:ORANGE,flexShrink:0}}>
+    <div style={{position:'fixed',inset:0,zIndex:70,animation:'fadeIn 0.15s ease'}} onClick={onClose}>
+      {/* Backdrop */}
+      <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.75)'}}/>
+
+      {/* Drawer */}
+      <div style={{
+        position:'absolute',left:0,top:0,bottom:0,
+        width:Math.min(280,window.innerWidth*0.82),
+        background:CARD,borderRight:`1px solid ${BORDER}`,
+        display:'flex',flexDirection:'column',
+        animation:'slideIn 0.25s cubic-bezier(0.22,1,0.36,1)',
+        ...F,
+      }} onClick={e=>e.stopPropagation()}>
+
+        {/* Profile header — greeting + name like template */}
+        <div style={{
+          padding:'max(48px,calc(env(safe-area-inset-top)+28px)) 20px 20px',
+          borderBottom:`1px solid ${BORDER}`,
+          background:CARD,
+        }}>
+          {/* Avatar */}
+          <div style={{width:52,height:52,borderRadius:'50%',overflow:'hidden',background:CARD2,border:`2px solid ${BORDER}`,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:17,color:TXT2,marginBottom:12,position:'relative'}}>
             {userData?.photoURL?<img src={userData.photoURL} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>:initials||'B'}
           </div>
-          <div>
-            <p style={{color:TXT,fontWeight:700,fontSize:15,margin:'0 0 1px'}}>{userData?.firstName} {userData?.lastName}</p>
-            <p style={{color:TXT2,fontSize:12,margin:0}}>{barberName||'Barber'}</p>
-          </div>
+          {/* Greeting */}
+          <p style={{color:TXT2,fontSize:12,fontWeight:500,margin:'0 0 2px'}}>
+            {new Date().getHours()<12?'Good morning,':new Date().getHours()<17?'Good afternoon,':'Good evening,'}
+          </p>
+          {/* Name — big */}
+          <p style={{color:TXT,fontWeight:900,fontSize:22,margin:'0 0 2px',letterSpacing:'-0.4px'}}>{userData?.firstName} {userData?.lastName}</p>
+          <p style={{color:TXT3,fontSize:10,fontWeight:700,letterSpacing:'0.08em',margin:0}}>BARBER</p>
         </div>
-        <div style={{padding:'6px 10px'}}>
+
+        {/* Nav items */}
+        <div style={{flex:1,overflowY:'auto',padding:'8px 10px'}}>
+          {/* Main nav */}
+          {NAV.map(item=>{
+            const Icon=item.icon
+            return(
+              <NavLink key={item.to} to={item.to} onClick={onClose}
+                style={({isActive})=>({
+                  display:'flex',alignItems:'center',gap:12,padding:'12px 10px',borderRadius:12,
+                  textDecoration:'none',marginBottom:2,
+                  background:isActive?`${ORANGE}14`:'transparent',
+                  transition:'background 0.12s',
+                })}>
+                {({isActive})=>(
+                  <>
+                    <Icon size={17} color={isActive?ORANGE:TXT2} strokeWidth={isActive?2.2:1.8}/>
+                    <span style={{color:isActive?ORANGE:TXT,fontWeight:isActive?700:500,fontSize:14}}>{item.label}</span>
+                  </>
+                )}
+              </NavLink>
+            )
+          })}
+
+          <div style={{height:1,background:BORDER,margin:'8px 10px'}}/>
+          <p style={{color:TXT3,fontSize:9,fontWeight:700,letterSpacing:'0.1em',padding:'4px 10px 6px'}}>MORE</p>
+
+          {/* More nav */}
+          {MORE_NAV.map(item=>(
+            <NavLink key={item.to} to={item.to} onClick={onClose}
+              style={({isActive})=>({
+                display:'flex',alignItems:'center',gap:12,padding:'11px 10px',borderRadius:12,
+                textDecoration:'none',marginBottom:2,
+                background:isActive?`${ORANGE}14`:'transparent',
+              })}>
+              {({isActive})=>(
+                <span style={{color:isActive?ORANGE:TXT2,fontWeight:isActive?700:500,fontSize:14}}>{item.label}</span>
+              )}
+            </NavLink>
+          ))}
+
+          <div style={{height:1,background:BORDER,margin:'8px 10px'}}/>
+
+          {/* Settings + Profile */}
           {[
             {icon:User,    label:'Edit Profile', fn:()=>{onClose();navigate('/barber/profile')}},
             {icon:Settings,label:'Settings',     fn:()=>{onClose();navigate('/barber/settings')}},
@@ -69,22 +144,20 @@ function ProfileSheet({onClose,userData,barberName,navigate}){
             const Icon=item.icon
             return(
               <button key={item.label} onClick={item.fn}
-                style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'13px 10px',borderRadius:12,background:'transparent',border:'none',cursor:'pointer',textAlign:'left',...F}}>
-                <div style={{width:32,height:32,borderRadius:10,background:CARD2,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  <Icon size={15} color={TXT2}/>
-                </div>
-                <span style={{flex:1,color:TXT,fontWeight:600,fontSize:14}}>{item.label}</span>
-                <ChevronRight size={14} color={TXT3}/>
+                style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'12px 10px',borderRadius:12,background:'transparent',border:'none',cursor:'pointer',textAlign:'left',...F,marginBottom:2}}>
+                <Icon size={16} color={TXT2}/>
+                <span style={{color:TXT,fontWeight:500,fontSize:14}}>{item.label}</span>
               </button>
             )
           })}
-          <div style={{height:1,background:BORDER,margin:'4px 10px'}}/>
+        </div>
+
+        {/* Sign out */}
+        <div style={{padding:'12px 10px',borderTop:`1px solid ${BORDER}`}}>
           <button onClick={handleSignOut}
-            style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'13px 10px',borderRadius:12,background:'transparent',border:'none',cursor:'pointer',textAlign:'left',...F}}>
-            <div style={{width:32,height:32,borderRadius:10,background:'rgba(239,68,68,0.1)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <LogOut size={15} color="#EF4444"/>
-            </div>
-            <span style={{color:'#EF4444',fontWeight:700,fontSize:14}}>Sign Out</span>
+            style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'12px 10px',borderRadius:12,background:'transparent',border:'none',cursor:'pointer',textAlign:'left',...F}}>
+            <LogOut size={16} color="#EF4444"/>
+            <span style={{color:'#EF4444',fontWeight:600,fontSize:14}}>Sign Out</span>
           </button>
         </div>
       </div>
@@ -95,11 +168,10 @@ function ProfileSheet({onClose,userData,barberName,navigate}){
 export default function BarberLayout({children}){
   const{userData,user}=useAuth()
   const navigate=useNavigate()
-  const[showProfile,setShowProfile]=useState(false)
+  const[showDrawer,setShowDrawer]=useState(false)
   const[barberName,setBarberName]=useState('')
   const unread=useUnread(user?.uid)
 
-  // Load barber name separately (no useBarberData dependency)
   useEffect(()=>{
     if(!user)return
     getDocs(query(collection(db,'barbers'),where('userId','==',user.uid))).then(snap=>{
@@ -111,31 +183,41 @@ export default function BarberLayout({children}){
     <div style={{minHeight:'100dvh',background:BG,display:'flex',flexDirection:'column',...F}}>
       <style>{CSS}</style>
 
-      {/* HEADER */}
+      {/* ── HEADER — matches template ── */}
       <header style={{
         position:'fixed',top:0,left:0,right:0,zIndex:40,
-        background:`${BG}EE`,backdropFilter:'blur(16px)',
+        background:`${BG}F0`,backdropFilter:'blur(16px)',
         borderBottom:`0.5px solid ${BORDER}`,
-        height:'calc(44px + env(safe-area-inset-top))',
+        height:'calc(48px + env(safe-area-inset-top))',
         paddingTop:'env(safe-area-inset-top)',
-        display:'flex',alignItems:'center',padding:'0 14px',
+        display:'flex',alignItems:'center',
+        padding:'0 14px',
       }}>
+        {/* Left: hamburger menu */}
+        <button onClick={()=>setShowDrawer(true)}
+          style={{background:'none',border:'none',color:TXT2,cursor:'pointer',padding:'6px',borderRadius:8,display:'flex',marginRight:10}}>
+          <Menu size={18}/>
+        </button>
+
+        {/* Logo + name — center-left */}
         <div style={{display:'flex',alignItems:'center',gap:7,flex:1}}>
-          <div style={{width:24,height:24,borderRadius:7,background:ORANGE,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+          <div style={{width:26,height:26,borderRadius:7,background:ORANGE,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
               <circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>
               <path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/>
             </svg>
           </div>
-          <span style={{color:TXT,fontWeight:800,fontSize:15,letterSpacing:'-0.3px'}}>{barberName||'AmadoBook'}</span>
+          <span style={{color:TXT,fontWeight:800,fontSize:16,letterSpacing:'-0.3px'}}>{barberName||'AmadoBlends'}</span>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:2}}>
-          <button style={{position:'relative',background:'none',border:'none',color:TXT2,cursor:'pointer',padding:'8px',borderRadius:8,display:'flex'}}>
-            <Bell size={17}/>
-            {unread>0&&<span style={{position:'absolute',top:6,right:6,width:6,height:6,borderRadius:'50%',background:ORANGE,border:`1.5px solid ${BG}`}}/>}
+
+        {/* Right: Bell + Avatar */}
+        <div style={{display:'flex',alignItems:'center',gap:4}}>
+          <button style={{position:'relative',background:'none',border:'none',color:TXT2,cursor:'pointer',padding:'7px',borderRadius:8,display:'flex'}}>
+            <Bell size={18}/>
+            {unread>0&&<span style={{position:'absolute',top:5,right:5,width:6,height:6,borderRadius:'50%',background:ORANGE,border:`1.5px solid ${BG}`}}/>}
           </button>
-          <button onClick={()=>setShowProfile(true)}
-            style={{background:'none',border:'none',cursor:'pointer',padding:'4px',display:'flex'}}>
+          <button onClick={()=>setShowDrawer(true)}
+            style={{background:'none',border:'none',cursor:'pointer',padding:'3px',display:'flex'}}>
             <div style={{width:28,height:28,borderRadius:'50%',overflow:'hidden',background:CARD2,border:`1.5px solid ${BORDER}`,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:10,color:TXT2}}>
               {userData?.photoURL
                 ?<img src={userData.photoURL} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
@@ -145,17 +227,17 @@ export default function BarberLayout({children}){
         </div>
       </header>
 
-      {/* CONTENT */}
+      {/* ── CONTENT ── */}
       <main style={{
         flex:1,
-        marginTop:'calc(44px + env(safe-area-inset-top))',
+        marginTop:'calc(48px + env(safe-area-inset-top))',
         paddingBottom:'calc(52px + env(safe-area-inset-bottom))',
         overflowX:'hidden',
       }}>
         {children}
       </main>
 
-      {/* BOTTOM NAV */}
+      {/* ── BOTTOM NAV — 4 tabs ── */}
       <nav style={{
         position:'fixed',bottom:0,left:0,right:0,zIndex:40,
         background:`${CARD}F5`,backdropFilter:'blur(16px)',
@@ -182,9 +264,10 @@ export default function BarberLayout({children}){
         ))}
       </nav>
 
-      {showProfile&&(
-        <ProfileSheet
-          onClose={()=>setShowProfile(false)}
+      {/* Side drawer */}
+      {showDrawer&&(
+        <SideDrawer
+          onClose={()=>setShowDrawer(false)}
           userData={userData}
           barberName={barberName}
           navigate={navigate}
