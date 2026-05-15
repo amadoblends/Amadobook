@@ -1,58 +1,69 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 
 import { BarberAuthProvider } from './context/BarberAuthContext'
 import { ClientAuthProvider } from './context/ClientAuthContext'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { useBarberAuth } from './hooks/useBarberAuth'
 import { useClientAuth } from './hooks/useClientAuth'
-import { PageLoader } from './components/ui/Spinner'
+import { BarberDataProvider } from './hooks/useBarberData'
 
 export const BARBER_SLUG = 'amadoblends'
 const APP_MODE = import.meta.env.VITE_APP_MODE || 'client'
 
-// ── Barber pages ───────────────────────────────────────────────────────────
-import BarberLoginPage    from './pages/auth/BarberLoginPage'
-import BarberSignupPage   from './pages/auth/BarberSignupPage'
-import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
-import BarberDashboard    from './pages/barber/BarberDashboard'
-import BarberCalendar     from './pages/barber/BarberCalendar'
-import BarberServices     from './pages/barber/BarberServices'
-import BarberAvailability from './pages/barber/BarberAvailability'
-import BarberReports      from './pages/barber/BarberReports'
-import BarberBroadcast    from './pages/barber/BarberBroadcast'
-import BarberAppointments from './pages/barber/BarberAppointments'
-import BarberClientList   from './pages/barber/BarberClientList'
-import BarberClientDetail from './pages/barber/BarberClientDetail'
-import BarberReportDetail from './pages/barber/BarberReportDetail'
-import AddEditService     from './pages/barber/AddEditService'
-import BarberSettings     from './pages/barber/BarberSettings'
-import { BarberProfile }  from './pages/barber/BarberProfile'
+// ── Inline loader (no full-screen spinner between pages) ──────────────────
+function PageLoader() {
+  return (
+    <div style={{ minHeight:'100dvh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg)' }}>
+      <div style={{ width:24, height:24, border:'2.5px solid #2A2A2A', borderTopColor:'var(--accent,#FF6B1A)', borderRadius:'50%', animation:'spin 0.65s linear infinite' }}/>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )
+}
 
-// ── Client pages ───────────────────────────────────────────────────────────
-import SplashPage             from './pages/client/SplashPage'
-import ClientLoginPage        from './pages/client/ClientLoginPage'
-import ClientRegisterPage     from './pages/client/ClientRegisterPage'
-import BookingPage            from './pages/client/BookingPage'
-import BookingConfirmedPage   from './pages/client/BookingConfirmedPage'
-import ClientDashboard        from './pages/client/ClientDashboard'
-import { MyAppointmentsPage } from './pages/client/MyAppointmentsPage'
-import { HistoryPage }        from './pages/client/HistoryPage'
-import { PortfolioPage }      from './pages/client/PortfolioPage'
-import { ReferralsPage }      from './pages/client/ReferralsPage'
-import { ClientProfilePage }  from './pages/client/ClientProfilePage'
+// ── Lazy imports — code splits each page into its own chunk ───────────────
+// BARBER
+const BarberLoginPage    = lazy(() => import('./pages/auth/BarberLoginPage'))
+const BarberSignupPage   = lazy(() => import('./pages/auth/BarberSignupPage'))
+const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'))
+const BarberDashboard    = lazy(() => import('./pages/barber/BarberDashboard'))
+const BarberCalendar     = lazy(() => import('./pages/barber/BarberCalendar'))
+const BarberServices     = lazy(() => import('./pages/barber/BarberServices'))
+const BarberAvailability = lazy(() => import('./pages/barber/BarberAvailability'))
+const BarberReports      = lazy(() => import('./pages/barber/BarberReports'))
+const BarberBroadcast    = lazy(() => import('./pages/barber/BarberBroadcast'))
+const BarberAppointments = lazy(() => import('./pages/barber/BarberAppointments'))
+const BarberClientList   = lazy(() => import('./pages/barber/BarberClientList'))
+const BarberClientDetail = lazy(() => import('./pages/barber/BarberClientDetail'))
+const BarberReportDetail = lazy(() => import('./pages/barber/BarberReportDetail'))
+const AddEditService     = lazy(() => import('./pages/barber/AddEditService'))
+const BarberSettings     = lazy(() => import('./pages/barber/BarberSettings'))
+const BarberProfileImport = lazy(() => import('./pages/barber/BarberProfile').then(m => ({ default: m.BarberProfile || m.default })))
+
+// CLIENT
+const SplashPage         = lazy(() => import('./pages/client/SplashPage'))
+const ClientLoginPage    = lazy(() => import('./pages/client/ClientLoginPage'))
+const ClientRegisterPage = lazy(() => import('./pages/client/ClientRegisterPage'))
+const BookingPage        = lazy(() => import('./pages/client/BookingPage'))
+const BookingConfirmedPage = lazy(() => import('./pages/client/BookingConfirmedPage'))
+const ClientDashboard    = lazy(() => import('./pages/client/ClientDashboard'))
+const MyAppointmentsPage = lazy(() => import('./pages/client/MyAppointmentsPage').then(m => ({ default: m.MyAppointmentsPage })))
+const HistoryPage        = lazy(() => import('./pages/client/HistoryPage').then(m => ({ default: m.HistoryPage })))
+const PortfolioPage      = lazy(() => import('./pages/client/PortfolioPage').then(m => ({ default: m.PortfolioPage })))
+const ReferralsPage      = lazy(() => import('./pages/client/ReferralsPage').then(m => ({ default: m.ReferralsPage })))
+const ClientProfilePage  = lazy(() => import('./pages/client/ClientProfilePage').then(m => ({ default: m.ClientProfilePage })))
 
 const TOAST_OPTS = {
   position: 'top-center',
   toastOptions: {
-    style: { background:'#1a1a1a', color:'#F5F5F5', border:'1px solid #2a2a2a', borderRadius:'12px', fontSize:'14px', fontFamily:"'DM Sans',system-ui,sans-serif" },
+    style: { background:'#1a1a1a', color:'#F5F5F5', border:'1px solid #2a2a2a', borderRadius:'12px', fontSize:'13px', fontFamily:"'DM Sans',system-ui,sans-serif" },
     success: { iconTheme: { primary:'#22C55E', secondary:'#fff' } },
     error:   { iconTheme: { primary:'#EF4444', secondary:'#fff' } },
   }
 }
 
-// ── Barber auth guard ──────────────────────────────────────────────────────
+// ── Guards ────────────────────────────────────────────────────────────────
 function BarberRoute({ children }) {
   const { user, userData, loading } = useBarberAuth()
   if (loading) return <PageLoader />
@@ -60,7 +71,6 @@ function BarberRoute({ children }) {
   return children
 }
 
-// ── Client auth guard ──────────────────────────────────────────────────────
 function ClientRoute({ children }) {
   const { user, loading } = useClientAuth()
   if (loading) return <PageLoader />
@@ -68,7 +78,7 @@ function ClientRoute({ children }) {
   return children
 }
 
-// ── Theme sync ─────────────────────────────────────────────────────────────
+// ── Theme sync ────────────────────────────────────────────────────────────
 function BarberThemeSync() {
   const { user, userData } = useBarberAuth()
   const { loadPrefs, resetToDefaults, setRole } = useTheme()
@@ -90,20 +100,14 @@ function ClientThemeSync() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// BARBER APP — amadobarber.vercel.app (VITE_APP_MODE=barber)
-// Only BarberAuthProvider mounted — no conflict with ClientAuth
+// BARBER APP
+// BarberDataProvider wraps all protected routes — data loads ONCE
 // ══════════════════════════════════════════════════════════════════════════
-function BarberApp() {
+function BarberProtectedRoutes() {
   return (
-    <BarberAuthProvider>
-      <ThemeProvider>
-        <BarberThemeSync />
-        <Toaster {...TOAST_OPTS} />
+    <BarberDataProvider>
+      <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/"                          element={<Navigate to="/barber/login" replace />} />
-          <Route path="/barber/login"              element={<BarberLoginPage />} />
-          <Route path="/barber/signup"             element={<BarberSignupPage />} />
-          <Route path="/barber/forgot-password"    element={<ForgotPasswordPage role="barber" />} />
           <Route path="/barber/dashboard"          element={<BarberRoute><BarberDashboard /></BarberRoute>} />
           <Route path="/barber/calendar"           element={<BarberRoute><BarberCalendar /></BarberRoute>} />
           <Route path="/barber/appointments"       element={<BarberRoute><BarberAppointments /></BarberRoute>} />
@@ -116,18 +120,38 @@ function BarberApp() {
           <Route path="/barber/reports"            element={<BarberRoute><BarberReports /></BarberRoute>} />
           <Route path="/barber/reports/detail"     element={<BarberRoute><BarberReportDetail /></BarberRoute>} />
           <Route path="/barber/broadcast"          element={<BarberRoute><BarberBroadcast /></BarberRoute>} />
-          <Route path="/barber/profile"            element={<BarberRoute><BarberProfile /></BarberRoute>} />
+          <Route path="/barber/profile"            element={<BarberRoute><BarberProfileImport /></BarberRoute>} />
           <Route path="/barber/settings"           element={<BarberRoute><BarberSettings /></BarberRoute>} />
-          <Route path="*"                          element={<Navigate to="/barber/login" replace />} />
+          <Route path="*"                          element={<Navigate to="/barber/dashboard" replace />} />
         </Routes>
+      </Suspense>
+    </BarberDataProvider>
+  )
+}
+
+function BarberApp() {
+  return (
+    <BarberAuthProvider>
+      <ThemeProvider>
+        <BarberThemeSync />
+        <Toaster {...TOAST_OPTS} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/"                          element={<Navigate to="/barber/login" replace />} />
+            <Route path="/barber/login"              element={<BarberLoginPage />} />
+            <Route path="/barber/signup"             element={<BarberSignupPage />} />
+            <Route path="/barber/forgot-password"    element={<ForgotPasswordPage />} />
+            <Route path="/barber/*"                  element={<BarberProtectedRoutes />} />
+            <Route path="*"                          element={<Navigate to="/barber/login" replace />} />
+          </Routes>
+        </Suspense>
       </ThemeProvider>
     </BarberAuthProvider>
   )
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// CLIENT APP — amadobook.vercel.app (VITE_APP_MODE=client)
-// Only ClientAuthProvider mounted — no conflict with BarberAuth
+// CLIENT APP
 // ══════════════════════════════════════════════════════════════════════════
 function ClientApp() {
   return (
@@ -135,39 +159,30 @@ function ClientApp() {
       <ThemeProvider>
         <ClientThemeSync />
         <Toaster {...TOAST_OPTS} />
-        <Routes>
-          <Route path="/"                  element={<SplashPage />} />
-          <Route path="/login"             element={<ClientLoginPage />} />
-          <Route path="/register"          element={<ClientRegisterPage />} />
-          <Route path="/forgot-password"   element={<ForgotPasswordPage role="client" />} />
-          <Route path="/book"              element={<BookingPage />} />
-          <Route path="/confirmed"         element={<BookingConfirmedPage />} />
-          <Route path="/dashboard"         element={<ClientRoute><ClientDashboard /></ClientRoute>} />
-          <Route path="/appointments"      element={<ClientRoute><MyAppointmentsPage /></ClientRoute>} />
-          <Route path="/history"           element={<ClientRoute><HistoryPage /></ClientRoute>} />
-          <Route path="/portfolio"         element={<ClientRoute><PortfolioPage /></ClientRoute>} />
-          <Route path="/referrals"         element={<ClientRoute><ReferralsPage /></ClientRoute>} />
-          <Route path="/profile"           element={<ClientRoute><ClientProfilePage /></ClientRoute>} />
-          {/* Legacy slug redirects */}
-          <Route path="/b/:s"              element={<Navigate to="/" replace />} />
-          <Route path="/b/:s/login"        element={<Navigate to="/login" replace />} />
-          <Route path="/b/:s/register"     element={<Navigate to="/register" replace />} />
-          <Route path="/b/:s/book"         element={<Navigate to="/book" replace />} />
-          <Route path="/b/:s/confirmed"    element={<Navigate to="/confirmed" replace />} />
-          <Route path="/b/:s/dashboard"    element={<Navigate to="/dashboard" replace />} />
-          <Route path="/b/:s/appointments" element={<Navigate to="/appointments" replace />} />
-          <Route path="/b/:s/history"      element={<Navigate to="/history" replace />} />
-          <Route path="/b/:s/portfolio"    element={<Navigate to="/portfolio" replace />} />
-          <Route path="/b/:s/referrals"    element={<Navigate to="/referrals" replace />} />
-          <Route path="/b/:s/profile"      element={<Navigate to="/profile" replace />} />
-          <Route path="*"                  element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/"                  element={<SplashPage />} />
+            <Route path="/login"             element={<ClientLoginPage />} />
+            <Route path="/register"          element={<ClientRegisterPage />} />
+            <Route path="/forgot-password"   element={<ForgotPasswordPage />} />
+            <Route path="/book"              element={<BookingPage />} />
+            <Route path="/confirmed"         element={<BookingConfirmedPage />} />
+            <Route path="/dashboard"         element={<ClientRoute><ClientDashboard /></ClientRoute>} />
+            <Route path="/appointments"      element={<ClientRoute><MyAppointmentsPage /></ClientRoute>} />
+            <Route path="/history"           element={<ClientRoute><HistoryPage /></ClientRoute>} />
+            <Route path="/portfolio"         element={<ClientRoute><PortfolioPage /></ClientRoute>} />
+            <Route path="/referrals"         element={<ClientRoute><ReferralsPage /></ClientRoute>} />
+            <Route path="/profile"           element={<ClientRoute><ClientProfilePage /></ClientRoute>} />
+            <Route path="/b/:s"              element={<Navigate to="/" replace />} />
+            <Route path="/b/:s/*"            element={<Navigate to="/" replace />} />
+            <Route path="*"                  element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </ThemeProvider>
     </ClientAuthProvider>
   )
 }
 
-// ── Root — picks app based on VITE_APP_MODE ────────────────────────────────
 export default function App() {
   return (
     <BrowserRouter>

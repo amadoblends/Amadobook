@@ -1,675 +1,514 @@
-import { useEffect, useState, useMemo } from 'react'
+/**
+ * BarberCalendar — redesign matching template
+ * ✓ Uses useBarberData (no Firebase calls)
+ * ✓ Compact iPhone UI
+ * ✓ Month grid + day timeline
+ * ✓ Walk-in badge
+ * ✓ Appointment detail modal (centered)
+ */
+import { useState, useMemo } from 'react'
 import {
-  collection, query, where, getDocs,
-  doc, updateDoc, onSnapshot
+  collection, doc, updateDoc, addDoc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
-import { useBarberAuth as useAuth } from '../../hooks/useBarberAuth'
+import { useBarberData } from '../../hooks/useBarberData'
+import { formatCurrency, formatDuration, parseLocalDate, generateTimeSlots } from '../../utils/helpers'
 import {
-  formatCurrency, formatDuration, getInitials,
-  parseLocalDate, generateTimeSlots
-} from '../../utils/helpers'
-import {
-  format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth,
-  isSameDay, startOfWeek, endOfWeek, isToday, addMonths, subMonths,
-  startOfDay, addDays, isAfter
+  format, startOfMonth, endOfMonth, eachDayOfInterval,
+  startOfWeek, endOfWeek, isSameMonth, isSameDay, isToday,
+  addMonths, subMonths, startOfDay, addDays,
 } from 'date-fns'
-import toast from 'react-hot-toast'
 import BarberLayout from '../../components/layout/BarberLayout'
 import { useTheme } from '../../context/ThemeContext'
 import { createNotification } from '../../utils/notifications'
 import {
-  ChevronLeft, ChevronRight, CheckCircle, DollarSign,
-  XCircle, RefreshCw, Plus, Clock, X, Phone, Mail,
-  Scissors, Calendar, ZoomIn, ZoomOut
+  ChevronLeft, ChevronRight, X, Check, DollarSign,
+  RefreshCw, XCircle, CheckCircle, Scissors, Plus,
+  UserPlus,
 } from 'lucide-react'
-import { PageLoader } from '../../components/ui/Spinner'
+import toast from 'react-hot-toast'
 
-// ── Design tokens ─────────────────────────────────────────────────────────
-const BG     = '#0D0D0D'
-const CARD   = '#171717'
-const CARD2  = '#1F1F1F'
-const BORDER = '#2A2A2A'
-const ORANGE = '#FF6B1A'
-const TXT    = '#F5F5F5'
-const TXT2   = '#888888'
-const TXT3   = '#555555'
-const F      = { fontFamily:"'DM Sans',system-ui,sans-serif" }
+const BG=('#0D0D0D'),CARD=('#141414'),CARD2=('#1C1C1E'),BORDER=('#252525'),ORANGE=('#FF6B1A'),TXT=('#F0F0F0'),TXT2=('#666666'),TXT3=('#3A3A3A'),GREEN=('#22C55E'),WALKIN=('#7C3AED')
+const F={fontFamily:"'DM Sans',system-ui,sans-serif"}
 
-const SC = {
-  pending:   ORANGE,
-  confirmed: '#22C55E',
-  completed: TXT3,
-  cancelled: '#EF4444',
-}
-
-const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap');
-  @keyframes spin    { to { transform: rotate(360deg); } }
-  @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  @keyframes fadeUp  { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes slideUp { from{opacity:0;transform:translateY(40px)} to{opacity:1;transform:translateY(0)} }
-  * { box-sizing: border-box; }
-  input, textarea { font-size: 16px !important; }
-  ::-webkit-scrollbar { display: none; }
+const CSS=`
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap');
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+::-webkit-scrollbar{display:none}
+input,textarea,select{font-size:16px!important}
 `
 
-// ── Status badge ──────────────────────────────────────────────────────────
-function StatusBadge({ status }) {
-  const MAP = {
-    confirmed: { bg:'rgba(34,197,94,0.12)',  color:'#22C55E',  label:'Confirmed' },
-    pending:   { bg:`${ORANGE}18`,           color:ORANGE,     label:'Pending'   },
-    completed: { bg:'rgba(255,255,255,0.06)',color:TXT2,       label:'Completed' },
-    cancelled: { bg:'rgba(239,68,68,0.12)',  color:'#EF4444',  label:'Cancelled' },
-  }
-  const s = MAP[status] || MAP.pending
-  return (
-    <span style={{ background:s.bg, color:s.color, fontSize:10, fontWeight:800, padding:'3px 9px', borderRadius:20, letterSpacing:'0.04em', whiteSpace:'nowrap' }}>
-      {s.label}
-    </span>
-  )
+// ── Status badge ───────────────────────────────────────────────────────────
+function Badge({ status, isWalkIn }) {
+  if (isWalkIn && status!=='cancelled' && status!=='completed')
+    return <span style={{background:`${WALKIN}20`,color:WALKIN,fontSize:9,fontWeight:800,padding:'2px 7px',borderRadius:20,letterSpacing:'0.04em',whiteSpace:'nowrap'}}>WALK-IN</span>
+  const M={confirmed:{bg:`${GREEN}14`,c:GREEN,l:'Confirmed'},pending:{bg:`${ORANGE}18`,c:ORANGE,l:'Pending'},completed:{bg:'rgba(255,255,255,0.05)',c:TXT2,l:'Completed'},cancelled:{bg:'rgba(239,68,68,0.1)',c:'#EF4444',l:'Cancelled'}}
+  const s=M[status]||M.pending
+  return <span style={{background:s.bg,color:s.c,fontSize:9,fontWeight:800,padding:'2px 7px',borderRadius:20,letterSpacing:'0.04em',whiteSpace:'nowrap'}}>{s.l}</span>
 }
 
-// ── Avatar ────────────────────────────────────────────────────────────────
-function Avatar({ name, photoURL, size=38, fontSize=12 }) {
-  const initials = name?.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2) || '?'
+// ── Centered modal wrapper ─────────────────────────────────────────────────
+function Modal({ children, onClose, maxWidth=380 }) {
   return (
-    <div style={{ width:size, height:size, borderRadius:'50%', background:CARD2, border:`1.5px solid ${BORDER}`, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize, color:TXT2, flexShrink:0, overflow:'hidden' }}>
-      {photoURL ? <img src={photoURL} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/> : initials}
-    </div>
-  )
-}
-
-// ── Bottom sheet wrapper ──────────────────────────────────────────────────
-function Sheet({ open, onClose, children }) {
-  if (!open) return null
-  return (
-    <div style={{ position:'fixed', inset:0, zIndex:60, background:'rgba(0,0,0,0.88)', display:'flex', alignItems:'flex-end', justifyContent:'center' }} onClick={onClose}>
-      <div style={{ width:'100%', maxWidth:560, background:CARD, borderRadius:'22px 22px 0 0', border:`1px solid ${BORDER}`, maxHeight:'90vh', overflowY:'auto', animation:'slideUp 0.25s ease', ...F }} onClick={e=>e.stopPropagation()}>
-        <div style={{ width:40, height:4, borderRadius:2, background:BORDER, margin:'12px auto 0' }}/>
+    <div style={{position:'fixed',inset:0,zIndex:70,background:'rgba(0,0,0,0.88)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,animation:'fadeIn 0.15s ease'}} onClick={onClose}>
+      <div style={{width:'100%',maxWidth,background:CARD,borderRadius:20,border:`1px solid ${BORDER}`,maxHeight:'85dvh',overflowY:'auto',animation:'slideUp 0.2s ease',...F}} onClick={e=>e.stopPropagation()}>
         {children}
       </div>
     </div>
   )
 }
 
-// ── Reschedule modal ──────────────────────────────────────────────────────
-function RescheduleModal({ appt, appointments, availability, onClose, onSave, updating }) {
-  const [selectedDate, setSelectedDate] = useState(null)
-  const [selectedSlot, setSelectedSlot] = useState(null)
-  const [note, setNote]       = useState('')
-  const [weekOffset, setWeekOffset] = useState(0)
+// ── Walk-in modal (3 steps, compact) ──────────────────────────────────────
+function WalkInModal({ onClose, barber, activeServices, availability, appointments }) {
+  const [step,setStep]=useState(1)
+  const [name,setName]=useState(''),[phone,setPhone]=useState(''),[email,setEmail]=useState(''),[notes,setNotes]=useState('')
+  const [selSvc,setSelSvc]=useState(null),[selDate,setSelDate]=useState(new Date()),[selSlot,setSelSlot]=useState(null)
+  const [weekOff,setWeekOff]=useState(0),[saving,setSaving]=useState(false)
 
-  const today    = startOfDay(new Date())
-  const advance  = availability?.advanceDays || 30
-  const duration = appt?.totalDuration || 30
-  const weekDays = Array.from({length:7},(_,i)=>addDays(today,weekOffset*7+i)).filter(d=>!isAfter(d,addDays(today,advance)))
+  const today=startOfDay(new Date()),advance=availability?.advanceDays||30
+  const weekDays=Array.from({length:7},(_,i)=>addDays(today,weekOff*7+i)).filter(d=>d<=addDays(today,advance))
 
-  const slots = useMemo(() => {
-    if (!selectedDate||!availability) return []
-    const dayIdx = selectedDate.getDay()
-    const ds = availability.schedule?.[dayIdx]||{ enabled:(availability.workingDays||[1,2,3,4,5,6]).includes(dayIdx), startTime:availability.startTime||'09:00', endTime:availability.endTime||'18:00', breaks:availability.breaks||[] }
-    if (!ds.enabled) return []
-    const dateStr  = format(selectedDate,'yyyy-MM-dd')
-    const existing = (appointments||[]).filter(a=>a.date===dateStr&&a.bookingStatus!=='cancelled'&&a.id!==appt?.id).map(a=>({startTime:a.startTime,endTime:a.endTime}))
-    let s = generateTimeSlots(ds.startTime,ds.endTime,duration,ds.breaks||[],existing)
-    if (isSameDay(selectedDate,today)) { const nm=new Date().getHours()*60+new Date().getMinutes()+15; s=s.filter(sl=>{const[h,m]=sl.startTime.split(':').map(Number);return h*60+m>nm}) }
-    return s
-  },[selectedDate,availability,appointments,appt])
+  const slots=useMemo(()=>{
+    if(!selSvc||!selDate||!availability)return[]
+    const di=selDate.getDay()
+    const ds=availability.schedule?.[di]||{enabled:(availability.workingDays||[1,2,3,4,5,6]).includes(di),startTime:availability.startTime||'09:00',endTime:availability.endTime||'18:00',breaks:availability.breaks||[]}
+    if(!ds.enabled)return[]
+    const dateStr=format(selDate,'yyyy-MM-dd')
+    const existing=appointments.filter(a=>a.date===dateStr&&a.bookingStatus!=='cancelled').map(a=>({startTime:a.startTime,endTime:a.endTime}))
+    let sl=generateTimeSlots(ds.startTime,ds.endTime,selSvc.duration,ds.breaks||[],existing)
+    if(isToday(selDate)){const nm=new Date().getHours()*60+new Date().getMinutes();sl=sl.filter(s=>{const[h,m]=s.startTime.split(':').map(Number);return h*60+m>nm})}
+    return sl
+  },[selSvc,selDate,availability,appointments])
 
-  function slotCount(date) {
-    if (!availability) return 0
-    const dayIdx=date.getDay()
-    const ds=availability.schedule?.[dayIdx]||{enabled:(availability.workingDays||[1,2,3,4,5,6]).includes(dayIdx),startTime:availability.startTime||'09:00',endTime:availability.endTime||'18:00',breaks:availability.breaks||[]}
-    if (!ds.enabled) return 0
-    const dateStr=format(date,'yyyy-MM-dd')
-    const existing=(appointments||[]).filter(a=>a.date===dateStr&&a.bookingStatus!=='cancelled'&&a.id!==appt?.id).map(a=>({startTime:a.startTime,endTime:a.endTime}))
-    let s=generateTimeSlots(ds.startTime,ds.endTime,duration,ds.breaks||[],existing)
-    if (isSameDay(date,today)){const nm=new Date().getHours()*60+new Date().getMinutes()+15;s=s.filter(sl=>{const[h,m]=sl.startTime.split(':').map(Number);return h*60+m>nm})}
-    return s.length
+  function isDayOff(date){
+    if(date<today)return true
+    const di=date.getDay()
+    const ds=availability?.schedule?.[di]
+    return (ds&&!ds.enabled)||(availability?.blockedDates?.includes(format(date,'yyyy-MM-dd')))
   }
 
-  function isDayDisabled(date) { return date<today||isAfter(date,addDays(today,advance))||slotCount(date)===0 }
-
-  async function confirm() {
-    if (!selectedSlot) return toast.error('Select a time slot')
-    await onSave({ date:format(selectedDate,'yyyy-MM-dd'), startTime:selectedSlot.startTime, endTime:selectedSlot.endTime, note:note.trim() })
+  async function create(){
+    if(!name.trim()||!selSvc||!selSlot)return
+    setSaving(true)
+    try{
+      await addDoc(collection(db,'appointments'),{
+        barberId:barber.id,barberName:barber.name,
+        clientId:null,clientName:name.trim(),clientPhone:phone.trim(),clientEmail:email.trim(),
+        isGuest:true,isWalkIn:true,
+        services:[{id:selSvc.id,name:selSvc.name,price:selSvc.price,duration:selSvc.duration}],
+        date:format(selDate,'yyyy-MM-dd'),startTime:selSlot.startTime,endTime:selSlot.endTime,
+        totalDuration:selSvc.duration,totalPrice:selSvc.price,
+        paymentMethod:'cash',paymentStatus:'pending',bookingStatus:'confirmed',
+        notes:notes.trim()||null,createdAt:serverTimestamp(),
+      })
+      toast.success('Walk-in booked ✂️')
+      onClose()
+    }catch{toast.error('Could not book')}
+    finally{setSaving(false)}
   }
+
+  const canNext=step===1?name.trim().length>0:step===2?!!selSvc:!!selSlot
 
   return (
-    <Sheet open onClose={onClose}>
-      <div style={{ padding:'16px 20px 40px' }}>
-        <p style={{ color:TXT, fontWeight:800, fontSize:18, margin:'0 0 4px' }}>Reschedule</p>
-        <p style={{ color:TXT2, fontSize:13, margin:'0 0 20px' }}>{appt?.clientName} · {formatDuration(duration)}</p>
-
-        {/* Current appt */}
-        <div style={{ background:BG, border:`1px solid ${BORDER}`, borderRadius:14, padding:'12px 14px', marginBottom:16 }}>
-          <p style={{ color:TXT3, fontSize:10, fontWeight:700, letterSpacing:'0.1em', margin:'0 0 4px' }}>CURRENT</p>
-          <p style={{ color:TXT, fontWeight:700, fontSize:14, margin:0 }}>
-            {appt?.date?format(parseLocalDate(appt.date),'EEE, MMM d'):'—'} · {appt?.startTime} – {appt?.endTime}
-          </p>
+    <Modal onClose={onClose} maxWidth={400}>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px',borderBottom:`1px solid ${BORDER}`}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          {step>1&&<button onClick={()=>setStep(s=>s-1)} style={{background:'none',border:'none',color:TXT2,cursor:'pointer',display:'flex',padding:0}}><ChevronLeft size={18}/></button>}
+          <div>
+            <p style={{color:TXT,fontWeight:700,fontSize:15,margin:'0 0 1px'}}>{step===1?'Client Info':step===2?'Service':'Date & Time'}</p>
+            <div style={{display:'flex',gap:4}}>
+              {[1,2,3].map(s=><div key={s} style={{width:s===step?14:5,height:4,borderRadius:2,background:s<=step?WALKIN:BORDER,transition:'all 0.2s'}}/>)}
+            </div>
+          </div>
         </div>
+        <button onClick={onClose} style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:8,padding:'5px 6px',color:TXT2,cursor:'pointer',display:'flex'}}><X size={14}/></button>
+      </div>
 
-        {/* Week nav */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-          <button onClick={()=>{setWeekOffset(w=>Math.max(0,w-1));setSelectedDate(null);setSelectedSlot(null)}} disabled={weekOffset===0}
-            style={{ background:CARD2, border:`1px solid ${BORDER}`, borderRadius:10, width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', cursor:weekOffset===0?'not-allowed':'pointer', color:weekOffset===0?BORDER:TXT, opacity:weekOffset===0?0.3:1 }}>
-            <ChevronLeft size={16}/>
-          </button>
-          <span style={{ color:TXT2, fontSize:12, fontWeight:600 }}>
-            {weekDays[0]&&format(weekDays[0],'MMM d')} – {weekDays[weekDays.length-1]&&format(weekDays[weekDays.length-1],'MMM d')}
-          </span>
-          <button onClick={()=>{setWeekOffset(w=>w+1);setSelectedDate(null);setSelectedSlot(null)}} disabled={weekDays.length<7}
-            style={{ background:CARD2, border:`1px solid ${BORDER}`, borderRadius:10, width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', cursor:weekDays.length<7?'not-allowed':'pointer', color:weekDays.length<7?BORDER:TXT, opacity:weekDays.length<7?0.3:1 }}>
-            <ChevronRight size={16}/>
-          </button>
-        </div>
-
-        {/* Day pills */}
-        <div style={{ display:'grid', gridTemplateColumns:`repeat(${weekDays.length},1fr)`, gap:6, marginBottom:16 }}>
-          {weekDays.map((date,i)=>{
-            const disabled=isDayDisabled(date)
-            const sel=selectedDate&&isSameDay(date,selectedDate)
-            const count=!disabled?slotCount(date):0
-            return (
-              <button key={i} onClick={()=>{if(disabled)return;setSelectedDate(date);setSelectedSlot(null)}} disabled={disabled}
-                style={{ padding:'10px 3px', borderRadius:14, border:`1.5px solid ${sel?ORANGE:BORDER}`, background:sel?ORANGE:BG, cursor:disabled?'not-allowed':'pointer', opacity:disabled?0.25:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all 0.15s', boxShadow:sel?`0 4px 14px ${ORANGE}44`:'none' }}>
-                <span style={{ color:sel?'rgba(255,255,255,0.7)':TXT3, fontSize:9, fontWeight:700 }}>{format(date,'EEE').toUpperCase()}</span>
-                <span style={{ color:sel?'#fff':isToday(date)?ORANGE:TXT, fontSize:15, fontWeight:800 }}>{format(date,'d')}</span>
-                <span style={{ fontSize:9, fontWeight:700, color:sel?'rgba(255,255,255,0.6)':count>0?'#22C55E':'transparent' }}>{count>0?count:'-'}</span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Time slots */}
-        {selectedDate && (
-          <div style={{ marginBottom:16 }}>
-            <p style={{ color:TXT3, fontSize:10, fontWeight:700, letterSpacing:'0.1em', marginBottom:10 }}>
-              {format(selectedDate,'EEEE, MMMM d').toUpperCase()}
-            </p>
-            {slots.length===0 ? (
-              <div style={{ background:BG, border:`1px solid ${BORDER}`, borderRadius:12, padding:16, textAlign:'center' }}>
-                <p style={{ color:TXT2, fontSize:13, margin:0 }}>No available times</p>
+      <div style={{padding:'14px 16px 20px'}}>
+        {/* Step 1 */}
+        {step===1&&(
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            {[
+              {label:'Name *',value:name,set:setName,type:'text',ph:'Client name'},
+              {label:'Phone', value:phone,set:setPhone,type:'tel', ph:'(305) 000-0000'},
+              {label:'Email', value:email,set:setEmail,type:'email',ph:'optional'},
+            ].map(f=>(
+              <div key={f.label}>
+                <label style={{display:'block',color:TXT3,fontSize:10,fontWeight:700,letterSpacing:'0.08em',marginBottom:5}}>{f.label.toUpperCase()}</label>
+                <input type={f.type} value={f.value} onChange={e=>f.set(e.target.value)} placeholder={f.ph}
+                  style={{width:'100%',background:CARD2,border:`1px solid ${BORDER}`,borderRadius:10,padding:'10px 12px',color:TXT,fontSize:15,outline:'none',...F,transition:'border-color 0.15s'}}
+                  onFocus={e=>e.target.style.borderColor=WALKIN} onBlur={e=>e.target.style.borderColor=BORDER}/>
               </div>
-            ) : (
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
+            ))}
+            <div>
+              <label style={{display:'block',color:TXT3,fontSize:10,fontWeight:700,letterSpacing:'0.08em',marginBottom:5}}>NOTES (OPTIONAL)</label>
+              <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Style notes…" rows={2}
+                style={{width:'100%',background:CARD2,border:`1px solid ${BORDER}`,borderRadius:10,padding:'10px 12px',color:TXT,fontSize:14,outline:'none',resize:'none',...F}}
+                onFocus={e=>e.target.style.borderColor=WALKIN} onBlur={e=>e.target.style.borderColor=BORDER}/>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2 */}
+        {step===2&&(
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {activeServices.length===0
+              ?<p style={{color:TXT2,textAlign:'center',padding:'20px 0',fontSize:13}}>No active services. Add services first.</p>
+              :activeServices.map(svc=>{
+                const sel=selSvc?.id===svc.id
+                return(
+                  <button key={svc.id} onClick={()=>setSelSvc(svc)}
+                    style={{display:'flex',alignItems:'center',gap:12,padding:'11px 13px',borderRadius:12,background:sel?`${WALKIN}12`:CARD2,border:`1.5px solid ${sel?WALKIN:BORDER}`,cursor:'pointer',textAlign:'left',...F,width:'100%',transition:'all 0.15s'}}>
+                    <Scissors size={15} color={sel?WALKIN:TXT3} strokeWidth={1.8} style={{flexShrink:0}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <p style={{color:TXT,fontWeight:700,fontSize:13,margin:'0 0 2px'}}>{svc.name}</p>
+                      <p style={{color:TXT2,fontSize:11,margin:0}}>{formatDuration(svc.duration)}</p>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+                      <p style={{color:sel?WALKIN:ORANGE,fontWeight:800,fontSize:14,margin:0}}>{formatCurrency(svc.price)}</p>
+                      <div style={{width:18,height:18,borderRadius:'50%',border:`2px solid ${sel?WALKIN:BORDER}`,background:sel?WALKIN:'transparent',display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}>
+                        {sel&&<Check size={10} color="#fff"/>}
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+          </div>
+        )}
+
+        {/* Step 3 */}
+        {step===3&&(
+          <div>
+            {/* Week nav */}
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+              <button onClick={()=>{setWeekOff(w=>Math.max(0,w-1));setSelSlot(null)}} disabled={weekOff===0}
+                style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:8,width:30,height:30,display:'flex',alignItems:'center',justifyContent:'center',cursor:weekOff===0?'not-allowed':'pointer',opacity:weekOff===0?0.3:1,color:TXT}}>
+                <ChevronLeft size={14}/>
+              </button>
+              <span style={{color:TXT2,fontSize:11,fontWeight:600}}>
+                {weekDays[0]&&format(weekDays[0],'MMM d')} – {weekDays[weekDays.length-1]&&format(weekDays[weekDays.length-1],'MMM d')}
+              </span>
+              <button onClick={()=>{setWeekOff(w=>w+1);setSelSlot(null)}} disabled={weekDays.length<7}
+                style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:8,width:30,height:30,display:'flex',alignItems:'center',justifyContent:'center',cursor:weekDays.length<7?'not-allowed':'pointer',opacity:weekDays.length<7?0.3:1,color:TXT}}>
+                <ChevronRight size={14}/>
+              </button>
+            </div>
+
+            {/* Days */}
+            <div style={{display:'grid',gridTemplateColumns:`repeat(${weekDays.length},1fr)`,gap:5,marginBottom:14}}>
+              {weekDays.map((date,i)=>{
+                const disabled=isDayOff(date),sel=isSameDay(date,selDate)
+                return(
+                  <button key={i} onClick={()=>{if(!disabled){setSelDate(date);setSelSlot(null)}}} disabled={disabled}
+                    style={{padding:'8px 2px',borderRadius:10,border:`1.5px solid ${sel?WALKIN:BORDER}`,background:sel?WALKIN:CARD2,cursor:disabled?'not-allowed':'pointer',opacity:disabled?0.2:1,display:'flex',flexDirection:'column',alignItems:'center',gap:2,transition:'all 0.15s'}}>
+                    <span style={{color:sel?'rgba(255,255,255,0.7)':TXT3,fontSize:8,fontWeight:700}}>{format(date,'EEE').toUpperCase()}</span>
+                    <span style={{color:sel?'#fff':isToday(date)?ORANGE:TXT,fontSize:14,fontWeight:800}}>{format(date,'d')}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Slots */}
+            <p style={{color:TXT3,fontSize:9,fontWeight:700,letterSpacing:'0.08em',marginBottom:8}}>
+              {format(selDate,'EEE, MMM d').toUpperCase()}
+            </p>
+            {slots.length===0
+              ?<p style={{color:TXT2,fontSize:12,textAlign:'center',padding:'12px 0'}}>No available times</p>
+              :<div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6}}>
                 {slots.map(slot=>{
-                  const isSel=selectedSlot?.startTime===slot.startTime
-                  return (
-                    <button key={slot.startTime} onClick={()=>setSelectedSlot(slot)}
-                      style={{ padding:'12px 4px', borderRadius:12, border:`1.5px solid ${isSel?ORANGE:BORDER}`, background:isSel?ORANGE:CARD2, color:isSel?'#fff':TXT2, fontWeight:700, fontSize:13, cursor:'pointer', ...F, transition:'all 0.15s', boxShadow:isSel?`0 4px 12px ${ORANGE}33`:'none' }}>
+                  const sel=selSlot?.startTime===slot.startTime
+                  return(
+                    <button key={slot.startTime} onClick={()=>setSelSlot(slot)}
+                      style={{padding:'10px 3px',borderRadius:10,border:`1.5px solid ${sel?WALKIN:BORDER}`,background:sel?WALKIN:CARD2,color:sel?'#fff':TXT2,fontWeight:700,fontSize:12,cursor:'pointer',...F,transition:'all 0.15s'}}>
                       {slot.startTime}
                     </button>
                   )
                 })}
-              </div>
-            )}
-            {selectedSlot && (
-              <div style={{ background:`${ORANGE}12`, border:`1px solid ${ORANGE}33`, borderRadius:12, padding:'12px 14px', marginTop:10 }}>
-                <p style={{ color:ORANGE, fontWeight:700, fontSize:14, margin:0 }}>
-                  {selectedSlot.startTime} – {selectedSlot.endTime} · {format(selectedDate,'MMM d')}
-                </p>
+              </div>}
+
+            {selSlot&&(
+              <div style={{background:`${WALKIN}10`,border:`1px solid ${WALKIN}30`,borderRadius:10,padding:'10px 12px',marginTop:10}}>
+                <p style={{color:WALKIN,fontWeight:700,fontSize:13,margin:0}}>{format(selDate,'MMM d')} · {selSlot.startTime}–{selSlot.endTime}</p>
+                <p style={{color:TXT2,fontSize:11,margin:'2px 0 0'}}>{selSvc?.name} · {formatCurrency(selSvc?.price)}</p>
               </div>
             )}
           </div>
         )}
 
-        {/* Note */}
-        <div style={{ marginBottom:20 }}>
-          <p style={{ color:TXT3, fontSize:10, fontWeight:700, letterSpacing:'0.1em', marginBottom:8 }}>NOTE (optional)</p>
-          <textarea value={note} onChange={e=>setNote(e.target.value)} rows={2} placeholder="Reason for rescheduling..."
-            style={{ width:'100%', background:BG, border:`1px solid ${BORDER}`, borderRadius:12, padding:'12px 14px', color:TXT, fontSize:14, resize:'none', outline:'none', ...F, boxSizing:'border-box' }}/>
-        </div>
-
-        <div style={{ display:'flex', gap:10 }}>
-          <button onClick={onClose} style={{ flex:1, padding:'14px', borderRadius:14, background:'transparent', border:`1px solid ${BORDER}`, color:TXT2, fontWeight:600, cursor:'pointer', ...F }}>Cancel</button>
-          <button onClick={confirm} disabled={updating||!selectedSlot}
-            style={{ flex:1, padding:'14px', borderRadius:14, background:selectedSlot?ORANGE:BORDER, color:'#fff', fontWeight:700, border:'none', cursor:selectedSlot?'pointer':'not-allowed', ...F, display:'flex', alignItems:'center', justifyContent:'center', gap:6, boxShadow:selectedSlot?`0 4px 16px ${ORANGE}44`:'none' }}>
-            {updating&&<div style={{width:14,height:14,border:'2px solid rgba(255,255,255,0.4)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/>}
-            Confirm
-          </button>
-        </div>
+        {/* CTA */}
+        <button onClick={step<3?()=>canNext&&setStep(s=>s+1):create} disabled={!canNext||saving}
+          style={{width:'100%',marginTop:16,background:canNext?WALKIN:BORDER,border:'none',borderRadius:22,padding:'14px',color:canNext?'#fff':TXT3,fontWeight:700,fontSize:15,cursor:canNext?'pointer':'not-allowed',...F,display:'flex',alignItems:'center',justifyContent:'center',gap:7,transition:'all 0.15s',boxShadow:canNext?`0 4px 18px ${WALKIN}40`:'none'}}>
+          {saving&&<div style={{width:16,height:16,border:'2px solid rgba(255,255,255,0.4)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin 0.75s linear infinite'}}/>}
+          {step<3?'Continue →':saving?'Booking…':'✓ Confirm Walk-in'}
+        </button>
       </div>
-    </Sheet>
+    </Modal>
   )
 }
 
-// ── Appointment detail sheet ───────────────────────────────────────────────
-function ApptSheet({ appt, onClose, onComplete, onTogglePaid, onReschedule, onCancel, formatTime, updating }) {
+// ── Appointment detail modal (centered) ───────────────────────────────────
+function ApptModal({ appt, onClose, onComplete, onCancel, onReschedule, updating }) {
+  const { formatTime } = useTheme()
   if (!appt) return null
   return (
-    <Sheet open onClose={onClose}>
-      <div style={{ padding:'16px 20px 40px' }}>
-        {/* Client header */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <div style={{ width:48, height:48, borderRadius:'50%', background:`${ORANGE}18`, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:16, color:ORANGE }}>
-              {getInitials(appt.clientName)}
-            </div>
+    <Modal onClose={onClose} maxWidth={380}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px',borderBottom:`1px solid ${BORDER}`}}>
+        <div>
+          <p style={{color:TXT,fontWeight:700,fontSize:15,margin:'0 0 3px'}}>{appt.clientName}</p>
+          <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+            {appt.isWalkIn&&<span style={{background:`${WALKIN}20`,color:WALKIN,fontSize:9,padding:'2px 7px',borderRadius:20,fontWeight:800}}>WALK-IN</span>}
+            <Badge status={appt.bookingStatus} isWalkIn={false}/>
+          </div>
+        </div>
+        <button onClick={onClose} style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:8,padding:'5px 6px',color:TXT2,cursor:'pointer',display:'flex'}}><X size={14}/></button>
+      </div>
+
+      <div style={{padding:'14px 16px 20px'}}>
+        {/* Services */}
+        {appt.services?.map((s,i)=>(
+          <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:`1px solid ${BORDER}`}}>
             <div>
-              <p style={{ color:TXT, fontWeight:800, fontSize:17, margin:'0 0 3px' }}>{appt.clientName}</p>
-              <StatusBadge status={appt.bookingStatus}/>
+              <p style={{color:TXT,fontWeight:700,fontSize:13,margin:'0 0 1px'}}>{s.name}</p>
+              <p style={{color:TXT2,fontSize:11,margin:0}}>{formatDuration(s.duration)}</p>
             </div>
+            <p style={{color:ORANGE,fontWeight:800,fontSize:14,margin:0}}>{formatCurrency(s.price)}</p>
           </div>
-          <button onClick={onClose} style={{ background:CARD2, border:`1px solid ${BORDER}`, borderRadius:10, padding:'6px 7px', color:TXT2, cursor:'pointer', display:'flex' }}><X size={16}/></button>
+        ))}
+
+        {/* Time */}
+        <div style={{background:CARD2,borderRadius:10,padding:'10px 12px',margin:'10px 0'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <p style={{color:TXT2,fontSize:12,margin:0}}>{formatTime(appt.startTime)} – {formatTime(appt.endTime)}</p>
+            <p style={{color:ORANGE,fontWeight:800,fontSize:14,margin:0}}>{formatCurrency(appt.totalWithTip||appt.totalPrice)}</p>
+          </div>
+          {appt.clientPhone&&<p style={{color:TXT2,fontSize:11,margin:'4px 0 0'}}>{appt.clientPhone}</p>}
+          {appt.notes&&<p style={{color:TXT2,fontSize:11,margin:'4px 0 0',fontStyle:'italic'}}>"{appt.notes}"</p>}
         </div>
-
-        {/* Contact */}
-        {appt.clientEmail && (
-          <div style={{ display:'flex', alignItems:'center', gap:10, background:CARD2, borderRadius:12, padding:'10px 14px', marginBottom:8 }}>
-            <Mail size={13} color={TXT3}/><span style={{ color:TXT2, fontSize:13 }}>{appt.clientEmail}</span>
-          </div>
-        )}
-        {appt.clientPhone && (
-          <div style={{ display:'flex', alignItems:'center', gap:10, background:CARD2, borderRadius:12, padding:'10px 14px', marginBottom:16 }}>
-            <Phone size={13} color={TXT3}/>
-            <a href={`tel:${appt.clientPhone}`} style={{ color:ORANGE, fontSize:13, textDecoration:'none', fontWeight:600 }}>{appt.clientPhone}</a>
-          </div>
-        )}
-
-        {/* Details card */}
-        <div style={{ background:BG, border:`1px solid ${BORDER}`, borderRadius:16, padding:14, marginBottom:14 }}>
-          {[
-            ['Service', appt.services?.map(s=>s.name).join(', ')],
-            ['Date',    appt.date?format(parseLocalDate(appt.date),'MMM d, yyyy'):'—'],
-            ['Time',    `${formatTime(appt.startTime)} – ${formatTime(appt.endTime)}`],
-            ['Duration',formatDuration(appt.totalDuration)],
-            ['Price',   formatCurrency(appt.totalPrice)],
-          ].map(([l,v])=>(
-            <div key={l} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:`1px solid ${BORDER}` }}>
-              <span style={{ color:TXT2, fontSize:13, display:'flex', alignItems:'center', gap:8 }}>
-                {l==='Service'&&<Scissors size={13} color={TXT3}/>}
-                {l==='Date'&&<Calendar size={13} color={TXT3}/>}
-                {l==='Time'&&<Clock size={13} color={TXT3}/>}
-                {l}
-              </span>
-              <span style={{ color:l==='Price'?ORANGE:TXT, fontWeight:l==='Price'?800:600, fontSize:14 }}>{v}</span>
-            </div>
-          ))}
-          {appt.tip>0 && (
-            <div style={{ display:'flex', justifyContent:'space-between', padding:'8px 0' }}>
-              <span style={{ color:TXT2, fontSize:13 }}>Tip</span>
-              <span style={{ color:'#22C55E', fontWeight:700, fontSize:14 }}>+{formatCurrency(appt.tip)}</span>
-            </div>
-          )}
-        </div>
-
-        {appt.rescheduleNote && <div style={{ background:`${ORANGE}10`, border:`1px solid ${ORANGE}30`, borderRadius:10, padding:'8px 12px', fontSize:12, color:ORANGE, marginBottom:10 }}>Note: {appt.rescheduleNote}</div>}
-        {appt.cancelReason   && <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:10, padding:'8px 12px', fontSize:12, color:'#EF4444', marginBottom:10 }}>Cancelled: {appt.cancelReason}</div>}
 
         {/* Actions */}
-        {appt.bookingStatus!=='cancelled' && (
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {appt.bookingStatus!=='completed' && (
-              <button onClick={onComplete}
-                style={{ display:'flex', alignItems:'center', gap:10, padding:'13px 16px', borderRadius:14, background:'rgba(34,197,94,0.1)', color:'#22C55E', border:'1px solid rgba(34,197,94,0.2)', cursor:'pointer', fontWeight:700, fontSize:14, ...F }}>
-                <CheckCircle size={16}/> Mark Completed
+        {appt.bookingStatus!=='completed'&&appt.bookingStatus!=='cancelled'&&(
+          <div style={{display:'flex',flexDirection:'column',gap:7}}>
+            <button onClick={onComplete} style={{display:'flex',alignItems:'center',gap:8,padding:'11px 12px',borderRadius:10,background:`${GREEN}10`,color:GREEN,border:`1px solid ${GREEN}20`,cursor:'pointer',fontWeight:600,fontSize:13,...F}}>
+              <CheckCircle size={14}/> Mark Completed
+            </button>
+            <div style={{display:'flex',gap:7}}>
+              <button onClick={onReschedule} style={{flex:1,padding:'11px 8px',borderRadius:10,background:CARD2,border:`1px solid ${BORDER}`,color:TXT,fontWeight:600,fontSize:12,cursor:'pointer',...F,display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                <RefreshCw size={13}/> Reschedule
               </button>
-            )}
-            <button onClick={onTogglePaid}
-              style={{ display:'flex', alignItems:'center', gap:10, padding:'13px 16px', borderRadius:14, background:`${ORANGE}10`, color:ORANGE, border:`1px solid ${ORANGE}30`, cursor:'pointer', fontWeight:700, fontSize:14, ...F }}>
-              <DollarSign size={16}/> {appt.paymentStatus==='paid'?'Mark Unpaid':'Mark Paid'}
-            </button>
-            <button onClick={onReschedule}
-              style={{ display:'flex', alignItems:'center', gap:10, padding:'13px 16px', borderRadius:14, background:CARD2, color:TXT, border:`1px solid ${BORDER}`, cursor:'pointer', fontWeight:700, fontSize:14, ...F }}>
-              <RefreshCw size={16}/> Reschedule
-            </button>
-            <button onClick={onCancel}
-              style={{ display:'flex', alignItems:'center', gap:10, padding:'13px 16px', borderRadius:14, background:'rgba(239,68,68,0.08)', color:'#EF4444', border:'1px solid rgba(239,68,68,0.18)', cursor:'pointer', fontWeight:700, fontSize:14, ...F }}>
-              <XCircle size={16}/> Cancel Appointment
-            </button>
+              <button onClick={onCancel} style={{flex:1,padding:'11px 8px',borderRadius:10,background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.18)',color:'#EF4444',fontWeight:600,fontSize:12,cursor:'pointer',...F,display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                <XCircle size={13}/> Cancel
+              </button>
+            </div>
           </div>
         )}
       </div>
-    </Sheet>
-  )
-}
-
-// ── Tip sheet ─────────────────────────────────────────────────────────────
-function TipSheet({ open, appt, tipAmount, setTipAmount, onComplete, onClose, updating }) {
-  return (
-    <Sheet open={open} onClose={onClose}>
-      <div style={{ padding:'16px 20px 40px' }}>
-        <p style={{ color:TXT, fontWeight:800, fontSize:18, margin:'0 0 4px' }}>Complete Appointment</p>
-        <p style={{ color:TXT2, fontSize:13, margin:'0 0 20px' }}>Add a tip before completing?</p>
-
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:16 }}>
-          {['0','5','10','15','20'].map(a=>(
-            <button key={a} onClick={()=>setTipAmount(a)}
-              style={{ padding:'10px 18px', borderRadius:22, border:`1.5px solid ${tipAmount===a?ORANGE:BORDER}`, background:tipAmount===a?ORANGE:'transparent', color:tipAmount===a?'#fff':TXT2, fontWeight:700, fontSize:13, cursor:'pointer', ...F, transition:'all 0.15s' }}>
-              {a==='0'?'No tip':`$${a}`}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ background:BG, border:`1px solid ${BORDER}`, borderRadius:14, padding:'12px 16px', marginBottom:20 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ color:TXT3, fontSize:18 }}>$</span>
-            <input type="number" value={tipAmount} onChange={e=>setTipAmount(e.target.value)} placeholder="Custom amount"
-              style={{ flex:1, background:'transparent', border:'none', outline:'none', color:TXT, fontSize:22, fontWeight:800, ...F }}/>
-          </div>
-        </div>
-
-        <div style={{ display:'flex', gap:10 }}>
-          <button onClick={()=>onComplete(false)} disabled={updating}
-            style={{ flex:1, padding:'14px', borderRadius:14, background:'transparent', border:`1px solid ${BORDER}`, color:TXT2, fontWeight:600, cursor:'pointer', ...F }}>
-            No Tip
-          </button>
-          <button onClick={()=>onComplete(true)} disabled={updating}
-            style={{ flex:1, padding:'14px', borderRadius:14, background:'#22C55E', color:'#fff', fontWeight:700, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, ...F }}>
-            {updating&&<div style={{width:14,height:14,border:'2px solid rgba(255,255,255,0.4)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/>}
-            {tipAmount&&tipAmount!=='0'?`Add $${tipAmount}`:'Complete'}
-          </button>
-        </div>
-      </div>
-    </Sheet>
-  )
-}
-
-// ── Cancel sheet ──────────────────────────────────────────────────────────
-function CancelSheet({ open, appt, cancelReason, setCancelReason, onCancel, onClose, updating }) {
-  return (
-    <Sheet open={open} onClose={onClose}>
-      <div style={{ padding:'16px 20px 40px' }}>
-        <p style={{ color:TXT, fontWeight:800, fontSize:18, margin:'0 0 6px' }}>Cancel Appointment?</p>
-        <p style={{ color:TXT2, fontSize:14, margin:'0 0 20px' }}>{appt?.clientName} · {appt?.startTime}</p>
-        <div style={{ marginBottom:20 }}>
-          <label style={{ color:TXT3, fontSize:10, fontWeight:700, letterSpacing:'0.1em', display:'block', marginBottom:8 }}>REASON *</label>
-          <textarea value={cancelReason} onChange={e=>setCancelReason(e.target.value)} rows={3}
-            placeholder="e.g. Emergency, shop closing early..."
-            style={{ width:'100%', background:BG, border:`1px solid ${BORDER}`, borderRadius:12, padding:'12px 14px', color:TXT, fontSize:14, resize:'none', outline:'none', ...F, boxSizing:'border-box' }}/>
-        </div>
-        <div style={{ display:'flex', gap:10 }}>
-          <button onClick={onClose} style={{ flex:1, padding:'14px', borderRadius:14, background:'transparent', border:`1px solid ${BORDER}`, color:TXT2, fontWeight:600, cursor:'pointer', ...F }}>Back</button>
-          <button onClick={onCancel} disabled={updating}
-            style={{ flex:1, padding:'14px', borderRadius:14, background:'rgba(239,68,68,0.1)', color:'#EF4444', fontWeight:700, border:'1px solid rgba(239,68,68,0.25)', cursor:'pointer', ...F, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-            {updating&&<div style={{width:14,height:14,border:'2px solid #EF4444',borderTopColor:'transparent',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/>}
-            Confirm Cancel
-          </button>
-        </div>
-      </div>
-    </Sheet>
-  )
-}
-
-// ── Weekly calendar view ──────────────────────────────────────────────────
-function WeekView({ currentMonth, setCurrentMonth, selectedDay, setSelectedDay, countForDay, appointments, formatTime, onApptClick }) {
-  const calDays = eachDayOfInterval({
-    start: startOfWeek(startOfMonth(currentMonth)),
-    end:   endOfWeek(endOfMonth(currentMonth)),
-  })
-
-  const dayAppts = appointments
-    .filter(a => a.date===format(selectedDay,'yyyy-MM-dd') && a.bookingStatus!=='cancelled')
-    .sort((a,b)=>a.startTime.localeCompare(b.startTime))
-
-  return (
-    <div>
-      {/* Month nav */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <button onClick={()=>setCurrentMonth(m=>subMonths(m,1))}
-            style={{ background:CARD2, border:`1px solid ${BORDER}`, borderRadius:10, width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:TXT }}>
-            <ChevronLeft size={16}/>
-          </button>
-          <button onClick={()=>setCurrentMonth(m=>addMonths(m,1))}
-            style={{ background:CARD2, border:`1px solid ${BORDER}`, borderRadius:10, width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:TXT }}>
-            <ChevronRight size={16}/>
-          </button>
-        </div>
-        <h2 style={{ color:TXT, fontWeight:800, fontSize:18, margin:0, letterSpacing:'-0.3px' }}>{format(currentMonth,'MMMM yyyy')}</h2>
-        <div style={{ width:76 }}/>
-      </div>
-
-      {/* Calendar grid */}
-      <div style={{ background:CARD, border:`1px solid ${BORDER}`, borderRadius:18, padding:14, marginBottom:16 }}>
-        {/* Day headers */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom:6 }}>
-          {['SUN','MON','TUE','WED','THU','FRI','SAT'].map((d,i)=>(
-            <div key={i} style={{ textAlign:'center', fontSize:9, fontWeight:700, color:TXT3, padding:'4px 0', letterSpacing:'0.06em' }}>{d}</div>
-          ))}
-        </div>
-        {/* Days */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:3 }}>
-          {calDays.map((date,i)=>{
-            const count   = countForDay(date)
-            const inMonth = isSameMonth(date,currentMonth)
-            const sel     = isSameDay(date,selectedDay)
-            const tod     = isToday(date)
-            const isPast  = date < startOfDay(new Date())
-            return (
-              <button key={i} onClick={()=>setSelectedDay(date)}
-                style={{
-                  padding:'8px 2px', borderRadius:10, border:'none', cursor:'pointer',
-                  opacity: !inMonth?0.12: isPast?0.35:1,
-                  background: sel?ORANGE: tod?`${ORANGE}18`:'transparent',
-                  display:'flex', flexDirection:'column', alignItems:'center', gap:3,
-                  transition:'all 0.15s',
-                  boxShadow: sel?`0 4px 14px ${ORANGE}44`:'none',
-                }}>
-                <span style={{ fontSize:13, fontWeight:800, color: sel?'#fff': tod?ORANGE: isPast?TXT3:TXT }}>
-                  {date.getDate()}
-                </span>
-                {count>0&&inMonth && (
-                  <span style={{ width:5, height:5, borderRadius:'50%', background:sel?'rgba(255,255,255,0.7)':ORANGE, display:'block' }}/>
-                )}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Day appointments list */}
-      <div>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-          <p style={{ color:TXT, fontWeight:700, fontSize:15, margin:0 }}>
-            {isToday(selectedDay)?'Today':format(selectedDay,'EEE, MMM d')}
-          </p>
-          {dayAppts.length>0 && (
-            <span style={{ background:`${ORANGE}18`, color:ORANGE, fontSize:11, fontWeight:800, padding:'3px 10px', borderRadius:20 }}>
-              {dayAppts.length} appt{dayAppts.length!==1?'s':''}
-            </span>
-          )}
-        </div>
-
-        {dayAppts.length===0 ? (
-          <div style={{ background:CARD, border:`1px solid ${BORDER}`, borderRadius:16, padding:'28px', textAlign:'center' }}>
-            <Scissors size={24} style={{ color:TXT3, display:'block', margin:'0 auto 10px' }} strokeWidth={1.5}/>
-            <p style={{ color:TXT2, fontWeight:600, fontSize:14, margin:'0 0 4px' }}>No appointments</p>
-            <p style={{ color:TXT3, fontSize:13, margin:0 }}>Select another day or add a walk-in</p>
-          </div>
-        ) : (
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {dayAppts.map(a=>{
-              const isCur = isToday(selectedDay)&&new Date()>=new Date(`${a.date}T${a.startTime}`)&&new Date()<=new Date(`${a.date}T${a.endTime}`)
-              return (
-                <button key={a.id} onClick={()=>onApptClick(a)}
-                  style={{
-                    display:'flex', alignItems:'center', gap:12, padding:'12px 14px',
-                    borderRadius:14, background:isCur?`${ORANGE}10`:CARD2,
-                    border:`1px solid ${isCur?`${ORANGE}44`:BORDER}`,
-                    cursor:'pointer', textAlign:'left', ...F, width:'100%',
-                    opacity: a.bookingStatus==='completed'?0.55:1,
-                    transition:'all 0.15s',
-                  }}>
-                  <Avatar name={a.clientName} photoURL={a.clientPhotoURL} size={40} fontSize={13}/>
-                  <div style={{ display:'flex', flexDirection:'column', minWidth:48, flexShrink:0 }}>
-                    <p style={{ color:isCur?ORANGE:TXT2, fontWeight:700, fontSize:12, margin:0 }}>{formatTime(a.startTime)}</p>
-                    <p style={{ color:TXT3, fontSize:11, margin:0 }}>{formatTime(a.endTime)}</p>
-                  </div>
-                  <div style={{ width:1, height:28, background:BORDER, flexShrink:0 }}/>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ color:TXT, fontWeight:700, fontSize:14, margin:'0 0 2px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.clientName}</p>
-                    <p style={{ color:TXT2, fontSize:12, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.services?.map(s=>s.name).join(', ')}</p>
-                  </div>
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:5, flexShrink:0 }}>
-                    <p style={{ color:ORANGE, fontWeight:800, fontSize:13, margin:0 }}>{formatCurrency(a.totalWithTip||a.totalPrice)}</p>
-                    <StatusBadge status={a.bookingStatus}/>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </div>
+    </Modal>
   )
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────
 export default function BarberCalendar() {
-  const { user }       = useAuth()
+  const { barber, appointments, activeServices, availability, loading } = useBarberData()
   const { formatTime } = useTheme()
-  useEffect(()=>{ window.scrollTo(0,0) },[])
 
-  const [barber, setBarber]             = useState(null)
-  const [appointments, setAppointments] = useState([])
-  const [availability, setAvailability] = useState(null)
-  const [loading, setLoading]           = useState(true)
   const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [selectedDay, setSelectedDay]   = useState(new Date())
-  const [detailAppt, setDetailAppt]     = useState(null)
-  const [cancelSheet, setCancelSheet]   = useState(false)
-  const [reschedAppt, setReschedAppt]   = useState(null)
-  const [tipSheet, setTipSheet]         = useState(false)
-  const [cancelReason, setCancelReason] = useState('')
-  const [tipAmount, setTipAmount]       = useState('')
-  const [updating, setUpdating]         = useState(false)
+  const [selectedDay,  setSelectedDay]  = useState(new Date())
+  const [detailAppt,   setDetailAppt]   = useState(null)
+  const [showWalkIn,   setShowWalkIn]   = useState(false)
+  const [updating,     setUpdating]     = useState(false)
 
-  useEffect(()=>{
-    if (!user) return
-    let unsubA, unsubAv
-    async function setup() {
-      try {
-        const bSnap = await getDocs(query(collection(db,'barbers'),where('userId','==',user.uid)))
-        if (bSnap.empty) { setLoading(false); return }
-        const b = { id:bSnap.docs[0].id,...bSnap.docs[0].data() }
-        setBarber(b)
-        unsubA  = onSnapshot(query(collection(db,'appointments'),where('barberId','==',b.id)), snap=>setAppointments(snap.docs.map(d=>({id:d.id,...d.data()}))))
-        unsubAv = onSnapshot(query(collection(db,'availability'),where('barberId','==',b.id)), snap=>{ if(!snap.empty)setAvailability(snap.docs[0].data()) })
-      } catch(e){ console.error(e) }
-      finally { setLoading(false) }
-    }
-    setup()
-    return ()=>{ unsubA?.(); unsubAv?.() }
-  },[user])
+  const advanceDays = availability?.advanceDays || 30
+  const maxDate     = addDays(startOfDay(new Date()), advanceDays)
 
-  const countForDay = d => appointments.filter(a=>a.date===format(d,'yyyy-MM-dd')&&a.bookingStatus!=='cancelled').length
+  // Calendar grid days
+  const calDays = eachDayOfInterval({
+    start: startOfWeek(startOfMonth(currentMonth)),
+    end:   endOfWeek(endOfMonth(currentMonth)),
+  })
+
+  function countForDay(date) {
+    return appointments.filter(a => a.date===format(date,'yyyy-MM-dd') && a.bookingStatus!=='cancelled').length
+  }
+
+  function isDayAllowed(date) {
+    if (date < startOfDay(new Date())) return true // past days still show history
+    if (date > maxDate) return false
+    const di = date.getDay()
+    const ds = availability?.schedule?.[di]
+    if (ds && !ds.enabled) return false
+    if (availability?.blockedDates?.includes(format(date,'yyyy-MM-dd'))) return false
+    return true
+  }
+
+  // Day appointments
+  const dayAppts = appointments
+    .filter(a => a.date===format(selectedDay,'yyyy-MM-dd') && a.bookingStatus!=='cancelled')
+    .sort((a,b) => a.startTime.localeCompare(b.startTime))
+
+  async function handleComplete() {
+    if (!detailAppt) return
+    setUpdating(true)
+    try {
+      await updateDoc(doc(db,'appointments',detailAppt.id), { bookingStatus:'completed' })
+      if (detailAppt.clientId) await createNotification({ userId:detailAppt.clientId, type:'booking', title:'Appointment Complete', message:`Your ${detailAppt.date} appointment is complete.`, data:{ appointmentId:detailAppt.id } })
+      toast.success('Completed ✓')
+      setDetailAppt(null)
+    } catch { toast.error('Failed') }
+    setUpdating(false)
+  }
 
   async function handleCancel() {
-    if (!cancelReason.trim()) return toast.error('Provide a reason')
+    if (!detailAppt) return
     setUpdating(true)
     try {
-      await updateDoc(doc(db,'appointments',detailAppt.id),{ bookingStatus:'cancelled', paymentStatus:'cancelled', cancelReason:cancelReason.trim() })
-      setAppointments(p=>p.map(a=>a.id===detailAppt.id?{...a,bookingStatus:'cancelled',paymentStatus:'cancelled',cancelReason:cancelReason.trim()}:a))
-      if (detailAppt.clientId) await createNotification({ userId:detailAppt.clientId, type:'cancel', title:'Appointment Cancelled', message:`Your ${detailAppt.date} appointment was cancelled. Reason: ${cancelReason.trim()}`, data:{ appointmentId:detailAppt.id } })
+      await updateDoc(doc(db,'appointments',detailAppt.id), { bookingStatus:'cancelled', paymentStatus:'cancelled' })
       toast.success('Cancelled')
-      setCancelSheet(false); setDetailAppt(null); setCancelReason('')
+      setDetailAppt(null)
     } catch { toast.error('Failed') }
-    finally { setUpdating(false) }
+    setUpdating(false)
   }
 
-  async function handleReschedule({ date, startTime, endTime, note }) {
-    setUpdating(true)
-    try {
-      await updateDoc(doc(db,'appointments',reschedAppt.id),{ date, startTime, endTime, rescheduleNote:note||null })
-      setAppointments(p=>p.map(a=>a.id===reschedAppt.id?{...a,date,startTime,endTime,rescheduleNote:note||null}:a))
-      if (reschedAppt.clientId) await createNotification({ userId:reschedAppt.clientId, type:'reschedule', title:'Appointment Rescheduled', message:`Your appointment was moved to ${date} at ${startTime}.${note?' Note: '+note:''}`, data:{ appointmentId:reschedAppt.id } })
-      toast.success('Rescheduled!'); setReschedAppt(null); setDetailAppt(null)
-    } catch { toast.error('Failed') }
-    finally { setUpdating(false) }
-  }
-
-  async function handleComplete(addTip=false) {
-    const tip = addTip?(parseFloat(tipAmount)||0):0
-    setUpdating(true)
-    try {
-      await updateDoc(doc(db,'appointments',detailAppt.id),{ bookingStatus:'completed', tip, totalWithTip:(detailAppt.totalPrice||0)+tip })
-      if (detailAppt.clientId) {
-        const uSnap = await getDocs(query(collection(db,'users'),where('__name__','==',detailAppt.clientId)))
-        if (!uSnap.empty) { const u=uSnap.docs[0].data(); await updateDoc(doc(db,'users',detailAppt.clientId),{ totalVisits:(u.totalVisits||0)+1, totalSpent:(u.totalSpent||0)+(detailAppt.totalPrice||0)+tip }) }
-      }
-      setAppointments(p=>p.map(a=>a.id===detailAppt.id?{...a,bookingStatus:'completed',tip,totalWithTip:(a.totalPrice||0)+tip}:a))
-      toast.success('Marked completed ✓'); setTipSheet(false); setDetailAppt(null); setTipAmount('')
-    } catch { toast.error('Failed') }
-    finally { setUpdating(false) }
-  }
-
-  async function togglePaid(appt) {
-    const s = appt.paymentStatus==='paid'?'pending':'paid'
-    await updateDoc(doc(db,'appointments',appt.id),{ paymentStatus:s })
-    setAppointments(p=>p.map(a=>a.id===appt.id?{...a,paymentStatus:s}:a))
-    setDetailAppt(p=>p?{...p,paymentStatus:s}:null)
-    toast.success(s==='paid'?'Marked paid':'Marked unpaid')
-  }
-
-  if (loading) return <BarberLayout><PageLoader/></BarberLayout>
+  if (loading) return (
+    <BarberLayout>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh'}}>
+        <div style={{width:22,height:22,border:`2px solid #333`,borderTopColor:ORANGE,borderRadius:'50%',animation:'spin 0.65s linear infinite'}}/>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    </BarberLayout>
+  )
 
   return (
     <BarberLayout>
       <style>{CSS}</style>
-      <div style={{ background:BG, minHeight:'100vh', paddingBottom:100, ...F }}>
-        <div style={{ padding:'16px 18px', maxWidth:600, margin:'0 auto' }}>
+      <div style={{background:BG,minHeight:'100%',paddingBottom:20,...F}}>
+        <div style={{padding:'12px 14px',maxWidth:540,margin:'0 auto'}}>
 
-          {/* Header */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-            <h1 style={{ color:TXT, fontWeight:800, fontSize:22, margin:0, letterSpacing:'-0.3px' }}>Calendar</h1>
-            <div style={{ display:'flex', gap:8 }}>
-              <button style={{ background:CARD2, border:`1px solid ${BORDER}`, borderRadius:12, width:36, height:36, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:TXT2 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
-              </button>
-              <button style={{ background:CARD2, border:`1px solid ${BORDER}`, borderRadius:12, width:36, height:36, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:TXT2 }}>
-                <Calendar size={16}/>
-              </button>
+          {/* Month nav */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+            <button onClick={()=>setCurrentMonth(m=>subMonths(m,1))}
+              style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:8,width:30,height:30,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:TXT}}>
+              <ChevronLeft size={14}/>
+            </button>
+            <h2 style={{color:TXT,fontWeight:800,fontSize:16,margin:0,letterSpacing:'-0.3px'}}>{format(currentMonth,'MMMM yyyy')}</h2>
+            <button onClick={()=>setCurrentMonth(m=>addMonths(m,1))}
+              style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:8,width:30,height:30,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:TXT}}>
+              <ChevronRight size={14}/>
+            </button>
+          </div>
+
+          {/* Calendar grid */}
+          <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'10px 10px 12px',marginBottom:12}}>
+            {/* Day headers */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',marginBottom:4}}>
+              {['S','M','T','W','T','F','S'].map((d,i)=>(
+                <div key={i} style={{textAlign:'center',fontSize:9,fontWeight:700,color:TXT3,padding:'3px 0',letterSpacing:'0.04em'}}>{d}</div>
+              ))}
+            </div>
+            {/* Days */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}}>
+              {calDays.map((date,i)=>{
+                const count   = countForDay(date)
+                const inMonth = isSameMonth(date,currentMonth)
+                const sel     = isSameDay(date,selectedDay)
+                const tod     = isToday(date)
+                const allowed = isDayAllowed(date)
+                const isPast  = date < startOfDay(new Date())
+
+                return (
+                  <button key={i} onClick={()=>setSelectedDay(date)}
+                    style={{
+                      padding:'6px 1px',borderRadius:8,border:'none',cursor:'pointer',
+                      opacity:!inMonth?0.08:!allowed&&!isPast?0.2:isPast?0.4:1,
+                      background:sel?ORANGE:tod?`${ORANGE}15`:'transparent',
+                      display:'flex',flexDirection:'column',alignItems:'center',gap:2,
+                      transition:'all 0.12s',
+                    }}>
+                    <span style={{fontSize:12,fontWeight:700,color:sel?'#fff':tod?ORANGE:TXT}}>
+                      {date.getDate()}
+                    </span>
+                    {count>0&&inMonth&&(
+                      <div style={{display:'flex',gap:2}}>
+                        {Array.from({length:Math.min(count,3)}).map((_,j)=>(
+                          <div key={j} style={{width:4,height:4,borderRadius:'50%',background:sel?'rgba(255,255,255,0.8)':ORANGE}}/>
+                        ))}
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
-          <WeekView
-            currentMonth={currentMonth}
-            setCurrentMonth={setCurrentMonth}
-            selectedDay={selectedDay}
-            setSelectedDay={setSelectedDay}
-            countForDay={countForDay}
-            appointments={appointments}
-            formatTime={formatTime}
-            onApptClick={setDetailAppt}
-          />
+          {/* Day header */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+            <div>
+              <p style={{color:TXT,fontWeight:700,fontSize:14,margin:'0 0 1px'}}>
+                {isToday(selectedDay)?'Today':format(selectedDay,'EEE, MMM d')}
+              </p>
+              <p style={{color:TXT2,fontSize:11,margin:0}}>
+                {dayAppts.length > 0 ? `${dayAppts.length} appointment${dayAppts.length!==1?'s':''}` : 'No appointments'}
+              </p>
+            </div>
+            <button onClick={()=>setShowWalkIn(true)}
+              style={{background:ORANGE,border:'none',borderRadius:20,padding:'7px 14px',color:'#fff',fontWeight:700,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',gap:5,...F,boxShadow:`0 3px 12px ${ORANGE}40`}}>
+              <Plus size={13}/> New
+            </button>
+          </div>
+
+          {/* Timeline */}
+          {dayAppts.length===0 ? (
+            <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,padding:'24px 16px',textAlign:'center'}}>
+              <Scissors size={20} style={{color:TXT3,display:'block',margin:'0 auto 8px'}} strokeWidth={1.5}/>
+              <p style={{color:TXT2,fontSize:13,fontWeight:600,margin:'0 0 2px'}}>No appointments</p>
+              <p style={{color:TXT3,fontSize:11,margin:0}}>Select another day or add a walk-in</p>
+            </div>
+          ) : (
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              {dayAppts.map(a=>{
+                const now=new Date()
+                const isCur=now>=new Date(`${a.date}T${a.startTime}`)&&now<=new Date(`${a.date}T${a.endTime}`)
+                return(
+                  <button key={a.id} onClick={()=>setDetailAppt(a)}
+                    style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:12,background:isCur?`${ORANGE}08`:a.isWalkIn?`${WALKIN}06`:CARD2,border:`1px solid ${isCur?`${ORANGE}30`:a.isWalkIn?`${WALKIN}25`:BORDER}`,cursor:'pointer',textAlign:'left',...F,width:'100%',transition:'all 0.12s',opacity:a.bookingStatus==='completed'?0.45:1}}>
+                    {/* Time */}
+                    <div style={{minWidth:42,flexShrink:0}}>
+                      <p style={{color:isCur?ORANGE:TXT2,fontWeight:700,fontSize:11,margin:0}}>{formatTime(a.startTime)}</p>
+                      <p style={{color:TXT3,fontSize:10,margin:0}}>{formatTime(a.endTime)}</p>
+                    </div>
+                    <div style={{width:1,height:24,background:isCur?`${ORANGE}50`:BORDER,flexShrink:0}}/>
+                    {/* Info */}
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:1}}>
+                        <p style={{color:TXT,fontWeight:700,fontSize:13,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.clientName}</p>
+                        {a.isWalkIn&&<span style={{background:`${WALKIN}20`,color:WALKIN,fontSize:8,fontWeight:800,padding:'1px 5px',borderRadius:8,flexShrink:0}}>W</span>}
+                      </div>
+                      <p style={{color:TXT2,fontSize:11,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.services?.map(s=>s.name).join(', ')}</p>
+                    </div>
+                    {/* Price + badge */}
+                    <div style={{textAlign:'right',flexShrink:0}}>
+                      <p style={{color:ORANGE,fontWeight:800,fontSize:12,margin:'0 0 3px'}}>{formatCurrency(a.totalWithTip||a.totalPrice)}</p>
+                      <Badge status={a.bookingStatus} isWalkIn={a.isWalkIn}/>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Appointment detail sheet */}
-      <ApptSheet
-        appt={detailAppt}
-        onClose={()=>setDetailAppt(null)}
-        onComplete={()=>setTipSheet(true)}
-        onTogglePaid={()=>togglePaid(detailAppt)}
-        onReschedule={()=>setReschedAppt(detailAppt)}
-        onCancel={()=>setCancelSheet(true)}
-        formatTime={formatTime}
-        updating={updating}
-      />
-
-      {/* Tip sheet */}
-      <TipSheet
-        open={tipSheet} appt={detailAppt}
-        tipAmount={tipAmount} setTipAmount={setTipAmount}
-        onComplete={handleComplete} onClose={()=>setTipSheet(false)} updating={updating}
-      />
-
-      {/* Cancel sheet */}
-      <CancelSheet
-        open={cancelSheet} appt={detailAppt}
-        cancelReason={cancelReason} setCancelReason={setCancelReason}
-        onCancel={handleCancel} onClose={()=>setCancelSheet(false)} updating={updating}
-      />
-
-      {/* Reschedule modal */}
-      {reschedAppt && (
-        <RescheduleModal
-          appt={reschedAppt} appointments={appointments} availability={availability}
-          onClose={()=>setReschedAppt(null)} onSave={handleReschedule} updating={updating}
-        />
+      {detailAppt&&(
+        <ApptModal appt={detailAppt} onClose={()=>setDetailAppt(null)}
+          onComplete={handleComplete} onCancel={handleCancel}
+          onReschedule={()=>setDetailAppt(null)} updating={updating}/>
+      )}
+      {showWalkIn&&barber&&(
+        <WalkInModal onClose={()=>setShowWalkIn(false)} barber={barber}
+          activeServices={activeServices} availability={availability} appointments={appointments}/>
       )}
     </BarberLayout>
   )
