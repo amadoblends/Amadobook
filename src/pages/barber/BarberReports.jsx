@@ -1,24 +1,26 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, eachMonthOfInterval } from 'date-fns'
 import { useBarberData } from '../../hooks/useBarberData'
 import { formatCurrency } from '../../utils/helpers'
 import BarberLayout from '../../components/layout/BarberLayout'
-import { TrendingUp, Scissors, ChevronRight } from 'lucide-react'
+import { TrendingUp, Scissors, ChevronRight, ChevronDown } from 'lucide-react'
 
-const BG=('#0D0D0D'),CARD=('#141414'),CARD2=('#1C1C1E'),BORDER=('#252525'),ORANGE=('#FF6B1A'),TXT=('#F0F0F0'),TXT2=('#666666'),TXT3=('#3A3A3A'),GREEN=('#22C55E'),BLUE=('#3B82F6'),PURPLE=('#A78BFA'),WALKIN=('#7C3AED')
+const BG=('#0D0D0D'),CARD=('#141414'),CARD2=('#1C1C1E'),BORDER=('#252525'),ORANGE=('#FF6B1A'),TXT=('#F0F0F0'),TXT2=('#666666'),TXT3=('#3A3A3A'),GREEN=('#22C55E'),WALKIN=('#7C3AED')
+// Neutral palette for charts — no vivid blues/purples
+const CHART_COLS=['#AAAAAA','#888888','#666666','#505050','#3A3A3A']
 const F={fontFamily:"'DM Sans',system-ui,sans-serif"}
 
 const CSS=`
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap');
-@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.fu{animation:fadeUp 0.22s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp 0.2s ease both}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 ::-webkit-scrollbar{display:none}
 `
 
 const PERIODS=['Today','This Week','This Month','All Time']
-const SVC_COLORS=[ORANGE,GREEN,BLUE,PURPLE,'#F43F5E','#FB923C']
 
+// ── Neutral bar chart ──────────────────────────────────────────────────────
 function BarChart({data,maxVal,activeKey,onBarClick}){
   const W=320,H=80,PAD=3
   const barW=(W-PAD*(data.length-1))/data.length
@@ -35,8 +37,12 @@ function BarChart({data,maxVal,activeKey,onBarClick}){
             {m.total===0
               ?<rect x={x} y={H-3} width={barW} height={3} rx={1.5} fill={BORDER} opacity={0.4}/>
               :<>
-                <rect x={x} y={H-svcH} width={barW} height={svcH} rx={svcH===H-4?3:0} fill={isActive?GREEN:`${GREEN}70`} style={{transition:'fill 0.2s'}}/>
-                {tipH>0&&<rect x={x} y={H-svcH-tipH} width={barW} height={tipH} rx={3} fill={isActive?ORANGE:`${ORANGE}70`} style={{transition:'fill 0.2s'}}/>}
+                {/* Services — white/light when active, dim otherwise */}
+                <rect x={x} y={H-svcH} width={barW} height={svcH} rx={svcH===H-4?3:0}
+                  fill={isActive?TXT:`${TXT}30`} style={{transition:'fill 0.2s'}}/>
+                {/* Tips — orange always */}
+                {tipH>0&&<rect x={x} y={H-svcH-tipH} width={barW} height={tipH} rx={3}
+                  fill={isActive?ORANGE:`${ORANGE}60`} style={{transition:'fill 0.2s'}}/>}
               </>}
           </g>
         )
@@ -45,6 +51,7 @@ function BarChart({data,maxVal,activeKey,onBarClick}){
   )
 }
 
+// ── Neutral donut chart ────────────────────────────────────────────────────
 function DonutChart({segments,size=100,strokeWidth=14}){
   const total=segments.reduce((s,seg)=>s+seg.value,0)
   if(total===0)return null
@@ -56,18 +63,20 @@ function DonutChart({segments,size=100,strokeWidth=14}){
       {segments.map((seg,i)=>{
         const pct=seg.value/total,dash=pct*circ,gap=circ-dash,dashOffset=-(offset*circ)
         offset+=pct
-        return<circle key={i} cx={C} cy={C} r={R} fill="none" stroke={seg.color} strokeWidth={strokeWidth} strokeDasharray={`${dash} ${gap}`} strokeDashoffset={dashOffset} strokeLinecap="round" style={{transition:'stroke-dasharray 0.5s ease'}}/>
+        return<circle key={i} cx={C} cy={C} r={R} fill="none" stroke={seg.color} strokeWidth={strokeWidth}
+          strokeDasharray={`${dash} ${gap}`} strokeDashoffset={dashOffset} strokeLinecap="round"
+          style={{transition:'stroke-dasharray 0.5s ease'}}/>
       })}
     </svg>
   )
 }
 
 export default function BarberReports(){
-  // ✅ No Firebase calls — reads from global cache
   const{appointments,loading}=useBarberData()
   const[period,setPeriod]=useState('This Week')
   const[activeMonth,setActiveMonth]=useState(null)
-  const[view,setView]=useState('overview') // 'overview' | 'detail'
+  const[view,setView]=useState('overview')
+  const[showPeriods,setShowPeriods]=useState(false)
 
   function inPeriod(a){
     if(a.bookingStatus==='cancelled')return false
@@ -82,10 +91,10 @@ export default function BarberReports(){
   const paid=filtered.filter(a=>a.paymentStatus==='paid')
   const revenue=paid.reduce((s,a)=>s+(a.totalWithTip||a.totalPrice||0),0)
   const tips=paid.reduce((s,a)=>s+(a.tip||0),0)
+  const services=revenue-tips
   const pending=filtered.filter(a=>a.paymentStatus!=='paid').reduce((s,a)=>s+(a.totalPrice||0),0)
   const efficiency=filtered.length>0?Math.round((filtered.filter(a=>a.bookingStatus==='completed').length/filtered.length)*100):0
 
-  // Walk-in stats
   const walkIns=filtered.filter(a=>a.isWalkIn)
   const walkInRevenue=walkIns.filter(a=>a.paymentStatus==='paid').reduce((s,a)=>s+(a.totalWithTip||a.totalPrice||0),0)
 
@@ -99,6 +108,7 @@ export default function BarberReports(){
   })
   const maxRev=Math.max(...monthlyData.map(m=>m.total),1)
 
+  // Top services
   const svcMap={}
   filtered.forEach(a=>a.services?.forEach(s=>{
     if(!svcMap[s.name])svcMap[s.name]={count:0,revenue:0}
@@ -106,13 +116,20 @@ export default function BarberReports(){
   }))
   const topServices=Object.entries(svcMap).sort((a,b)=>b[1].revenue-a[1].revenue).slice(0,5)
   const totalSvcRev=topServices.reduce((s,[,d])=>s+d.revenue,0)
-  const donutSegments=topServices.slice(0,5).map(([name,data],i)=>({label:name,value:data.revenue,color:SVC_COLORS[i]||TXT3,pct:totalSvcRev>0?Math.round((data.revenue/totalSvcRev)*100):0}))
+
+  // Donut segments — neutral grays + orange for top
+  const donutSegments=topServices.map(([name,data],i)=>({
+    label:name,value:data.revenue,
+    color:i===0?ORANGE:CHART_COLS[i]||TXT3,
+    pct:totalSvcRev>0?Math.round((data.revenue/totalSvcRev)*100):0,
+  }))
+
   const activeMonthData=monthlyData.find(m=>m.key===activeMonth)
 
   if(loading)return(
     <BarberLayout>
       <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh'}}>
-        <div style={{width:22,height:22,border:`2px solid #333`,borderTopColor:ORANGE,borderRadius:'50%',animation:'spin 0.65s linear infinite'}}/>
+        <div style={{width:20,height:20,border:`2px solid #333`,borderTopColor:ORANGE,borderRadius:'50%',animation:'spin 0.65s linear infinite'}}/>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     </BarberLayout>
@@ -130,9 +147,23 @@ export default function BarberReports(){
               <h1 style={{color:TXT,fontWeight:800,fontSize:18,margin:'0 0 1px',letterSpacing:'-0.3px'}}>Reports</h1>
               <p style={{color:TXT2,fontSize:11,margin:0}}>Business overview</p>
             </div>
-            <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:10,padding:'5px 10px',display:'flex',alignItems:'center',gap:4}}>
-              <span style={{color:TXT,fontSize:11,fontWeight:600}}>{period}</span>
-              <ChevronRight size={11} color={TXT3}/>
+            {/* Period selector */}
+            <div style={{position:'relative'}}>
+              <button onClick={()=>setShowPeriods(p=>!p)}
+                style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:10,padding:'6px 10px',display:'flex',alignItems:'center',gap:5,cursor:'pointer'}}>
+                <span style={{color:TXT,fontSize:11,fontWeight:600}}>{period}</span>
+                <ChevronDown size={11} color={TXT3}/>
+              </button>
+              {showPeriods&&(
+                <div style={{position:'absolute',right:0,top:'calc(100% + 4px)',background:CARD,border:`1px solid ${BORDER}`,borderRadius:10,padding:'4px',zIndex:20,minWidth:120}}>
+                  {PERIODS.map(p=>(
+                    <button key={p} onClick={()=>{setPeriod(p);setShowPeriods(false)}}
+                      style={{display:'block',width:'100%',textAlign:'left',padding:'8px 10px',borderRadius:7,background:period===p?`${ORANGE}18`:'transparent',border:'none',color:period===p?ORANGE:TXT2,fontWeight:period===p?700:500,fontSize:12,cursor:'pointer',...F}}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -146,14 +177,6 @@ export default function BarberReports(){
             ))}
           </div>
 
-          {/* Period chips */}
-          <div className="fu" style={{display:'flex',gap:5,marginBottom:12,overflowX:'auto',paddingBottom:2}}>
-            {PERIODS.map(p=>(
-              <button key={p} onClick={()=>setPeriod(p)}
-                style={{flexShrink:0,padding:'6px 12px',borderRadius:20,border:`1.5px solid ${period===p?ORANGE:BORDER}`,background:period===p?ORANGE:'transparent',color:period===p?'#fff':TXT2,fontWeight:700,fontSize:11,cursor:'pointer',...F,transition:'all 0.12s',boxShadow:period===p?`0 3px 10px ${ORANGE}30`:''}}>{p}</button>
-            ))}
-          </div>
-
           {/* ── OVERVIEW ── */}
           {view==='overview'&&(
             <>
@@ -162,9 +185,9 @@ export default function BarberReports(){
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14}}>
                   <div>
                     <p style={{color:TXT2,fontSize:10,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 4px'}}>TOTAL EARNINGS</p>
-                    <p style={{color:TXT,fontWeight:900,fontSize:30,margin:0,letterSpacing:'-1px'}}>{formatCurrency(revenue)}</p>
-                    <p style={{color:GREEN,fontSize:11,fontWeight:700,margin:'3px 0 0',display:'flex',alignItems:'center',gap:3}}>
-                      <TrendingUp size={10}/> {efficiency}% efficiency
+                    <p style={{color:TXT,fontWeight:900,fontSize:32,margin:0,letterSpacing:'-1px'}}>{formatCurrency(revenue)}</p>
+                    <p style={{color:TXT3,fontSize:11,fontWeight:600,margin:'3px 0 0',display:'flex',alignItems:'center',gap:3}}>
+                      <TrendingUp size={10} color={TXT3}/> {efficiency}% efficiency
                     </p>
                   </div>
                   <div style={{background:`${ORANGE}14`,border:`1px solid ${ORANGE}28`,borderRadius:12,padding:'8px 12px',textAlign:'center'}}>
@@ -174,9 +197,9 @@ export default function BarberReports(){
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
                   {[
-                    {label:'Appointments',value:filtered.length,color:TXT},
-                    {label:'Efficiency',  value:`${efficiency}%`,color:ORANGE},
-                    {label:'Pending',     value:formatCurrency(pending),color:'#EAB308'},
+                    {label:'Appointments',value:filtered.length,   color:TXT},
+                    {label:'Efficiency',  value:`${efficiency}%`,  color:TXT},
+                    {label:'Pending',     value:formatCurrency(pending),color:TXT2},
                   ].map(s=>(
                     <div key={s.label} style={{background:BG,borderRadius:10,padding:'8px'}}>
                       <p style={{color:s.color,fontWeight:800,fontSize:16,margin:'0 0 2px',letterSpacing:'-0.3px'}}>{s.value}</p>
@@ -188,16 +211,16 @@ export default function BarberReports(){
 
               {/* Walk-in stats */}
               {walkIns.length>0&&(
-                <div className="fu" style={{background:CARD,border:`1px solid ${WALKIN}25`,borderRadius:16,padding:'14px',marginBottom:10}}>
-                  <p style={{color:TXT3,fontSize:9,fontWeight:700,letterSpacing:'0.08em',margin:'0 0 10px'}}>WALK-IN STATS</p>
+                <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'13px',marginBottom:10}}>
+                  <p style={{color:TXT3,fontSize:9,fontWeight:700,letterSpacing:'0.08em',margin:'0 0 10px'}}>WALK-INS THIS PERIOD</p>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
                     {[
-                      {label:'Walk-ins',value:walkIns.length,color:WALKIN},
-                      {label:'Revenue', value:formatCurrency(walkInRevenue),color:WALKIN},
-                      {label:'% of Total',value:filtered.length>0?`${Math.round((walkIns.length/filtered.length)*100)}%`:'0%',color:WALKIN},
+                      {label:'Walk-ins',  value:walkIns.length,                                         color:TXT},
+                      {label:'Revenue',   value:formatCurrency(walkInRevenue),                          color:TXT},
+                      {label:'% of Total',value:filtered.length>0?`${Math.round((walkIns.length/filtered.length)*100)}%`:'0%',color:TXT},
                     ].map(s=>(
                       <div key={s.label} style={{background:BG,borderRadius:10,padding:'8px',textAlign:'center'}}>
-                        <p style={{color:s.color,fontWeight:900,fontSize:16,margin:'0 0 2px',letterSpacing:'-0.3px'}}>{s.value}</p>
+                        <p style={{color:s.color,fontWeight:800,fontSize:16,margin:'0 0 2px'}}>{s.value}</p>
                         <p style={{color:TXT3,fontSize:9,margin:0,fontWeight:600}}>{s.label}</p>
                       </div>
                     ))}
@@ -205,13 +228,13 @@ export default function BarberReports(){
                 </div>
               )}
 
-              {/* Bar chart */}
-              <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'14px',marginBottom:10}}>
+              {/* Bar chart — neutral */}
+              <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'13px',marginBottom:10}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
                   <p style={{color:TXT,fontWeight:700,fontSize:13,margin:0}}>Earnings Overview</p>
                   <div style={{display:'flex',gap:8}}>
-                    <div style={{display:'flex',alignItems:'center',gap:4}}><div style={{width:6,height:6,borderRadius:1,background:GREEN}}/><span style={{color:TXT2,fontSize:10}}>Services</span></div>
-                    <div style={{display:'flex',alignItems:'center',gap:4}}><div style={{width:6,height:6,borderRadius:1,background:ORANGE}}/><span style={{color:TXT2,fontSize:10}}>Tips</span></div>
+                    <div style={{display:'flex',alignItems:'center',gap:4}}><div style={{width:6,height:6,borderRadius:1,background:TXT3}}/><span style={{color:TXT3,fontSize:10}}>Services</span></div>
+                    <div style={{display:'flex',alignItems:'center',gap:4}}><div style={{width:6,height:6,borderRadius:1,background:ORANGE}}/><span style={{color:TXT3,fontSize:10}}>Tips</span></div>
                   </div>
                 </div>
                 <BarChart data={monthlyData} maxVal={maxRev} activeKey={activeMonth} onBarClick={m=>setActiveMonth(prev=>prev===m.key?null:m.key)}/>
@@ -229,9 +252,9 @@ export default function BarberReports(){
                       <span style={{color:ORANGE,fontWeight:800,fontSize:13}}>{formatCurrency(activeMonthData.total)}</span>
                     </div>
                     <div style={{display:'flex',gap:10,marginBottom:8}}>
-                      <span style={{color:GREEN,fontWeight:700,fontSize:11}}>Svc {formatCurrency(activeMonthData.services)}</span>
-                      <span style={{color:ORANGE,fontWeight:700,fontSize:11}}>Tips {formatCurrency(activeMonthData.tips)}</span>
-                      <span style={{color:TXT2,fontSize:11}}>{activeMonthData.count} appts</span>
+                      <span style={{color:TXT2,fontWeight:600,fontSize:11}}>Services {formatCurrency(activeMonthData.services)}</span>
+                      <span style={{color:ORANGE,fontWeight:600,fontSize:11}}>Tips {formatCurrency(activeMonthData.tips)}</span>
+                      <span style={{color:TXT3,fontSize:11}}>{activeMonthData.count} appts</span>
                     </div>
                     {activeMonthData.appts.slice(0,3).map((a,i)=>(
                       <div key={i} style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderTop:`1px solid ${BORDER}`}}>
@@ -245,16 +268,16 @@ export default function BarberReports(){
             </>
           )}
 
-          {/* ── DETAIL / ANALYTICS ── */}
+          {/* ── ANALYTICS ── */}
           {view==='detail'&&(
             <>
-              {/* Top Services + Donut */}
+              {/* Top Services + Donut — neutral colors */}
               {topServices.length>0&&(
-                <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'14px',marginBottom:10}}>
+                <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'13px',marginBottom:10}}>
                   <p style={{color:TXT,fontWeight:700,fontSize:13,margin:'0 0 12px'}}>Top Services</p>
                   <div style={{display:'flex',gap:12,alignItems:'flex-start'}}>
                     <div style={{flexShrink:0,position:'relative'}}>
-                      <DonutChart segments={donutSegments} size={100} strokeWidth={14}/>
+                      <DonutChart segments={donutSegments} size={100} strokeWidth={13}/>
                       <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
                         <p style={{color:TXT,fontWeight:900,fontSize:12,margin:0,letterSpacing:'-0.2px'}}>{formatCurrency(totalSvcRev)}</p>
                         <p style={{color:TXT3,fontSize:8,fontWeight:700,margin:0}}>TOTAL</p>
@@ -262,11 +285,11 @@ export default function BarberReports(){
                     </div>
                     <div style={{flex:1,minWidth:0}}>
                       {donutSegments.map((seg,i)=>(
-                        <div key={seg.label} style={{display:'flex',alignItems:'center',gap:6,marginBottom:8}}>
+                        <div key={seg.label} style={{display:'flex',alignItems:'center',gap:6,marginBottom:7}}>
                           <div style={{width:7,height:7,borderRadius:'50%',background:seg.color,flexShrink:0}}/>
                           <span style={{color:TXT,fontSize:12,fontWeight:600,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{seg.label}</span>
-                          <span style={{color:TXT2,fontSize:11}}>{seg.pct}%</span>
-                          <span style={{color:ORANGE,fontWeight:700,fontSize:12,flexShrink:0}}>{formatCurrency(seg.value)}</span>
+                          <span style={{color:TXT3,fontSize:11}}>{seg.pct}%</span>
+                          <span style={{color:i===0?ORANGE:TXT2,fontWeight:700,fontSize:12,flexShrink:0}}>{formatCurrency(seg.value)}</span>
                         </div>
                       ))}
                     </div>
@@ -274,25 +297,25 @@ export default function BarberReports(){
                 </div>
               )}
 
-              {/* Services bars */}
+              {/* Service bars — neutral */}
               {topServices.length>0&&(
-                <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'14px',marginBottom:10}}>
+                <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'13px',marginBottom:10}}>
                   <p style={{color:TXT,fontWeight:700,fontSize:13,margin:'0 0 12px'}}>Earnings by Service</p>
                   {topServices.map(([name,data],i)=>(
-                    <div key={name} style={{display:'flex',alignItems:'center',gap:10,marginBottom:i<topServices.length-1?12:0}}>
-                      <div style={{width:30,height:30,borderRadius:8,background:CARD2,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                        <Scissors size={13} color={SVC_COLORS[i]||TXT3} strokeWidth={1.8}/>
+                    <div key={name} style={{display:'flex',alignItems:'center',gap:10,marginBottom:i<topServices.length-1?11:0}}>
+                      <div style={{width:28,height:28,borderRadius:8,background:CARD2,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                        <Scissors size={12} color={i===0?ORANGE:TXT3} strokeWidth={1.8}/>
                       </div>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
                           <span style={{color:TXT,fontSize:12,fontWeight:600}}>{name}</span>
                           <div>
-                            <span style={{color:SVC_COLORS[i]||ORANGE,fontWeight:800,fontSize:12}}>{formatCurrency(data.revenue)}</span>
+                            <span style={{color:i===0?ORANGE:TXT2,fontWeight:800,fontSize:12}}>{formatCurrency(data.revenue)}</span>
                             <span style={{color:TXT3,fontSize:10,marginLeft:4}}>{data.count}x</span>
                           </div>
                         </div>
                         <div style={{height:3,borderRadius:2,background:BORDER,overflow:'hidden'}}>
-                          <div style={{height:'100%',borderRadius:2,background:SVC_COLORS[i]||ORANGE,width:`${(data.revenue/topServices[0][1].revenue)*100}%`,transition:'width 0.5s'}}/>
+                          <div style={{height:'100%',borderRadius:2,background:i===0?ORANGE:TXT3,width:`${(data.revenue/topServices[0][1].revenue)*100}%`,transition:'width 0.5s'}}/>
                         </div>
                       </div>
                     </div>
@@ -301,17 +324,17 @@ export default function BarberReports(){
               )}
 
               {/* Walk-in breakdown */}
-              <div className="fu" style={{background:CARD,border:`1px solid ${WALKIN}22`,borderRadius:16,padding:'14px'}}>
+              <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'13px'}}>
                 <p style={{color:TXT,fontWeight:700,fontSize:13,margin:'0 0 12px'}}>Walk-in Breakdown</p>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:10}}>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
                   {[
-                    {label:'Total Walk-ins',value:appointments.filter(a=>a.isWalkIn).length,color:WALKIN},
-                    {label:'This Period',   value:walkIns.length,color:WALKIN},
-                    {label:'Revenue',       value:formatCurrency(walkInRevenue),color:WALKIN},
-                    {label:'vs Online',     value:filtered.length>0?`${100-Math.round((walkIns.length/filtered.length)*100)}% online`:'—',color:TXT2},
+                    {label:'Total Walk-ins',value:appointments.filter(a=>a.isWalkIn).length},
+                    {label:'This Period',   value:walkIns.length},
+                    {label:'Revenue',       value:formatCurrency(walkInRevenue)},
+                    {label:'vs Online',     value:filtered.length>0?`${100-Math.round((walkIns.length/filtered.length)*100)}% online`:'—'},
                   ].map(s=>(
                     <div key={s.label} style={{background:BG,borderRadius:10,padding:'8px 10px'}}>
-                      <p style={{color:s.color,fontWeight:800,fontSize:15,margin:'0 0 2px',letterSpacing:'-0.3px'}}>{s.value}</p>
+                      <p style={{color:TXT,fontWeight:800,fontSize:15,margin:'0 0 2px',letterSpacing:'-0.3px'}}>{s.value}</p>
                       <p style={{color:TXT3,fontSize:9,margin:0,fontWeight:600}}>{s.label}</p>
                     </div>
                   ))}
