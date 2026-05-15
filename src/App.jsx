@@ -12,18 +12,16 @@ import { BarberDataProvider } from './hooks/useBarberData'
 export const BARBER_SLUG = 'amadoblends'
 const APP_MODE = import.meta.env.VITE_APP_MODE || 'client'
 
-// ── Inline loader (no full-screen spinner between pages) ──────────────────
 function PageLoader() {
   return (
-    <div style={{ minHeight:'100dvh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg)' }}>
-      <div style={{ width:24, height:24, border:'2.5px solid #2A2A2A', borderTopColor:'var(--accent,#FF6B1A)', borderRadius:'50%', animation:'spin 0.65s linear infinite' }}/>
+    <div style={{ minHeight:'100dvh', display:'flex', alignItems:'center', justifyContent:'center', background:'#0D0D0D' }}>
+      <div style={{ width:24, height:24, border:'2.5px solid #2A2A2A', borderTopColor:'#FF6B1A', borderRadius:'50%', animation:'spin 0.65s linear infinite' }}/>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }
 
-// ── Lazy imports — code splits each page into its own chunk ───────────────
-// BARBER
+// ── Lazy — BARBER ─────────────────────────────────────────────────────────
 const BarberLoginPage    = lazy(() => import('./pages/auth/BarberLoginPage'))
 const BarberSignupPage   = lazy(() => import('./pages/auth/BarberSignupPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'))
@@ -39,22 +37,22 @@ const BarberClientDetail = lazy(() => import('./pages/barber/BarberClientDetail'
 const BarberReportDetail = lazy(() => import('./pages/barber/BarberReportDetail'))
 const AddEditService     = lazy(() => import('./pages/barber/AddEditService'))
 const BarberSettings     = lazy(() => import('./pages/barber/BarberSettings'))
-const BarberProfileImport = lazy(() => import('./pages/barber/BarberProfile').then(m => ({ default: m.BarberProfile || m.default })))
+const BarberProfilePage  = lazy(() => import('./pages/barber/BarberProfile').then(m => ({ default: m.BarberProfile || m.default })))
 
-// CLIENT
-const SplashPage         = lazy(() => import('./pages/client/SplashPage'))
-const ClientLoginPage    = lazy(() => import('./pages/client/ClientLoginPage'))
-const ClientRegisterPage = lazy(() => import('./pages/client/ClientRegisterPage'))
-const BookingPage        = lazy(() => import('./pages/client/BookingPage'))
+// ── Lazy — CLIENT ─────────────────────────────────────────────────────────
+const SplashPage           = lazy(() => import('./pages/client/SplashPage'))
+const ClientLoginPage      = lazy(() => import('./pages/client/ClientLoginPage'))
+const ClientRegisterPage   = lazy(() => import('./pages/client/ClientRegisterPage'))
+const BookingPage          = lazy(() => import('./pages/client/BookingPage'))
 const BookingConfirmedPage = lazy(() => import('./pages/client/BookingConfirmedPage'))
-const ClientDashboard    = lazy(() => import('./pages/client/ClientDashboard'))
-const MyAppointmentsPage = lazy(() => import('./pages/client/MyAppointmentsPage').then(m => ({ default: m.MyAppointmentsPage })))
-const HistoryPage        = lazy(() => import('./pages/client/HistoryPage').then(m => ({ default: m.HistoryPage })))
-const PortfolioPage      = lazy(() => import('./pages/client/PortfolioPage').then(m => ({ default: m.PortfolioPage })))
-const ReferralsPage      = lazy(() => import('./pages/client/ReferralsPage').then(m => ({ default: m.ReferralsPage })))
-const ClientProfilePage  = lazy(() => import('./pages/client/ClientProfilePage').then(m => ({ default: m.ClientProfilePage })))
+const ClientDashboard      = lazy(() => import('./pages/client/ClientDashboard'))
+const MyAppointmentsPage   = lazy(() => import('./pages/client/MyAppointmentsPage').then(m => ({ default: m.MyAppointmentsPage || m.default })))
+const HistoryPage          = lazy(() => import('./pages/client/HistoryPage').then(m => ({ default: m.HistoryPage || m.default })))
+const PortfolioPage        = lazy(() => import('./pages/client/PortfolioPage').then(m => ({ default: m.PortfolioPage || m.default })))
+const ReferralsPage        = lazy(() => import('./pages/client/ReferralsPage').then(m => ({ default: m.ReferralsPage || m.default })))
+const ClientProfilePage    = lazy(() => import('./pages/client/ClientProfilePage').then(m => ({ default: m.ClientProfilePage || m.default })))
 
-const TOAST_OPTS = {
+const TOAST = {
   position: 'top-center',
   toastOptions: {
     style: { background:'#1a1a1a', color:'#F5F5F5', border:'1px solid #2a2a2a', borderRadius:'12px', fontSize:'13px', fontFamily:"'DM Sans',system-ui,sans-serif" },
@@ -100,65 +98,58 @@ function ClientThemeSync() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// BARBER APP
-// BarberDataProvider wraps all protected routes — data loads ONCE
+// BARBER APP — amadobarber.vercel.app
+// ✅ FIX: All routes flat (no nested Routes) — BarberDataProvider wraps all
 // ══════════════════════════════════════════════════════════════════════════
-function BarberProtectedRoutes() {
-  return (
-    <BarberDataProvider>
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
-          <Route path="/barber/dashboard"          element={<BarberRoute><BarberDashboard /></BarberRoute>} />
-          <Route path="/barber/calendar"           element={<BarberRoute><BarberCalendar /></BarberRoute>} />
-          <Route path="/barber/appointments"       element={<BarberRoute><BarberAppointments /></BarberRoute>} />
-          <Route path="/barber/clients"            element={<BarberRoute><BarberClientList /></BarberRoute>} />
-          <Route path="/barber/clients/:clientKey" element={<BarberRoute><BarberClientDetail /></BarberRoute>} />
-          <Route path="/barber/services"           element={<BarberRoute><BarberServices /></BarberRoute>} />
-          <Route path="/barber/services/add"       element={<BarberRoute><AddEditService /></BarberRoute>} />
-          <Route path="/barber/services/edit"      element={<BarberRoute><AddEditService /></BarberRoute>} />
-          <Route path="/barber/availability"       element={<BarberRoute><BarberAvailability /></BarberRoute>} />
-          <Route path="/barber/reports"            element={<BarberRoute><BarberReports /></BarberRoute>} />
-          <Route path="/barber/reports/detail"     element={<BarberRoute><BarberReportDetail /></BarberRoute>} />
-          <Route path="/barber/broadcast"          element={<BarberRoute><BarberBroadcast /></BarberRoute>} />
-          <Route path="/barber/profile"            element={<BarberRoute><BarberProfileImport /></BarberRoute>} />
-          <Route path="/barber/settings"           element={<BarberRoute><BarberSettings /></BarberRoute>} />
-          <Route path="*"                          element={<Navigate to="/barber/dashboard" replace />} />
-        </Routes>
-      </Suspense>
-    </BarberDataProvider>
-  )
-}
-
 function BarberApp() {
   return (
     <BarberAuthProvider>
       <ThemeProvider>
         <BarberThemeSync />
-        <Toaster {...TOAST_OPTS} />
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/"                          element={<Navigate to="/barber/login" replace />} />
-            <Route path="/barber/login"              element={<BarberLoginPage />} />
-            <Route path="/barber/signup"             element={<BarberSignupPage />} />
-            <Route path="/barber/forgot-password"    element={<ForgotPasswordPage />} />
-            <Route path="/barber/*"                  element={<BarberProtectedRoutes />} />
-            <Route path="*"                          element={<Navigate to="/barber/login" replace />} />
-          </Routes>
-        </Suspense>
+        <Toaster {...TOAST} />
+        <BarberDataProvider>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Public */}
+              <Route path="/"                          element={<Navigate to="/barber/login" replace />} />
+              <Route path="/barber/login"              element={<BarberLoginPage />} />
+              <Route path="/barber/signup"             element={<BarberSignupPage />} />
+              <Route path="/barber/forgot-password"    element={<ForgotPasswordPage />} />
+
+              {/* Protected — all use BarberDataProvider above */}
+              <Route path="/barber/dashboard"          element={<BarberRoute><BarberDashboard /></BarberRoute>} />
+              <Route path="/barber/calendar"           element={<BarberRoute><BarberCalendar /></BarberRoute>} />
+              <Route path="/barber/appointments"       element={<BarberRoute><BarberAppointments /></BarberRoute>} />
+              <Route path="/barber/clients"            element={<BarberRoute><BarberClientList /></BarberRoute>} />
+              <Route path="/barber/clients/:clientKey" element={<BarberRoute><BarberClientDetail /></BarberRoute>} />
+              <Route path="/barber/services"           element={<BarberRoute><BarberServices /></BarberRoute>} />
+              <Route path="/barber/services/add"       element={<BarberRoute><AddEditService /></BarberRoute>} />
+              <Route path="/barber/services/edit"      element={<BarberRoute><AddEditService /></BarberRoute>} />
+              <Route path="/barber/availability"       element={<BarberRoute><BarberAvailability /></BarberRoute>} />
+              <Route path="/barber/reports"            element={<BarberRoute><BarberReports /></BarberRoute>} />
+              <Route path="/barber/reports/detail"     element={<BarberRoute><BarberReportDetail /></BarberRoute>} />
+              <Route path="/barber/broadcast"          element={<BarberRoute><BarberBroadcast /></BarberRoute>} />
+              <Route path="/barber/profile"            element={<BarberRoute><BarberProfilePage /></BarberRoute>} />
+              <Route path="/barber/settings"           element={<BarberRoute><BarberSettings /></BarberRoute>} />
+
+              <Route path="*"                          element={<Navigate to="/barber/login" replace />} />
+            </Routes>
+          </Suspense>
+        </BarberDataProvider>
       </ThemeProvider>
     </BarberAuthProvider>
   )
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// CLIENT APP
+// CLIENT APP — amadobook.vercel.app
 // ══════════════════════════════════════════════════════════════════════════
 function ClientApp() {
   return (
     <ClientAuthProvider>
       <ThemeProvider>
         <ClientThemeSync />
-        <Toaster {...TOAST_OPTS} />
+        <Toaster {...TOAST} />
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/"                  element={<SplashPage />} />
