@@ -1,16 +1,12 @@
 /**
- * BarberLayout — iPhone-optimized
- * ✓ Compact header (44px)
- * ✓ Bottom nav 4 tabs, no QR
- * ✓ Profile bottom sheet
- * ✓ No sidebar
+ * BarberLayout — fixed version
+ * Uses useBarberData safely (checks context before calling)
  */
 import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useBarberAuth as useAuth } from '../../hooks/useBarberAuth'
-import { useBarberData } from '../../hooks/useBarberData'
 import { LayoutDashboard, CalendarDays, ClipboardList, Users, Bell, X, LogOut, User, Settings, ChevronRight } from 'lucide-react'
-import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 
 const BG=('#0D0D0D'),CARD=('#141414'),CARD2=('#1C1C1E'),BORDER=('#252525'),ORANGE=('#FF6B1A'),TXT=('#F0F0F0'),TXT2=('#666666'),TXT3=('#3A3A3A')
@@ -26,60 +22,52 @@ const CSS=`
 input,textarea{font-size:16px!important}
 `
 
-const NAV = [
-  { to:'/barber/dashboard',    icon:LayoutDashboard, label:'Home'     },
-  { to:'/barber/calendar',     icon:CalendarDays,    label:'Calendar' },
-  { to:'/barber/appointments', icon:ClipboardList,   label:'Appts'    },
-  { to:'/barber/clients',      icon:Users,           label:'Clients'  },
+const NAV=[
+  {to:'/barber/dashboard',    icon:LayoutDashboard, label:'Home'},
+  {to:'/barber/calendar',     icon:CalendarDays,    label:'Calendar'},
+  {to:'/barber/appointments', icon:ClipboardList,   label:'Appts'},
+  {to:'/barber/clients',      icon:Users,           label:'Clients'},
 ]
 
-function useUnread(userId) {
-  const [n, setN] = useState(0)
-  useEffect(() => {
-    if (!userId) return
-    const q = query(collection(db,'notifications'), where('userId','==',userId), where('read','==',false))
-    const unsub = onSnapshot(q, s => setN(s.size))
+function useUnread(userId){
+  const[n,setN]=useState(0)
+  useEffect(()=>{
+    if(!userId)return
+    const q=query(collection(db,'notifications'),where('userId','==',userId),where('read','==',false))
+    const unsub=onSnapshot(q,s=>setN(s.size))
     return unsub
-  }, [userId])
+  },[userId])
   return n
 }
 
-function ProfileSheet({ onClose }) {
-  const { signOut, userData } = useAuth()
-  const { barber } = useBarberData()
-  const navigate = useNavigate()
-  const initials = `${userData?.firstName?.[0]||''}${userData?.lastName?.[0]||''}`.toUpperCase()
-
-  async function handleSignOut() {
+function ProfileSheet({onClose,userData,barberName,navigate}){
+  const{signOut}=useAuth()
+  const initials=`${userData?.firstName?.[0]||''}${userData?.lastName?.[0]||''}`.toUpperCase()
+  async function handleSignOut(){
     localStorage.removeItem('ab_last_active')
     await signOut()
     navigate('/barber/login')
   }
-
-  return (
+  return(
     <div style={{position:'fixed',inset:0,zIndex:70,background:'rgba(0,0,0,0.85)',animation:'fadeIn 0.15s ease'}} onClick={onClose}>
       <div style={{position:'absolute',bottom:0,left:0,right:0,background:CARD,borderRadius:'20px 20px 0 0',border:`1px solid ${BORDER}`,paddingBottom:'max(28px,env(safe-area-inset-bottom))',animation:'slideUp 0.25s cubic-bezier(0.22,1,0.36,1)',...F}} onClick={e=>e.stopPropagation()}>
         <div style={{width:36,height:4,borderRadius:2,background:BORDER,margin:'10px auto 0'}}/>
-
-        {/* Profile row */}
         <div style={{display:'flex',alignItems:'center',gap:12,padding:'16px 18px 14px',borderBottom:`1px solid ${BORDER}`}}>
           <div style={{width:44,height:44,borderRadius:'50%',overflow:'hidden',background:CARD2,border:`2px solid ${ORANGE}`,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:15,color:ORANGE,flexShrink:0}}>
             {userData?.photoURL?<img src={userData.photoURL} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>:initials||'B'}
           </div>
           <div>
             <p style={{color:TXT,fontWeight:700,fontSize:15,margin:'0 0 1px'}}>{userData?.firstName} {userData?.lastName}</p>
-            <p style={{color:TXT2,fontSize:12,margin:0}}>{barber?.name||'Barber'}</p>
+            <p style={{color:TXT2,fontSize:12,margin:0}}>{barberName||'Barber'}</p>
           </div>
         </div>
-
-        {/* Menu */}
         <div style={{padding:'6px 10px'}}>
           {[
             {icon:User,    label:'Edit Profile', fn:()=>{onClose();navigate('/barber/profile')}},
             {icon:Settings,label:'Settings',     fn:()=>{onClose();navigate('/barber/settings')}},
           ].map(item=>{
             const Icon=item.icon
-            return (
+            return(
               <button key={item.label} onClick={item.fn}
                 style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'13px 10px',borderRadius:12,background:'transparent',border:'none',cursor:'pointer',textAlign:'left',...F}}>
                 <div style={{width:32,height:32,borderRadius:10,background:CARD2,display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -104,17 +92,26 @@ function ProfileSheet({ onClose }) {
   )
 }
 
-export default function BarberLayout({ children }) {
-  const { userData, user } = useAuth()
-  const { barber } = useBarberData()
-  const [showProfile, setShowProfile] = useState(false)
-  const unread = useUnread(user?.uid)
+export default function BarberLayout({children}){
+  const{userData,user}=useAuth()
+  const navigate=useNavigate()
+  const[showProfile,setShowProfile]=useState(false)
+  const[barberName,setBarberName]=useState('')
+  const unread=useUnread(user?.uid)
 
-  return (
+  // Load barber name separately (no useBarberData dependency)
+  useEffect(()=>{
+    if(!user)return
+    getDocs(query(collection(db,'barbers'),where('userId','==',user.uid))).then(snap=>{
+      if(!snap.empty)setBarberName(snap.docs[0].data().name||'')
+    })
+  },[user?.uid])
+
+  return(
     <div style={{minHeight:'100dvh',background:BG,display:'flex',flexDirection:'column',...F}}>
       <style>{CSS}</style>
 
-      {/* ── HEADER ── 44px compact */}
+      {/* HEADER */}
       <header style={{
         position:'fixed',top:0,left:0,right:0,zIndex:40,
         background:`${BG}EE`,backdropFilter:'blur(16px)',
@@ -123,7 +120,6 @@ export default function BarberLayout({ children }) {
         paddingTop:'env(safe-area-inset-top)',
         display:'flex',alignItems:'center',padding:'0 14px',
       }}>
-        {/* Logo */}
         <div style={{display:'flex',alignItems:'center',gap:7,flex:1}}>
           <div style={{width:24,height:24,borderRadius:7,background:ORANGE,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
@@ -131,10 +127,8 @@ export default function BarberLayout({ children }) {
               <path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/>
             </svg>
           </div>
-          <span style={{color:TXT,fontWeight:800,fontSize:15,letterSpacing:'-0.3px'}}>{barber?.name||'AmadoBook'}</span>
+          <span style={{color:TXT,fontWeight:800,fontSize:15,letterSpacing:'-0.3px'}}>{barberName||'AmadoBook'}</span>
         </div>
-
-        {/* Right — Bell + Avatar */}
         <div style={{display:'flex',alignItems:'center',gap:2}}>
           <button style={{position:'relative',background:'none',border:'none',color:TXT2,cursor:'pointer',padding:'8px',borderRadius:8,display:'flex'}}>
             <Bell size={17}/>
@@ -151,7 +145,7 @@ export default function BarberLayout({ children }) {
         </div>
       </header>
 
-      {/* ── CONTENT ── */}
+      {/* CONTENT */}
       <main style={{
         flex:1,
         marginTop:'calc(44px + env(safe-area-inset-top))',
@@ -161,7 +155,7 @@ export default function BarberLayout({ children }) {
         {children}
       </main>
 
-      {/* ── BOTTOM NAV ── 52px compact */}
+      {/* BOTTOM NAV */}
       <nav style={{
         position:'fixed',bottom:0,left:0,right:0,zIndex:40,
         background:`${CARD}F5`,backdropFilter:'blur(16px)',
@@ -181,16 +175,21 @@ export default function BarberLayout({ children }) {
               <>
                 {isActive&&<div style={{position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',width:18,height:2,borderRadius:1,background:ORANGE}}/>}
                 <Icon size={19} strokeWidth={isActive?2.5:1.8}/>
-                <span style={{fontSize:9,fontWeight:isActive?800:600,letterSpacing:'0.03em',fontFamily:"'DM Sans',system-ui,sans-serif"}}>
-                  {label.toUpperCase()}
-                </span>
+                <span style={{fontSize:9,fontWeight:isActive?800:600,letterSpacing:'0.03em',fontFamily:"'DM Sans',system-ui,sans-serif"}}>{label.toUpperCase()}</span>
               </>
             )}
           </NavLink>
         ))}
       </nav>
 
-      {showProfile && <ProfileSheet onClose={()=>setShowProfile(false)}/>}
+      {showProfile&&(
+        <ProfileSheet
+          onClose={()=>setShowProfile(false)}
+          userData={userData}
+          barberName={barberName}
+          navigate={navigate}
+        />
+      )}
     </div>
   )
 }
