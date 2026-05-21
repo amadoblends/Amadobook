@@ -304,10 +304,14 @@ export default function BarberLayout({ children }) {
         <Bell size={17}/>
         {unread > 0 && (
           <span style={{
-            position:'absolute', top:6, right:6,
-            width:8, height:8, borderRadius:'50%',
-            background:'#FF6B1A', border:'1.5px solid #0D0D0D',
-          }}/>
+            position:'absolute', top:-5, right:-5,
+            minWidth:16, height:16, borderRadius:8,
+            background:'#FF6B1A', border:'2px solid #0D0D0D',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            fontSize:8, fontWeight:800, color:'#fff',
+            padding:'0 3px', fontFamily:"'DM Sans',system-ui,sans-serif",
+            lineHeight:1,
+          }}>{unread > 99 ? '99+' : unread}</span>
         )}
       </button>
 
