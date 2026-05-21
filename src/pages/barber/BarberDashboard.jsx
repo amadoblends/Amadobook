@@ -21,7 +21,7 @@ import BarberLayout from '../../components/layout/BarberLayout'
 import { useTheme } from '../../context/ThemeContext'
 import {
   X, Scissors, Phone, Mail, Plus, ChevronRight, TrendingUp,
-  Check, ChevronLeft, Search, User, Clock, CheckCircle,
+  Check, ChevronLeft, Search, User, CheckCircle,
   XCircle, AlertCircle, CalendarPlus, DollarSign,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -74,6 +74,66 @@ function Countdown({appt}){
     c();const iv=setInterval(c,1000);return()=>clearInterval(iv)
   },[appt])
   return<span style={{fontVariantNumeric:'tabular-nums'}}>{l}</span>
+}
+
+function CircularCountdown({appt}){
+  const[info,setInfo]=useState({text:'0:00',pct:1})
+  useEffect(()=>{
+    function tick(){
+      const s=apptStart(appt),e=apptEnd(appt),n=new Date()
+      if(n>e){setInfo({text:'0:00',pct:0});return}
+      const total=differenceInSeconds(e,s),rem=Math.max(0,differenceInSeconds(e,n))
+      const pct=rem/total,m=Math.floor(rem/60),sc=rem%60
+      setInfo({text:`${m}:${String(sc).padStart(2,'0')}`,pct})
+    }
+    tick();const iv=setInterval(tick,1000);return()=>clearInterval(iv)
+  },[appt])
+  const r=24,size=58,stroke=4,cx=size/2,cy=size/2
+  const circ=2*Math.PI*r,offset=circ*(1-info.pct)
+  const col=info.pct>0.5?'rgba(255,255,255,0.95)':info.pct>0.25?'#FFD060':'#FF6B6B'
+  return<div style={{position:'relative',width:size,height:size,flexShrink:0}}>
+    <svg width={size} height={size} style={{transform:'rotate(-90deg)'}}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={stroke}/>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={col} strokeWidth={stroke}
+        strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
+        style={{transition:'stroke-dashoffset 0.8s ease,stroke 0.8s ease'}}/>
+    </svg>
+    <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:1}}>
+      <span style={{color:'#fff',fontWeight:800,fontSize:9,fontVariantNumeric:'tabular-nums',lineHeight:1}}>{info.text}</span>
+      <span style={{color:'rgba(255,255,255,0.5)',fontSize:7,fontWeight:600,lineHeight:1}}>left</span>
+    </div>
+  </div>
+}
+
+function NextUpCard({next,onClick,formatTime}){
+  const[bcolor,setBcolor]=useState(GREEN)
+  const[secs,setSecs]=useState(null)
+  useEffect(()=>{
+    function tick(){
+      const s=apptStart(next),n=new Date()
+      const d=Math.max(0,differenceInSeconds(s,n))
+      setSecs(d)
+      setBcolor(d>20*60?GREEN:d>10*60?ORANGE:RED)
+    }
+    tick();const iv=setInterval(tick,1000);return()=>clearInterval(iv)
+  },[next])
+  const ct=secs!==null?(secs>=3600?`in ${Math.floor(secs/3600)}h ${Math.floor((secs%3600)/60)}m`:secs>=60?`in ${Math.floor(secs/60)}m ${secs%60}s`:`in ${secs}s`):''
+  return<button className="fu" onClick={onClick}
+    style={{width:'100%',background:`${bcolor}${secs!==null&&secs<10*60?'16':'0A'}`,border:`1px solid ${bcolor}22`,borderLeft:`3px solid ${bcolor}`,borderRadius:12,padding:'11px 13px',marginBottom:10,cursor:'pointer',textAlign:'left',...F,transition:'border-color 0.8s,background 0.8s',boxShadow:secs!==null&&secs<5*60?`0 2px 14px ${bcolor}28`:'none'}}>
+    <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:5}}>
+      <div style={{width:5,height:5,borderRadius:'50%',background:bcolor,animation:'pulse 2s infinite'}}/>
+      <span style={{color:bcolor,fontSize:9,fontWeight:800,letterSpacing:'0.1em'}}>NEXT UP</span>
+      <div style={{flex:1}}/>
+      <span style={{color:bcolor,fontSize:11,fontWeight:700,fontVariantNumeric:'tabular-nums'}}>{ct}</span>
+    </div>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+      <div style={{minWidth:0,flex:1}}>
+        <p style={{color:TXT,fontWeight:700,fontSize:13,margin:'0 0 2px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{next.clientName}</p>
+        <p style={{color:TXT2,fontSize:11,margin:0}}>{formatTime(next.startTime)} · {next.services?.map(s=>s.name).join(', ')}</p>
+      </div>
+      <p style={{color:bcolor,fontWeight:800,fontSize:13,margin:'0 0 0 10px',flexShrink:0}}>{formatCurrency(next.totalPrice)}</p>
+    </div>
+  </button>
 }
 
 function Modal({children,onClose,maxW=400}){
@@ -539,41 +599,25 @@ export default function BarberDashboard(){
         {/* Now Serving */}
         {current&&<button className="fu" onClick={()=>setSelAppt(current)}
           style={{width:'100%',background:`linear-gradient(135deg,${ORANGE},#FF8C42)`,borderRadius:14,padding:'13px 14px',marginBottom:10,border:'none',cursor:'pointer',textAlign:'left',...F,boxShadow:`0 5px 20px ${ORANGE}38`}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-            <div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
+            <div style={{flex:1,minWidth:0}}>
               <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:5}}>
                 <div style={{width:6,height:6,borderRadius:'50%',background:'rgba(255,255,255,0.9)',animation:'pulse 1.5s infinite'}}/>
                 <span style={{color:'rgba(255,255,255,0.85)',fontSize:9,fontWeight:800,letterSpacing:'0.12em'}}>NOW SERVING</span>
               </div>
               <p style={{color:'#fff',fontWeight:900,fontSize:19,margin:'0 0 3px',letterSpacing:'-0.4px'}}>{current.clientName}</p>
-              <p style={{color:'rgba(255,255,255,0.7)',fontSize:11,margin:'0 0 7px'}}>{current.services?.map(s=>s.name).join(', ')}</p>
-              <div style={{background:'rgba(0,0,0,0.18)',borderRadius:16,padding:'4px 10px',display:'inline-flex',alignItems:'center',gap:5}}>
-                <Clock size={10} color="rgba(255,255,255,0.85)"/>
-                <span style={{color:'rgba(255,255,255,0.9)',fontWeight:700,fontSize:11}}><Countdown appt={current}/></span>
+              <p style={{color:'rgba(255,255,255,0.7)',fontSize:11,margin:'0 0 6px'}}>{current.services?.map(s=>s.name).join(', ')}</p>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <p style={{color:'rgba(255,255,255,0.9)',fontWeight:900,fontSize:16,margin:0}}>{formatCurrency(current.totalPrice)}</p>
+                <p style={{color:'rgba(255,255,255,0.55)',fontSize:10,margin:0}}>{formatTime(current.startTime)}–{formatTime(current.endTime)}</p>
               </div>
             </div>
-            <div style={{textAlign:'right'}}>
-              <p style={{color:'#fff',fontWeight:900,fontSize:19,margin:'0 0 3px'}}>{formatCurrency(current.totalPrice)}</p>
-              <p style={{color:'rgba(255,255,255,0.6)',fontSize:10}}>{formatTime(current.startTime)}–{formatTime(current.endTime)}</p>
-            </div>
+            <CircularCountdown appt={current}/>
           </div>
         </button>}
 
         {/* Next up */}
-        {!current&&next&&<button className="fu" onClick={()=>setSelAppt(next)}
-          style={{width:'100%',background:CARD,border:`1px solid ${BORDER}`,borderLeft:`3px solid ${ORANGE}`,borderRadius:12,padding:'10px 13px',marginBottom:10,cursor:'pointer',textAlign:'left',...F}}>
-          <p style={{color:TXT3,fontSize:9,fontWeight:700,letterSpacing:'0.1em',marginBottom:3}}>NEXT UP</p>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div>
-              <p style={{color:TXT,fontWeight:700,fontSize:13,margin:'0 0 2px'}}>{next.clientName}</p>
-              <p style={{color:TXT2,fontSize:11,margin:0}}>{formatTime(next.startTime)} · {next.services?.map(s=>s.name).join(', ')}</p>
-            </div>
-            <div style={{textAlign:'right'}}>
-              <p style={{color:ORANGE,fontWeight:800,fontSize:13,margin:'0 0 2px'}}>{formatCurrency(next.totalPrice)}</p>
-              <p style={{color:TXT3,fontSize:10,margin:0}}><Countdown appt={next}/></p>
-            </div>
-          </div>
-        </button>}
+        {!current&&next&&<NextUpCard next={next} onClick={()=>setSelAppt(next)} formatTime={formatTime}/>}
 
         {/* Today's appointments */}
         <div className="fu" style={{marginBottom:10}}>
