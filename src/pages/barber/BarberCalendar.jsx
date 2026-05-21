@@ -38,7 +38,7 @@ const END_H   = 21
 const HOURS   = Array.from({ length: END_H - START_H }, (_, i) => START_H + i)
 
 function timeMins(t) { const [h,m] = t.split(':').map(Number); return h*60+m }
-function minsPx(m)   { return ((m - START_H*60)/60)*HOUR_H }
+function minsPx(m,sh=START_H) { return ((m - sh*60)/60)*HOUR_H }
 
 // Collision layout: side-by-side, never overlapping
 function layoutAppts(appts) {
@@ -485,9 +485,28 @@ export default function BarberCalendar() {
   const [showNew,      setShowNew]      = useState(false)
   const timelineRef = useRef(null)
 
+  const [now, setNow] = useState(new Date())
+  useEffect(()=>{ const iv=setInterval(()=>setNow(new Date()),1000); return()=>clearInterval(iv) },[])
+
   const advance = availability?.advanceDays || 30
   const today   = startOfDay(new Date())
   const maxDate = addDays(today, advance)
+
+  const {visStartH, visEndH, visHours} = useMemo(()=>{
+    const di=selectedDay.getDay(), ds=availability?.schedule?.[di]
+    let sh=7, eh=21
+    if(ds?.enabled){
+      const[shh]=ds.startTime.split(':').map(Number)
+      const[ehh,ehm]=ds.endTime.split(':').map(Number)
+      sh=shh; eh=ehh+(ehm>0?1:0)
+    }
+    if(isToday(selectedDay)){
+      const h=new Date().getHours()
+      sh=Math.min(sh,h); eh=Math.max(eh,h+1)
+    }
+    sh=Math.max(0,sh); eh=Math.min(24,eh)
+    return{visStartH:sh,visEndH:eh,visHours:Array.from({length:eh-sh},(_,i)=>sh+i)}
+  },[selectedDay,availability])
 
   const weekDays = eachDayOfInterval({
     start: weekBase,
@@ -531,8 +550,8 @@ export default function BarberCalendar() {
     if(!timelineRef.current)return
     const first=dayAppts[0]
     const targetMins=first?timeMins(first.startTime)-30:8*60
-    setTimeout(()=>timelineRef.current?.scrollTo({top:Math.max(0,minsPx(targetMins)-16),behavior:'smooth'}),80)
-  },[selectedDay])
+    setTimeout(()=>timelineRef.current?.scrollTo({top:Math.max(0,minsPx(targetMins,visStartH)-16),behavior:'smooth'}),80)
+  },[selectedDay,visStartH])
 
   async function handleComplete() {
     if(!detailAppt)return
@@ -616,11 +635,11 @@ export default function BarberCalendar() {
 
         {/* ── TIMELINE ── */}
         <div ref={timelineRef} style={{ flex:1, overflowY:'auto', background:BG }}>
-          <div style={{ position:'relative', minHeight:HOURS.length*HOUR_H+HOUR_H }}>
+          <div style={{ position:'relative', minHeight:visHours.length*HOUR_H+HOUR_H }}>
 
             {/* Hour rows */}
-            {HOURS.map(hour=>(
-              <div key={hour} style={{ position:'absolute', left:0, right:0, top:(hour-START_H)*HOUR_H, display:'flex', alignItems:'flex-start', pointerEvents:'none' }}>
+            {visHours.map(hour=>(
+              <div key={hour} style={{ position:'absolute', left:0, right:0, top:(hour-visStartH)*HOUR_H, display:'flex', alignItems:'flex-start', pointerEvents:'none' }}>
                 <div style={{ width:54, flexShrink:0, paddingTop:2, textAlign:'right', paddingRight:8 }}>
                   <span style={{ color:TXT3, fontSize:10, fontWeight:600, whiteSpace:'nowrap' }}>
                     {hour===12?'12 PM':hour>12?`${hour-12} PM`:`${hour} AM`}
@@ -636,7 +655,7 @@ export default function BarberCalendar() {
               const ds=availability?.schedule?.[di]
               if(!ds?.enabled)return null
               return(ds.breaks||[]).map((b,i)=>{
-                const bTop=minsPx(timeMins(b.startTime))
+                const bTop=minsPx(timeMins(b.startTime),visStartH)
                 const bH=Math.max(((timeMins(b.endTime)-timeMins(b.startTime))/60)*HOUR_H,16)
                 return<div key={i} style={{position:'absolute',left:54,right:8,top:bTop,height:bH,background:`${ORANGE}05`,border:`1px dashed ${ORANGE}18`,borderRadius:6,zIndex:1,display:'flex',alignItems:'center',paddingLeft:8,pointerEvents:'none'}}>
                   <span style={{color:ORANGE,fontSize:9,fontWeight:700,opacity:0.6}}>{b.label||'Break'}</span>
@@ -649,7 +668,7 @@ export default function BarberCalendar() {
               {laidOut.map(appt=>{
                 const startM = timeMins(appt.startTime)
                 const endM   = timeMins(appt.endTime)
-                const topPx  = minsPx(startM)
+                const topPx  = minsPx(startM,visStartH)
                 const hPx    = Math.max(((endM-startM)/60)*HOUR_H - 3, 36)
                 const color  = apptColor(appt)
                 const colW   = 100/appt._total
@@ -695,7 +714,7 @@ export default function BarberCalendar() {
 
             {/* Day off / out of range message */}
             {!isDayWorking(selectedDay)&&dayAppts.length===0&&(
-              <div style={{ position:'absolute', left:54, right:8, top:minsPx(9*60), zIndex:3 }}>
+              <div style={{ position:'absolute', left:54, right:8, top:minsPx(9*60,visStartH), zIndex:3 }}>
                 <div style={{ background:CARD, border:`1px solid ${BORDER}`, borderRadius:12, padding:'12px 16px', textAlign:'center' }}>
                   <p style={{ color:TXT2, fontSize:12, fontWeight:600, margin:'0 0 2px' }}>
                     {selectedDay<today?'Past day':selectedDay>maxDate?`Outside ${advance}-day range`:'Day off'}
@@ -703,6 +722,24 @@ export default function BarberCalendar() {
                 </div>
               </div>
             )}
+
+            {/* Live current time indicator */}
+            {isToday(selectedDay)&&(()=>{
+              const nm=now.getHours()*60+now.getMinutes()+now.getSeconds()/60
+              if(nm<visStartH*60||nm>=visEndH*60)return null
+              const top=minsPx(nm,visStartH)
+              const h=now.getHours(),m=now.getMinutes(),s=now.getSeconds()
+              const ts=`${h%12||12}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+              const ap=h<12?'AM':'PM'
+              return<div key="now-line" style={{position:'absolute',left:0,right:0,top:top,zIndex:10,pointerEvents:'none'}}>
+                <div style={{position:'absolute',left:2,top:-12,background:ORANGE,borderRadius:20,padding:'2px 8px',display:'inline-flex',alignItems:'center',gap:4,boxShadow:`0 2px 8px ${ORANGE}50`}}>
+                  <div style={{width:4,height:4,borderRadius:'50%',background:'rgba(255,255,255,0.85)',animation:'pulse 1.5s infinite',flexShrink:0}}/>
+                  <span style={{color:'#fff',fontWeight:800,fontSize:8,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap',fontFamily:"'DM Sans',system-ui,sans-serif"}}>{ts} {ap}</span>
+                </div>
+                <div style={{position:'absolute',left:50,top:-4,width:9,height:9,borderRadius:'50%',background:ORANGE,boxShadow:`0 0 8px ${ORANGE}90`}}/>
+                <div style={{position:'absolute',left:54,right:0,top:0,height:1.5,background:`linear-gradient(90deg,${ORANGE},${ORANGE}30)`}}/>
+              </div>
+            })()}
           </div>
         </div>
 
