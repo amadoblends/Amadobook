@@ -42,9 +42,8 @@ function Toggle({value,onChange}){
 function SettingsModal({open,onClose,slotDuration,setSlotDuration,bufferTime,setBufferTime,advanceDays,setAdvanceDays,minNotice,setMinNotice,onSave,saving}){
   if(!open)return null
   return(
-    <div style={{position:'fixed',inset:0,zIndex:60,background:'rgba(0,0,0,0.88)',display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={onClose}>
-      <div style={{width:'100%',maxWidth:520,background:CARD,borderRadius:'24px 24px 0 0',border:`1px solid ${BORDER}`,padding:'0 0 40px',maxHeight:'80vh',overflowY:'auto',animation:'slideUp 0.25s ease'}} onClick={e=>e.stopPropagation()}>
-        <div style={{width:40,height:4,borderRadius:2,background:BORDER,margin:'12px auto 0'}}/>
+    <div style={{position:'fixed',inset:0,zIndex:60,background:'rgba(0,0,0,0.88)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}} onClick={onClose}>
+      <div style={{width:'100%',maxWidth:440,background:CARD,borderRadius:20,border:`1px solid ${BORDER}`,padding:0,maxHeight:'85vh',overflowY:'auto',animation:'fadeIn 0.2s ease'}} onClick={e=>e.stopPropagation()}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 20px',borderBottom:`1px solid ${BORDER}`}}>
           <p style={{color:TXT,fontWeight:800,fontSize:18,margin:0}}>Booking Rules</p>
           <button onClick={onClose} style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:10,padding:'6px 7px',color:TXT2,cursor:'pointer',display:'flex'}}><X size={16}/></button>
@@ -92,7 +91,7 @@ export default function BarberAvailability(){
   const[barber,setBarber]=useState(null)
   const[availId,setAvailId]=useState(null)
   const[schedule,setSchedule]=useState(()=>Object.fromEntries(DAYS.map(d=>[d,d===0?{...DEFAULT_DAY,enabled:false}:{...DEFAULT_DAY}])))
-  const[blockedDates,setBlockedDates]=useState([])
+  const[blockedDates,setBlockedDates]=useState([]) // {date, reason}[]
   const[slotDuration,setSlotDuration]=useState(15)
   const[bufferTime,setBufferTime]=useState(0)
   const[advanceDays,setAdvanceDays]=useState(30)
@@ -193,10 +192,10 @@ export default function BarberAvailability(){
               <button onClick={()=>setSettingsOpen(true)} style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:12,padding:'9px 12px',color:TXT2,cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontSize:13,fontWeight:600,...F}}>
                 <Settings2 size={15}/> Rules
               </button>
-              <button onClick={handleSave} disabled={saving} style={{background:ORANGE,border:'none',borderRadius:12,padding:'9px 16px',color:'#fff',cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontSize:13,fontWeight:700,...F,boxShadow:`0 4px 14px ${ORANGE}44`}}>
+              {activeTab==='weekly'&&<button onClick={handleSave} disabled={saving} style={{background:ORANGE,border:'none',borderRadius:12,padding:'9px 16px',color:'#fff',cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontSize:13,fontWeight:700,...F,boxShadow:`0 4px 14px ${ORANGE}44`}}>
                 {saving?<div style={{width:14,height:14,border:'2px solid rgba(255,255,255,0.4)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin 0.75s linear infinite'}}/>:<Save size={14}/>}
                 {saving?'Saving…':'Save'}
-              </button>
+              </button>}
             </div>
           </div>
 
@@ -314,9 +313,9 @@ export default function BarberAvailability(){
                   <div style={{display:'flex',flexDirection:'column',gap:8}}>
                     {blockedDates.map(({date,reason})=>(
                       <div key={date} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',background:'rgba(239,68,68,0.06)',border:'1px solid rgba(239,68,68,0.15)',borderRadius:14}}>
-                        <div style={{flex:1}}>
-                          <p style={{color:'#EF4444',fontSize:13,fontWeight:700,margin:'0 0 1px'}}>{format(new Date(date+'T12:00'),'EEE, MMM d, yyyy')}</p>
-                          {reason&&<p style={{color:'#EF444488',fontSize:11,margin:0}}>{reason}</p>}
+                        <div style={{flex:1,minWidth:0}}>
+                          <p style={{color:'#EF4444',fontSize:13,fontWeight:700,margin:'0 0 1px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{format(new Date(date+'T12:00'),'EEE, MMM d, yyyy')}</p>
+                          {reason&&<p style={{color:'#EF444488',fontSize:11,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{reason}</p>}
                           {!reason&&<p style={{color:TXT3,fontSize:11,margin:0,fontStyle:'italic'}}>No reason specified</p>}
                         </div>
                         <button onClick={()=>removeBlockedDate(date)} style={{background:'none',border:'none',color:'rgba(239,68,68,0.6)',cursor:'pointer',display:'flex',padding:4}}>

@@ -170,12 +170,5 @@ export default function BarberServices(){
       </div>
     </div>
 
-    {/* Bottom CTA */}
-    <div style={{position:'fixed',bottom:'calc(52px + env(safe-area-inset-bottom))',left:0,right:0,padding:'10px 14px',background:'rgba(13,13,13,0.97)',borderTop:`1px solid ${BORDER}`}}>
-      <button onClick={()=>navigate('/barber/services/add',{state:{serviceType:tab}})}
-        style={{width:'100%',maxWidth:540,display:'flex',margin:'0 auto',background:CARD,border:`1px solid ${BORDER}`,borderRadius:12,padding:'13px',color:TXT,fontWeight:700,fontSize:13,cursor:'pointer',alignItems:'center',justifyContent:'center',gap:8,...F}}>
-        <Plus size={16} color={ORANGE}/> Add {TABS.find(t=>t.key===tab)?.label.slice(0,-1)||'Service'}
-      </button>
-    </div>
   </BarberLayout>
 }
