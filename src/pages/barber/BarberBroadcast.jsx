@@ -88,10 +88,19 @@ export default function BarberBroadcast(){
     async function load(){
       setHistLoading(true)
       try{
+        // Try ordered query first (requires Firestore index)
         const q=query(collection(db,'broadcasts'),where('barberId','==',barber.id),orderBy('sentAt','desc'),limit(20))
         const snap=await getDocs(q)
         setHistory(snap.docs.map(d=>({id:d.id,...d.data()})))
-      }catch{}
+      }catch{
+        // Fallback without orderBy if index is missing
+        try{
+          const q2=query(collection(db,'broadcasts'),where('barberId','==',barber.id),limit(20))
+          const snap2=await getDocs(q2)
+          const sorted=snap2.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.sentAt?.seconds||0)-(a.sentAt?.seconds||0))
+          setHistory(sorted)
+        }catch(e2){console.error('Broadcast history error:',e2);toast.error('Could not load history')}
+      }
       setHistLoading(false)
     }
     load()

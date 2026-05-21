@@ -131,7 +131,9 @@ function DateStrip({ availability, barberAppts, duration, selected, onSelect }) 
     const ds = availability?.schedule?.[dayIdx] ?? { enabled:(availability?.workingDays||[1,2,3,4,5,6]).includes(dayIdx), startTime:availability?.startTime||'09:00', endTime:availability?.endTime||'18:00', breaks:availability?.breaks||[] }
     if (!ds.enabled) return 0
     const dateStr = format(date, 'yyyy-MM-dd')
-    if (availability?.blockedDates?.includes(dateStr)) return 0
+    // backward compat: blockedDates can be string[] or {date,reason}[]
+    const blocked = (availability?.blockedDates||[]).some(d=>typeof d==='string'?d===dateStr:d.date===dateStr)
+    if (blocked) return 0
     const existing = (barberAppts||[]).filter(a=>a.date===dateStr&&a.bookingStatus!=='cancelled').map(a=>({startTime:a.startTime,endTime:a.endTime}))
     let slots = generateTimeSlots(ds.startTime, ds.endTime, duration, ds.breaks||[], existing)
     if (isSameDay(date, new Date())) { const nm=new Date().getHours()*60+new Date().getMinutes()+15; slots=slots.filter(sl=>{const[h,m]=sl.startTime.split(':').map(Number);return h*60+m>nm}) }
@@ -151,13 +153,16 @@ function DateStrip({ availability, barberAppts, duration, selected, onSelect }) 
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:8 }}>
         {visible.map((date, i) => {
+          const dateStr2 = format(date,'yyyy-MM-dd')
+          const blockEntry = (availability?.blockedDates||[]).find(d=>typeof d==='string'?d===dateStr2:d.date===dateStr2)
+          const blockReason = blockEntry ? (typeof blockEntry==='string'?'Closed':blockEntry.reason||'Closed') : null
           const count = slotCount(date), isSel = selected && isSameDay(date, selected), full = count === 0
           return (
             <button key={i} onClick={()=>!full&&onSelect(date)} disabled={full}
-              style={{ padding:'12px 4px', borderRadius:18, border:`1.5px solid ${isSel?ORANGE:BORDER}`, cursor:full?'not-allowed':'pointer', background:isSel?ORANGE:CARD, opacity:full?0.25:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4, boxShadow:isSel?`0 4px 20px ${ORANGE}44`:'none' }}>
+              style={{ padding:'12px 4px', borderRadius:18, border:`1.5px solid ${isSel?ORANGE:blockReason?'rgba(239,68,68,0.3)':BORDER}`, cursor:full?'not-allowed':'pointer', background:isSel?ORANGE:blockReason?'rgba(239,68,68,0.05)':CARD, opacity:full?0.4:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4, boxShadow:isSel?`0 4px 20px ${ORANGE}44`:'none' }}>
               <span style={{ color:isSel?'rgba(255,255,255,0.65)':TXT3, fontSize:9, fontWeight:700 }}>{format(date,'EEE').toUpperCase()}</span>
               <span style={{ color:isSel?'#fff':isToday(date)?ORANGE:TXT, fontSize:19, fontWeight:800, lineHeight:1 }}>{format(date,'d')}</span>
-              <span style={{ fontSize:9, fontWeight:700, color:isSel?'rgba(255,255,255,0.6)':count>0?'#22C55E':'#EF4444' }}>{full?'—':`${count}`}</span>
+              <span style={{ fontSize:9, fontWeight:700, color:isSel?'rgba(255,255,255,0.6)':blockReason?'#EF4444':count>0?'#22C55E':'#EF4444' }}>{blockReason?'🔒':full?'—':`${count}`}</span>
             </button>
           )
         })}
@@ -231,7 +236,9 @@ export default function BookingPage() {
     const dayIdx = selectedDate.getDay()
     const ds = availability.schedule?.[dayIdx]??{ enabled:(availability.workingDays||[1,2,3,4,5,6]).includes(dayIdx), startTime:availability.startTime||'09:00', endTime:availability.endTime||'18:00', breaks:availability.breaks||[] }
     if (!ds.enabled) { setAvailableSlots([]); return }
-    const dateStr  = format(selectedDate,'yyyy-MM-dd')
+    const dateStr = format(selectedDate,'yyyy-MM-dd')
+    const isBlocked = (availability?.blockedDates||[]).some(d=>typeof d==='string'?d===dateStr:d.date===dateStr)
+    if (isBlocked) { setAvailableSlots([]); return }
     const existing = barberAppts.filter(a=>a.date===dateStr&&a.bookingStatus!=='cancelled').map(a=>({startTime:a.startTime,endTime:a.endTime}))
     let slots = generateTimeSlots(ds.startTime, ds.endTime, totalDuration, ds.breaks||[], existing)
     if (isToday(selectedDate)) { const nm=new Date().getHours()*60+new Date().getMinutes()+15; slots=slots.filter(sl=>{const[h,m]=sl.startTime.split(':').map(Number);return h*60+m>nm}) }
@@ -269,7 +276,18 @@ export default function BookingPage() {
         paymentStatus:'pending', bookingStatus:'confirmed',
         createdAt:serverTimestamp(),
       })
-      // ✅ FIX: Navigate to /confirmed (no slug)
+      // Notify barber of new booking
+      if (barber.userId) {
+        addDoc(collection(db,'notifications'), {
+          userId: barber.userId,
+          barberId: barber.id,
+          type: 'new_booking',
+          title: 'New Appointment 🗓',
+          message: `${clientName.trim()} booked ${selectedServices.map(s=>s.name).join(' + ')} at ${selectedSlot.startTime} on ${format(selectedDate,'MMM d')}`,
+          read: false,
+          createdAt: serverTimestamp(),
+        }).catch(()=>{})
+      }
       navigate(`/confirmed?name=${encodeURIComponent(clientName)}&date=${format(selectedDate,'yyyy-MM-dd')}&time=${selectedSlot.startTime}`)
     } catch(e) { console.error(e); toast.error('Could not save booking') }
     finally { setSubmitting(false) }

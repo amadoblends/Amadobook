@@ -1,18 +1,26 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { collection, query, where, getDocs, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../../lib/firebase'
 import { useBarberAuth as useAuth } from '../../hooks/useBarberAuth'
+import { useBarberData } from '../../hooks/useBarberData'
 import BarberLayout from '../../components/layout/BarberLayout'
 import { PageLoader } from '../../components/ui/Spinner'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ChevronLeft, Camera, Trash2, Check, ChevronDown } from 'lucide-react'
+import { ChevronLeft, Camera, Trash2, Check, ChevronDown, Scissors, Sparkles, Layers } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const BG=('#0D0D0D'),CARD=('#171717'),CARD2=('#1F1F1F'),BORDER=('#2A2A2A'),ORANGE=('#FF6B1A'),TXT=('#F5F5F5'),TXT2=('#888888'),TXT3=('#555555')
+const GREEN='#22C55E', PURPLE='#7C3AED'
 const F={fontFamily:"'DM Sans',system-ui,sans-serif"}
 const CSS=`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');@keyframes spin{to{transform:rotate(360deg)}}*{box-sizing:border-box}`
 
+const DAYS_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+const SERVICE_TYPES = [
+  { key:'single', label:'Single',  icon:Scissors, color:ORANGE, desc:'Individual service' },
+  { key:'extra',  label:'Extra',   icon:Sparkles,  color:GREEN,  desc:'Add-on service' },
+  { key:'combo',  label:'Combo',   icon:Layers,    color:PURPLE, desc:'Bundle of singles' },
+]
 const CATEGORIES = ['Haircut','Beard','Color','Treatment','Combo','Other']
 const DURATIONS  = [15,20,30,45,60,75,90,105,120]
 const BUFFERS    = [0,5,10,15,20,30]
@@ -44,9 +52,11 @@ function Select({ value, onChange, options }) {
 
 export default function AddEditService() {
   const { user } = useAuth()
+  const { services } = useBarberData()
   const navigate = useNavigate()
   const location = useLocation()
-  const editService = location.state?.service // if editing existing
+  const editService = location.state?.service
+  const preType = location.state?.serviceType || editService?.serviceType || 'single'
   const photoRef = useRef(null)
 
   const [barberId,   setBarberId]   = useState(null)
@@ -64,7 +74,34 @@ export default function AddEditService() {
     bufferTime:  editService?.bufferTime  || 0,
     isActive:    editService?.isActive    !== false,
     photoURL:    editService?.photoURL    || '',
+    serviceType: preType,
+    includesIds: editService?.includesIds || [],
+    discount:    editService?.discount    || { type:'pct', value:'' },
+    activeDays:  editService?.activeDays  || [0,1,2,3,4,5,6],
   })
+
+  // Single services available for combo building
+  const singleServices = useMemo(()=>
+    services.filter(s=>(s.serviceType||'single')==='single')
+  ,[services])
+
+  // Auto-computed price for combos
+  const comboBaseTotal = useMemo(()=>{
+    if(form.serviceType!=='combo') return 0
+    return form.includesIds.reduce((sum,id)=>{
+      const s=singleServices.find(x=>x.id===id)
+      return sum+(s?.price||0)
+    },0)
+  },[form.serviceType,form.includesIds,singleServices])
+
+  const comboFinalPrice = useMemo(()=>{
+    const disc=parseFloat(form.discount?.value)||0
+    if(!disc) return comboBaseTotal
+    if(form.discount?.type==='pct') return Math.max(0,comboBaseTotal*(1-disc/100))
+    return Math.max(0,comboBaseTotal-disc)
+  },[comboBaseTotal,form.discount])
+
+  const comboSavings = useMemo(()=>Math.max(0,comboBaseTotal-comboFinalPrice),[comboBaseTotal,comboFinalPrice])
 
   useEffect(() => {
     if (!user) return
@@ -83,12 +120,24 @@ export default function AddEditService() {
 
   async function save() {
     if (!form.name.trim()) { toast.error('Service name required'); return }
-    if (!form.price)       { toast.error('Price required'); return }
+    if (form.serviceType==='combo' && form.includesIds.length<2) { toast.error('Select at least 2 services'); return }
+    if (form.serviceType!=='combo' && !form.price) { toast.error('Price required'); return }
     setSaving(true)
     try {
+      const isCombo = form.serviceType==='combo'
       const payload = {
-        ...form,
-        price: parseFloat(form.price) || 0,
+        name: form.name, description: form.description,
+        duration: form.duration, category: form.category,
+        bufferTime: form.bufferTime, isActive: form.isActive,
+        photoURL: form.photoURL, serviceType: form.serviceType,
+        price: isCombo ? comboFinalPrice : parseFloat(form.price)||0,
+        ...(isCombo && {
+          includesIds: form.includesIds,
+          discount: { type: form.discount.type, value: parseFloat(form.discount.value)||0 },
+          activeDays: form.activeDays,
+          baseTotal: comboBaseTotal,
+          savings: comboSavings,
+        }),
         barberId: barberDocId,
         updatedAt: serverTimestamp(),
       }
@@ -137,6 +186,19 @@ export default function AddEditService() {
             </button>
           </div>
 
+          {/* Service Type */}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginBottom:14}}>
+            {SERVICE_TYPES.map(t=>{
+              const Icon=t.icon; const active=form.serviceType===t.key
+              return<button key={t.key} onClick={()=>setForm(p=>({...p,serviceType:t.key}))}
+                style={{padding:'10px 6px',borderRadius:12,border:`1.5px solid ${active?t.color:BORDER}`,background:active?`${t.color}14`:'transparent',cursor:'pointer',...F,display:'flex',flexDirection:'column',alignItems:'center',gap:4,transition:'all 0.15s'}}>
+                <Icon size={14} color={active?t.color:TXT3}/>
+                <span style={{color:active?t.color:TXT2,fontWeight:active?700:500,fontSize:11}}>{t.label}</span>
+                <span style={{color:active?t.color:TXT3,fontSize:9,fontWeight:500}}>{t.desc}</span>
+              </button>
+            })}
+          </div>
+
           {/* Photo */}
           <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:20,padding:'20px 18px',marginBottom:14}}>
             <div style={{textAlign:'center',marginBottom:16}}>
@@ -174,11 +236,21 @@ export default function AddEditService() {
               <Select value={form.duration} onChange={v=>setForm(p=>({...p,duration:parseInt(v)}))}
                 options={DURATIONS.map(d=>({value:d,label:`${d} min`}))}/>
             </FieldRow>
-            <FieldRow label="Price ($)">
-              <input type="number" value={form.price} onChange={e=>setForm(p=>({...p,price:e.target.value}))}
-                placeholder="0.00" min="0" step="0.01"
-                style={{width:'100%',background:'transparent',border:'none',outline:'none',color:TXT,fontSize:16,fontWeight:600,...F}}/>
-            </FieldRow>
+            {form.serviceType==='combo'?(
+              <FieldRow label="Price (auto-calculated)">
+                <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+                  <span style={{color:PURPLE,fontWeight:800,fontSize:16}}>${comboFinalPrice.toFixed(2)}</span>
+                  {comboSavings>0&&<span style={{color:GREEN,fontSize:11,fontWeight:700}}>saves ${comboSavings.toFixed(2)}</span>}
+                  {comboBaseTotal>0&&comboSavings>0&&<span style={{color:TXT3,fontSize:11,textDecoration:'line-through'}}>${comboBaseTotal.toFixed(2)}</span>}
+                </div>
+              </FieldRow>
+            ):(
+              <FieldRow label="Price ($)">
+                <input type="number" value={form.price} onChange={e=>setForm(p=>({...p,price:e.target.value}))}
+                  placeholder="0.00" min="0" step="0.01"
+                  style={{width:'100%',background:'transparent',border:'none',outline:'none',color:TXT,fontSize:16,fontWeight:600,...F}}/>
+              </FieldRow>
+            )}
             <FieldRow label="Category">
               <Select value={form.category} onChange={v=>setForm(p=>({...p,category:v}))} options={CATEGORIES}/>
             </FieldRow>
@@ -207,6 +279,70 @@ export default function AddEditService() {
               }}/>
             </button>
           </div>
+
+          {/* Combo Builder */}
+          {form.serviceType==='combo'&&(
+            <>
+              {/* Service Picker */}
+              <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'14px 18px',marginBottom:10}}>
+                <p style={{color:TXT3,fontSize:10,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 10px'}}>INCLUDED SERVICES</p>
+                {singleServices.length===0?(
+                  <p style={{color:TXT3,fontSize:12,margin:0}}>No single services yet. Add singles first.</p>
+                ):(
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {singleServices.map(s=>{
+                      const sel=form.includesIds.includes(s.id)
+                      return<button key={s.id}
+                        onClick={()=>setForm(p=>({...p,includesIds:sel?p.includesIds.filter(i=>i!==s.id):[...p.includesIds,s.id]}))}
+                        style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px',borderRadius:10,border:`1px solid ${sel?PURPLE:BORDER}`,background:sel?`${PURPLE}12`:'transparent',cursor:'pointer',...F}}>
+                        <span style={{color:sel?TXT:TXT2,fontWeight:sel?700:500,fontSize:13}}>{s.name}</span>
+                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                          <span style={{color:TXT3,fontSize:11}}>${(s.price||0).toFixed(2)}</span>
+                          <div style={{width:18,height:18,borderRadius:5,background:sel?PURPLE:CARD2,border:`1px solid ${sel?PURPLE:BORDER}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                            {sel&&<Check size={10} color="#fff"/>}
+                          </div>
+                        </div>
+                      </button>
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Discount */}
+              <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'14px 18px',marginBottom:10}}>
+                <p style={{color:TXT3,fontSize:10,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 10px'}}>DISCOUNT</p>
+                <div style={{display:'flex',gap:8}}>
+                  <div style={{display:'flex',background:CARD2,borderRadius:8,padding:2,border:`1px solid ${BORDER}`,flexShrink:0}}>
+                    {['pct','fixed'].map(t=>(
+                      <button key={t} onClick={()=>setForm(p=>({...p,discount:{...p.discount,type:t}}))}
+                        style={{padding:'6px 10px',borderRadius:6,border:'none',cursor:'pointer',background:form.discount.type===t?PURPLE:'transparent',color:form.discount.type===t?'#fff':TXT2,fontWeight:700,fontSize:11,...F}}>
+                        {t==='pct'?'%':'$'}
+                      </button>
+                    ))}
+                  </div>
+                  <input type="number" value={form.discount.value} min="0"
+                    onChange={e=>setForm(p=>({...p,discount:{...p.discount,value:e.target.value}}))}
+                    placeholder={form.discount.type==='pct'?'e.g. 15':'e.g. 5'}
+                    style={{flex:1,background:'transparent',border:`1px solid ${BORDER}`,borderRadius:8,padding:'6px 12px',color:TXT,fontSize:14,fontWeight:600,...F,outline:'none'}}/>
+                </div>
+              </div>
+
+              {/* Active Days */}
+              <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'14px 18px',marginBottom:14}}>
+                <p style={{color:TXT3,fontSize:10,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 10px'}}>ACTIVE DAYS</p>
+                <div style={{display:'flex',gap:5}}>
+                  {DAYS_LABELS.map((d,i)=>{
+                    const on=form.activeDays.includes(i)
+                    return<button key={i}
+                      onClick={()=>setForm(p=>({...p,activeDays:on?p.activeDays.filter(x=>x!==i):[...p.activeDays,i]}))}
+                      style={{flex:1,padding:'7px 0',borderRadius:8,border:`1px solid ${on?PURPLE:BORDER}`,background:on?`${PURPLE}18`:'transparent',cursor:'pointer',color:on?PURPLE:TXT3,fontWeight:on?700:500,fontSize:10,...F}}>
+                      {d}
+                    </button>
+                  })}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Delete (only when editing) */}
           {editService?.id && (

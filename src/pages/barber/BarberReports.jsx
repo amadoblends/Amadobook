@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, eachMonthOfInterval } from 'date-fns'
 import { useBarberData } from '../../hooks/useBarberData'
 import { formatCurrency } from '../../utils/helpers'
 import BarberLayout from '../../components/layout/BarberLayout'
-import { TrendingUp, Scissors, ChevronRight, ChevronDown } from 'lucide-react'
+import { TrendingUp, Scissors, ChevronDown, Users, DollarSign, Zap } from 'lucide-react'
 
 const BG=('#0D0D0D'),CARD=('#141414'),CARD2=('#1C1C1E'),BORDER=('#252525'),ORANGE=('#FF6B1A'),TXT=('#F0F0F0'),TXT2=('#666666'),TXT3=('#3A3A3A'),GREEN=('#22C55E'),WALKIN=('#7C3AED')
 // Neutral palette for charts — no vivid blues/purples
@@ -47,6 +47,42 @@ function BarChart({data,maxVal,activeKey,onBarClick}){
           </g>
         )
       })}
+    </svg>
+  )
+}
+
+// ── Trend line chart ───────────────────────────────────────────────────────
+function TrendLineChart({data,maxVal}){
+  const W=320,H=90,PL=4,PR=4,PT=8,PB=18
+  const w=W-PL-PR,h=H-PT-PB
+  if(!data.length||data.every(m=>m.total===0))return(
+    <div style={{height:H,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <span style={{color:TXT3,fontSize:11}}>No data yet</span>
+    </div>
+  )
+  const pts=data.map((m,i)=>({
+    x:PL+(data.length>1?i/(data.length-1):0.5)*w,
+    y:PT+(maxVal>0?(1-m.total/maxVal)*h:h),
+    ...m,
+  }))
+  const line=pts.map((p,i)=>i===0?`M${p.x},${p.y}`:`L${p.x},${p.y}`).join(' ')
+  const area=`${line} L${pts[pts.length-1].x},${PT+h} L${pts[0].x},${PT+h} Z`
+  return(
+    <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',height:H}}>
+      <defs>
+        <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={ORANGE} stopOpacity={0.2}/>
+          <stop offset="100%" stopColor={ORANGE} stopOpacity={0}/>
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#tg)"/>
+      <path d={line} fill="none" stroke={ORANGE} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round"/>
+      {pts.map((p,i)=>(
+        <circle key={i} cx={p.x} cy={p.y} r={2.5} fill={ORANGE} stroke={BG} strokeWidth={1.5}/>
+      ))}
+      {pts.map((p,i)=>(
+        <text key={i} x={p.x} y={H-3} textAnchor="middle" fill={TXT3} fontSize={8} fontWeight="700" fontFamily="DM Sans,sans-serif">{p.label}</text>
+      ))}
     </svg>
   )
 }
@@ -181,31 +217,36 @@ export default function BarberReports(){
           {view==='overview'&&(
             <>
               {/* Big stats */}
-              <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'14px',marginBottom:10}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14}}>
+              <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'16px',marginBottom:10}}>
+                <p style={{color:TXT3,fontSize:9,fontWeight:700,letterSpacing:'0.12em',margin:'0 0 6px'}}>TOTAL EARNINGS · {period.toUpperCase()}</p>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:14}}>
                   <div>
-                    <p style={{color:TXT2,fontSize:10,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 4px'}}>TOTAL EARNINGS</p>
-                    <p style={{color:TXT,fontWeight:900,fontSize:32,margin:0,letterSpacing:'-1px'}}>{formatCurrency(revenue)}</p>
-                    <p style={{color:TXT3,fontSize:11,fontWeight:600,margin:'3px 0 0',display:'flex',alignItems:'center',gap:3}}>
-                      <TrendingUp size={10} color={TXT3}/> {efficiency}% efficiency
-                    </p>
+                    <p style={{color:TXT,fontWeight:900,fontSize:34,margin:0,letterSpacing:'-1.5px'}}>{formatCurrency(revenue)}</p>
+                    <div style={{display:'flex',gap:10,marginTop:4}}>
+                      <span style={{color:TXT2,fontSize:11,fontWeight:600}}>{formatCurrency(services)} svc</span>
+                      {tips>0&&<span style={{color:ORANGE,fontSize:11,fontWeight:600}}>{formatCurrency(tips)} tips</span>}
+                    </div>
                   </div>
-                  <div style={{background:`${ORANGE}14`,border:`1px solid ${ORANGE}28`,borderRadius:12,padding:'8px 12px',textAlign:'center'}}>
-                    <p style={{color:ORANGE,fontWeight:900,fontSize:18,margin:'0 0 1px'}}>{filtered.length}</p>
-                    <p style={{color:TXT3,fontSize:9,fontWeight:700,margin:0}}>APPTS</p>
+                  <div style={{textAlign:'right'}}>
+                    <p style={{color:ORANGE,fontWeight:900,fontSize:22,margin:'0 0 2px',letterSpacing:'-0.5px'}}>{filtered.length}</p>
+                    <p style={{color:TXT3,fontSize:9,fontWeight:700,margin:0}}>APPOINTMENTS</p>
                   </div>
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
                   {[
-                    {label:'Appointments',value:filtered.length,   color:TXT},
-                    {label:'Efficiency',  value:`${efficiency}%`,  color:TXT},
-                    {label:'Pending',     value:formatCurrency(pending),color:TXT2},
-                  ].map(s=>(
-                    <div key={s.label} style={{background:BG,borderRadius:10,padding:'8px'}}>
-                      <p style={{color:s.color,fontWeight:800,fontSize:16,margin:'0 0 2px',letterSpacing:'-0.3px'}}>{s.value}</p>
-                      <p style={{color:TXT3,fontSize:9,margin:0,fontWeight:600}}>{s.label}</p>
-                    </div>
-                  ))}
+                    {icon:Users,    label:'Clients',   value:filtered.length},
+                    {icon:Zap,      label:'Efficiency',value:`${efficiency}%`},
+                    {icon:DollarSign,label:'Pending',  value:formatCurrency(pending)},
+                  ].map(s=>{
+                    const Icon=s.icon
+                    return(
+                      <div key={s.label} style={{background:BG,borderRadius:10,padding:'9px 8px'}}>
+                        <Icon size={10} color={TXT3} style={{marginBottom:4}}/>
+                        <p style={{color:TXT,fontWeight:800,fontSize:15,margin:'0 0 2px',letterSpacing:'-0.3px'}}>{s.value}</p>
+                        <p style={{color:TXT3,fontSize:9,margin:0,fontWeight:600}}>{s.label}</p>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -271,6 +312,18 @@ export default function BarberReports(){
           {/* ── ANALYTICS ── */}
           {view==='detail'&&(
             <>
+              {/* Revenue Trend Line */}
+              <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'13px',marginBottom:10}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                  <div>
+                    <p style={{color:TXT,fontWeight:700,fontSize:13,margin:'0 0 1px'}}>Revenue Trend</p>
+                    <p style={{color:TXT3,fontSize:10,margin:0}}>Last 6 months</p>
+                  </div>
+                  <span style={{color:ORANGE,fontWeight:800,fontSize:13}}>{formatCurrency(monthlyData.reduce((s,m)=>s+m.total,0))}</span>
+                </div>
+                <TrendLineChart data={monthlyData} maxVal={maxRev}/>
+              </div>
+
               {/* Top Services + Donut — neutral colors */}
               {topServices.length>0&&(
                 <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'13px',marginBottom:10}}>

@@ -9,7 +9,7 @@ import BarberLayout from '../../components/layout/BarberLayout'
 import { useTheme } from '../../context/ThemeContext'
 import {
   Building2, Clock, Scissors, Pause, CreditCard, Bell,
-  Shield, HelpCircle, LogOut, ChevronRight, Moon, Sun,
+  Shield, HelpCircle, LogOut, ChevronRight,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -46,9 +46,8 @@ function Toggle({value,onChange}){
 
 export default function BarberSettings(){
   const{signOut,userData}=useAuth()
-  const{theme,toggleTheme,timeFormat,setTimeFormat}=useTheme()
+  const{timeFormat,setTimeFormat}=useTheme()
   const navigate=useNavigate()
-  const isDark=theme==='dark'
 
   async function handleSignOut(){
     localStorage.removeItem('ab_last_active')
@@ -66,20 +65,8 @@ export default function BarberSettings(){
           <h1 style={{color:TXT,fontWeight:800,fontSize:18,margin:0,letterSpacing:'-0.3px'}}>Settings</h1>
         </div>
 
-        {/* Appearance */}
+        {/* Time format */}
         <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,overflow:'hidden',marginBottom:10}}>
-          {/* Dark/Light */}
-          <div style={{display:'flex',alignItems:'center',gap:12,padding:'13px 14px',borderBottom:`1px solid ${BORDER}`}}>
-            <div style={{width:34,height:34,borderRadius:9,background:CARD2,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-              {isDark?<Moon size={15} color={TXT2}/>:<Sun size={15} color={ORANGE}/>}
-            </div>
-            <div style={{flex:1}}>
-              <p style={{color:TXT,fontWeight:600,fontSize:13,margin:'0 0 1px'}}>Theme</p>
-              <p style={{color:TXT2,fontSize:11,margin:0}}>{isDark?'Dark mode':'Light mode'}</p>
-            </div>
-            <Toggle value={!isDark} onChange={()=>toggleTheme()}/>
-          </div>
-          {/* Time format */}
           <div style={{display:'flex',alignItems:'center',gap:12,padding:'13px 14px'}}>
             <div style={{width:34,height:34,borderRadius:9,background:CARD2,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
               <Clock size={15} color={TXT2}/>
