@@ -1,0 +1,50 @@
+/* theme.css — import once in main.jsx or index.css
+   All components reference these variables.
+   ThemeContext swaps them on toggle → whole app updates instantly.
+*/
+
+:root {
+  --bg:        #0D0D0D;
+  --surface:   #111111;
+  --card:      #141414;
+  --card2:     #1C1C1E;
+  --card3:     #222224;
+  --border:    #252525;
+  --border2:   #2A2A2A;
+  --text-pri:  #F0F0F0;
+  --text-sec:  #888888;
+  --text-ter:  #444444;
+  --accent:    #FF6B1A;
+  --green:     #22C55E;
+  --red:       #EF4444;
+  --walkin:    #7C3AED;
+}
+
+/* Apply to body so no element has a hardcoded background */
+body {
+  background: var(--bg) !important;
+  color: var(--text-pri) !important;
+}
+
+/* Smooth theme transitions */
+*, *::before, *::after {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+}
+
+/* Disable transition on images/icons */
+img, svg, canvas {
+  transition: none !important;
+}
+
+/* Native input color scheme */
+[data-theme="light"] { color-scheme: light; }
+[data-theme="dark"]  { color-scheme: dark; }
+
+/* Scrollbar hide */
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+
+input[type="time"],
+input[type="date"] {
+  color-scheme: inherit;
+}

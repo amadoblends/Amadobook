@@ -80,19 +80,19 @@ export default function AddEditService() {
     activeDays:  editService?.activeDays  || [0,1,2,3,4,5,6],
   })
 
-  // Single services available for combo building
-  const singleServices = useMemo(()=>
-    services.filter(s=>(s.serviceType||'single')==='single')
+  // Services available for combo building — singles AND extras
+  const comboPickerServices = useMemo(()=>
+    services.filter(s=>(s.serviceType||'single')==='single'||s.serviceType==='extra')
   ,[services])
 
-  // Auto-computed price for combos
+  // Auto-computed price/duration/description for combos
   const comboBaseTotal = useMemo(()=>{
     if(form.serviceType!=='combo') return 0
     return form.includesIds.reduce((sum,id)=>{
-      const s=singleServices.find(x=>x.id===id)
+      const s=comboPickerServices.find(x=>x.id===id)
       return sum+(s?.price||0)
     },0)
-  },[form.serviceType,form.includesIds,singleServices])
+  },[form.serviceType,form.includesIds,comboPickerServices])
 
   const comboFinalPrice = useMemo(()=>{
     const disc=parseFloat(form.discount?.value)||0
@@ -102,6 +102,19 @@ export default function AddEditService() {
   },[comboBaseTotal,form.discount])
 
   const comboSavings = useMemo(()=>Math.max(0,comboBaseTotal-comboFinalPrice),[comboBaseTotal,comboFinalPrice])
+
+  const comboDuration = useMemo(()=>{
+    if(form.serviceType!=='combo') return 0
+    return form.includesIds.reduce((sum,id)=>{
+      const s=comboPickerServices.find(x=>x.id===id)
+      return sum+(s?.duration||0)
+    },0)
+  },[form.serviceType,form.includesIds,comboPickerServices])
+
+  const comboAutoDesc = useMemo(()=>{
+    if(form.serviceType!=='combo'||!form.includesIds.length) return ''
+    return form.includesIds.map(id=>comboPickerServices.find(x=>x.id===id)?.name).filter(Boolean).join(' + ')
+  },[form.serviceType,form.includesIds,comboPickerServices])
 
   useEffect(() => {
     if (!user) return
@@ -127,7 +140,7 @@ export default function AddEditService() {
       const isCombo = form.serviceType==='combo'
       const payload = {
         name: form.name, description: form.description,
-        duration: form.duration, category: form.category,
+        duration: isCombo&&comboDuration>0 ? comboDuration : form.duration, category: form.category,
         bufferTime: form.bufferTime, isActive: form.isActive,
         photoURL: form.photoURL, serviceType: form.serviceType,
         price: isCombo ? comboFinalPrice : parseFloat(form.price)||0,
@@ -236,15 +249,7 @@ export default function AddEditService() {
               <Select value={form.duration} onChange={v=>setForm(p=>({...p,duration:parseInt(v)}))}
                 options={DURATIONS.map(d=>({value:d,label:`${d} min`}))}/>
             </FieldRow>
-            {form.serviceType==='combo'?(
-              <FieldRow label="Price (auto-calculated)">
-                <div style={{display:'flex',alignItems:'baseline',gap:8}}>
-                  <span style={{color:PURPLE,fontWeight:800,fontSize:16}}>${comboFinalPrice.toFixed(2)}</span>
-                  {comboSavings>0&&<span style={{color:GREEN,fontSize:11,fontWeight:700}}>saves ${comboSavings.toFixed(2)}</span>}
-                  {comboBaseTotal>0&&comboSavings>0&&<span style={{color:TXT3,fontSize:11,textDecoration:'line-through'}}>${comboBaseTotal.toFixed(2)}</span>}
-                </div>
-              </FieldRow>
-            ):(
+            {form.serviceType!=='combo'&&(
               <FieldRow label="Price ($)">
                 <input type="number" value={form.price} onChange={e=>setForm(p=>({...p,price:e.target.value}))}
                   placeholder="0.00" min="0" step="0.01"
@@ -286,24 +291,57 @@ export default function AddEditService() {
               {/* Service Picker */}
               <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'14px 18px',marginBottom:10}}>
                 <p style={{color:TXT3,fontSize:10,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 10px'}}>INCLUDED SERVICES</p>
-                {singleServices.length===0?(
-                  <p style={{color:TXT3,fontSize:12,margin:0}}>No single services yet. Add singles first.</p>
+                {comboPickerServices.length===0?(
+                  <p style={{color:TXT3,fontSize:12,margin:0}}>No services yet. Add singles or extras first.</p>
                 ):(
-                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                    {singleServices.map(s=>{
-                      const sel=form.includesIds.includes(s.id)
-                      return<button key={s.id}
-                        onClick={()=>setForm(p=>({...p,includesIds:sel?p.includesIds.filter(i=>i!==s.id):[...p.includesIds,s.id]}))}
-                        style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px',borderRadius:10,border:`1px solid ${sel?PURPLE:BORDER}`,background:sel?`${PURPLE}12`:'transparent',cursor:'pointer',...F}}>
-                        <span style={{color:sel?TXT:TXT2,fontWeight:sel?700:500,fontSize:13}}>{s.name}</span>
-                        <div style={{display:'flex',alignItems:'center',gap:8}}>
-                          <span style={{color:TXT3,fontSize:11}}>${(s.price||0).toFixed(2)}</span>
-                          <div style={{width:18,height:18,borderRadius:5,background:sel?PURPLE:CARD2,border:`1px solid ${sel?PURPLE:BORDER}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                            {sel&&<Check size={10} color="#fff"/>}
-                          </div>
-                        </div>
-                      </button>
+                  <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                    {['single','extra'].map(type=>{
+                      const group=comboPickerServices.filter(s=>(s.serviceType||'single')===type)
+                      if(!group.length)return null
+                      return<div key={type} style={{marginBottom:6}}>
+                        <p style={{color:TXT3,fontSize:9,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 5px',textTransform:'uppercase'}}>{type==='single'?'✂️ Singles':'✨ Extras'}</p>
+                        {group.map(s=>{
+                          const sel=form.includesIds.includes(s.id)
+                          return<button key={s.id}
+                            onClick={()=>setForm(p=>({...p,includesIds:sel?p.includesIds.filter(i=>i!==s.id):[...p.includesIds,s.id]}))}
+                            style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 11px',borderRadius:10,border:`1px solid ${sel?PURPLE:BORDER}`,background:sel?`${PURPLE}12`:'transparent',cursor:'pointer',...F,marginBottom:4,width:'100%',textAlign:'left'}}>
+                            <span style={{color:sel?TXT:TXT2,fontWeight:sel?700:500,fontSize:13}}>{s.name}</span>
+                            <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+                              <span style={{color:TXT3,fontSize:10}}>{s.duration}m</span>
+                              <span style={{color:TXT3,fontSize:11}}>${(s.price||0).toFixed(2)}</span>
+                              <div style={{width:18,height:18,borderRadius:5,background:sel?PURPLE:CARD2,border:`1px solid ${sel?PURPLE:BORDER}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                                {sel&&<Check size={10} color="#fff"/>}
+                              </div>
+                            </div>
+                          </button>
+                        })}
+                      </div>
                     })}
+                  </div>
+                )}
+                {/* Price + Duration Summary — BELOW selection */}
+                {form.includesIds.length>0&&(
+                  <div style={{background:BG,border:`1px solid ${BORDER}`,borderRadius:12,padding:'12px 14px',marginTop:10}}>
+                    {comboAutoDesc&&<p style={{color:TXT3,fontSize:11,margin:'0 0 8px',fontStyle:'italic'}}>📦 {comboAutoDesc}</p>}
+                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                      <span style={{color:TXT3,fontSize:12}}>Duration</span>
+                      <span style={{color:TXT2,fontSize:12,fontWeight:600}}>{comboDuration} min</span>
+                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:comboSavings>0?4:6}}>
+                      <span style={{color:TXT3,fontSize:12}}>Subtotal</span>
+                      <span style={{color:TXT2,fontSize:12,textDecoration:comboSavings>0?'line-through':'none'}}>${comboBaseTotal.toFixed(2)}</span>
+                    </div>
+                    {comboSavings>0&&<>
+                      <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                        <span style={{color:GREEN,fontSize:12}}>Discount</span>
+                        <span style={{color:GREEN,fontSize:12,fontWeight:700}}>−${comboSavings.toFixed(2)}</span>
+                      </div>
+                      <div style={{height:1,background:BORDER,margin:'6px 0'}}/>
+                    </>}
+                    <div style={{display:'flex',justifyContent:'space-between'}}>
+                      <span style={{color:TXT,fontSize:13,fontWeight:700}}>Total</span>
+                      <span style={{color:PURPLE,fontSize:15,fontWeight:800}}>${comboFinalPrice.toFixed(2)}</span>
+                    </div>
                   </div>
                 )}
               </div>
