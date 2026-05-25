@@ -1,16 +1,16 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore'
+import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useBarberData } from '../../hooks/useBarberData'
 import { formatCurrency, formatDuration } from '../../utils/helpers'
 import BarberLayout from '../../components/layout/BarberLayout'
-import { Plus, Pencil, Scissors, Package, Sparkles, Layers } from 'lucide-react'
+import { Plus, Pencil, Scissors, Sparkles, Layers, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const BG='#0D0D0D',CARD='#141414',CARD2='#1C1C1E',BORDER='#252525'
 const ORANGE='#FF6B1A',TXT='#F0F0F0',TXT2='#666',TXT3='#3A3A3A'
-const GREEN='#22C55E', PURPLE='#7C3AED'
+const GREEN='#22C55E',PURPLE='#7C3AED'
 const F={fontFamily:"'DM Sans',system-ui,sans-serif"}
 
 const CSS=`
@@ -23,15 +23,18 @@ const CSS=`
 `
 
 const TABS = [
-  { key:'single', label:'Singles',  icon:Scissors,  color:ORANGE,  desc:'Individual services clients can mix' },
-  { key:'extra',  label:'Extras',   icon:Sparkles,  color:GREEN,   desc:'Add-ons stacked on top of any service' },
-  { key:'combo',  label:'Combos',   icon:Layers,    color:PURPLE,  desc:'Bundled services with discounts' },
+  { key:'single', label:'Singles', icon:Scissors, color:ORANGE, desc:'Individual services — toggle to hide from clients but keep active in combos' },
+  { key:'extra',  label:'Extras',  icon:Sparkles, color:GREEN,  desc:'Add-ons stacked on top of any service' },
+  { key:'combo',  label:'Combos',  icon:Layers,   color:PURPLE, desc:'Bundled services — forces clients toward your deals' },
 ]
 
 function ToggleSwitch({value,onChange}){
-  return<button onClick={()=>onChange(!value)} style={{width:46,height:26,borderRadius:13,padding:3,background:value?ORANGE:CARD2,border:`1px solid ${value?ORANGE:BORDER}`,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:value?'flex-end':'flex-start',transition:'all 0.2s',flexShrink:0,boxShadow:value?`0 0 10px ${ORANGE}44`:'none'}}>
-    <div style={{width:20,height:20,borderRadius:'50%',background:'#fff',boxShadow:'0 1px 4px rgba(0,0,0,0.4)',transition:'all 0.2s'}}/>
-  </button>
+  return(
+    <button onClick={()=>onChange(!value)}
+      style={{width:46,height:26,borderRadius:13,padding:3,background:value?ORANGE:CARD2,border:`1px solid ${value?ORANGE:BORDER}`,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:value?'flex-end':'flex-start',transition:'all 0.2s',flexShrink:0,boxShadow:value?`0 0 10px ${ORANGE}44`:'none'}}>
+      <div style={{width:20,height:20,borderRadius:'50%',background:'#fff',boxShadow:'0 1px 4px rgba(0,0,0,0.4)',transition:'all 0.2s'}}/>
+    </button>
+  )
 }
 
 export default function BarberServices(){
@@ -40,27 +43,52 @@ export default function BarberServices(){
   const[tab,setTab]=useState('single')
   const[localOverrides,setLocalOverrides]=useState({})
 
-  const merged=useMemo(()=>services.map(s=>localOverrides[s.id]!==undefined?{...s,...localOverrides[s.id]}:s),[services,localOverrides])
+  // Merge local optimistic state
+  const merged=useMemo(()=>
+    services.map(s=>localOverrides[s.id]!==undefined?{...s,...localOverrides[s.id]}:s)
+  ,[services,localOverrides])
 
-  // serviceType: 'single'|'extra'|'combo' — default 'single' for legacy services
   const filtered=useMemo(()=>{
     return merged
-      .filter(s=>!localOverrides[s.id]?._deleted)
       .filter(s=>(s.serviceType||'single')===tab)
       .sort((a,b)=>{
-        if(a.isActive===b.isActive)return(a.name||'').localeCompare(b.name||'')
-        return a.isActive?-1:1
+        // Hidden ones go to bottom
+        const aV=a.visibleToClients!==false
+        const bV=b.visibleToClients!==false
+        if(aV!==bV)return aV?-1:1
+        return(a.name||'').localeCompare(b.name||'')
       })
-  },[merged,tab,localOverrides])
+  },[merged,tab])
 
   const counts=useMemo(()=>({
-    single: merged.filter(s=>!localOverrides[s.id]?._deleted&&(s.serviceType||'single')==='single').length,
-    extra:  merged.filter(s=>!localOverrides[s.id]?._deleted&&s.serviceType==='extra').length,
-    combo:  merged.filter(s=>!localOverrides[s.id]?._deleted&&s.serviceType==='combo').length,
-  }),[merged,localOverrides])
+    single: merged.filter(s=>(s.serviceType||'single')==='single').length,
+    extra:  merged.filter(s=>s.serviceType==='extra').length,
+    combo:  merged.filter(s=>s.serviceType==='combo').length,
+  }),[merged])
 
-  async function toggleActive(svc){
-    const nv=!svc.isActive
+  // Toggle visibility for clients — does NOT affect isActive (combos still use them)
+  async function toggleVisible(svc){
+    // For singles/extras: toggle visibleToClients (separate from isActive)
+    // isActive stays true so combos can still reference this service
+    const nv = svc.visibleToClients===false ? true : false // toggle
+    setLocalOverrides(p=>({...p,[svc.id]:{visibleToClients:nv}}))
+    try{
+      await updateDoc(doc(db,'services',svc.id),{
+        visibleToClients: nv,
+        // Keep isActive=true so combos still work
+        isActive: true,
+      })
+      setLocalOverrides(p=>{const n={...p};delete n[svc.id];return n})
+      toast.success(nv?'Visible to clients':'Hidden from clients')
+    }catch{
+      setLocalOverrides(p=>({...p,[svc.id]:{visibleToClients:svc.visibleToClients}}))
+      toast.error('Could not update')
+    }
+  }
+
+  // For combos: toggle isActive (show/hide the combo deal itself)
+  async function toggleComboActive(svc){
+    const nv=svc.isActive!==false?false:true
     setLocalOverrides(p=>({...p,[svc.id]:{isActive:nv}}))
     try{
       await updateDoc(doc(db,'services',svc.id),{isActive:nv})
@@ -71,104 +99,139 @@ export default function BarberServices(){
     }
   }
 
-  if(loading)return<BarberLayout>
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh'}}>
-      <div style={{width:20,height:20,border:'2px solid #252525',borderTopColor:ORANGE,borderRadius:'50%',animation:'spin 0.65s linear infinite'}}/>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
-  </BarberLayout>
+  if(loading)return(
+    <BarberLayout>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh'}}>
+        <div style={{width:20,height:20,border:'2px solid #252525',borderTopColor:ORANGE,borderRadius:'50%',animation:'spin 0.65s linear infinite'}}/>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    </BarberLayout>
+  )
 
-  const activeTab = TABS.find(t=>t.key===tab)
+  const activeTab=TABS.find(t=>t.key===tab)
 
-  return<BarberLayout>
-    <style>{CSS}</style>
-    <div style={{background:BG,minHeight:'100%',paddingBottom:80,...F}}>
-      <div style={{padding:'12px 14px',maxWidth:540,margin:'0 auto'}}>
+  return(
+    <BarberLayout>
+      <style>{CSS}</style>
+      <div style={{background:BG,minHeight:'100%',paddingBottom:40,...F}}>
+        <div style={{padding:'12px 14px',maxWidth:540,margin:'0 auto'}}>
 
-        {/* Header */}
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-          <div>
-            <h1 style={{color:TXT,fontWeight:800,fontSize:18,margin:'0 0 1px',letterSpacing:'-0.3px'}}>Services</h1>
-            <p style={{color:TXT2,fontSize:11,margin:0}}>{counts.single} singles · {counts.extra} extras · {counts.combo} combos</p>
-          </div>
-          <button onClick={()=>navigate('/barber/services/add',{state:{serviceType:tab}})}
-            style={{background:ORANGE,border:'none',borderRadius:9,padding:'7px 14px',color:'#fff',cursor:'pointer',display:'flex',alignItems:'center',gap:4,fontWeight:700,fontSize:12,...F,boxShadow:`0 3px 10px ${ORANGE}38`}}>
-            <Plus size={13}/> Add
-          </button>
-        </div>
-
-        {/* Type tabs */}
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginBottom:14}}>
-          {TABS.map(t=>{
-            const Icon=t.icon
-            const active=tab===t.key
-            return<button key={t.key} onClick={()=>setTab(t.key)}
-              style={{padding:'10px 6px',borderRadius:12,border:`1.5px solid ${active?t.color:BORDER}`,background:active?`${t.color}12`:'transparent',cursor:'pointer',...F,display:'flex',flexDirection:'column',alignItems:'center',gap:5,transition:'all 0.15s'}}>
-              <Icon size={15} color={active?t.color:TXT3} strokeWidth={active?2.2:1.8}/>
-              <span style={{color:active?t.color:TXT2,fontWeight:active?700:500,fontSize:11}}>{t.label}</span>
-              <span style={{color:active?t.color:TXT3,fontWeight:800,fontSize:13}}>{counts[t.key]}</span>
-            </button>
-          })}
-        </div>
-
-        {/* Tab description */}
-        <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:10,padding:'8px 12px',marginBottom:10}}>
-          <p style={{color:TXT2,fontSize:11,margin:0}}>{activeTab?.desc}</p>
-        </div>
-
-        {/* Services list */}
-        {filtered.length===0?(
-          <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,padding:'28px 16px',textAlign:'center'}}>
-            {activeTab&&<activeTab.icon size={20} style={{color:TXT3,display:'block',margin:'0 auto 8px'}} strokeWidth={1.5}/>}
-            <p style={{color:TXT2,fontSize:13,fontWeight:600,margin:'0 0 8px'}}>No {activeTab?.label.toLowerCase()} yet</p>
+          {/* Header */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+            <div>
+              <h1 style={{color:TXT,fontWeight:800,fontSize:18,margin:'0 0 1px',letterSpacing:'-0.3px'}}>Services</h1>
+              <p style={{color:TXT2,fontSize:11,margin:0}}>{counts.single} singles · {counts.extra} extras · {counts.combo} combos</p>
+            </div>
             <button onClick={()=>navigate('/barber/services/add',{state:{serviceType:tab}})}
-              style={{background:ORANGE,border:'none',borderRadius:20,padding:'9px 20px',color:'#fff',fontWeight:700,fontSize:12,cursor:'pointer',...F}}>
-              + Add First {activeTab?.label.slice(0,-1)}
+              style={{background:ORANGE,border:'none',borderRadius:9,padding:'7px 14px',color:'#fff',cursor:'pointer',display:'flex',alignItems:'center',gap:4,fontWeight:700,fontSize:12,...F,boxShadow:`0 3px 10px ${ORANGE}38`}}>
+              <Plus size={13}/> Add
             </button>
           </div>
-        ):(
-          <div style={{display:'flex',flexDirection:'column',gap:1,background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,overflow:'hidden'}}>
-            {filtered.map((svc,i)=>{
-              const isActive=svc.isActive!==false
-              const tabColor = TABS.find(t=>t.key===tab)?.color||ORANGE
-              return<div key={svc.id} className="fu"
-                style={{display:'flex',alignItems:'center',gap:12,padding:'13px 14px',borderBottom:i<filtered.length-1?`1px solid ${BORDER}`:'none'}}>
-                {/* Color dot / photo */}
-                <div style={{width:38,height:38,borderRadius:10,background:isActive?`${tabColor}12`:CARD2,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden'}}>
-                  {svc.photoURL
-                    ?<img src={svc.photoURL} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
-                    :<span style={{fontSize:16}}>{tab==='combo'?'📦':tab==='extra'?'✨':'✂️'}</span>
-                  }
-                </div>
-                {/* Info */}
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
-                    <p style={{color:isActive?TXT:TXT2,fontWeight:700,fontSize:13,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{svc.name}</p>
-                    {svc.serviceType==='combo'&&svc.discount?.value>0&&(
-                      <span style={{background:`${GREEN}14`,color:GREEN,fontSize:8,fontWeight:800,padding:'1px 6px',borderRadius:20,flexShrink:0}}>
-                        {svc.discount.type==='pct'?`${svc.discount.value}% OFF`:`$${svc.discount.value} OFF`}
-                      </span>
-                    )}
-                  </div>
-                  <div style={{display:'flex',alignItems:'center',gap:8}}>
-                    <span style={{color:tabColor,fontWeight:800,fontSize:13}}>{formatCurrency(svc.price)}</span>
-                    <span style={{color:TXT3,fontSize:11}}>{formatDuration(svc.duration)}</span>
-                  </div>
-                </div>
-                {/* Actions */}
-                <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
-                  <button onClick={()=>navigate('/barber/services/edit',{state:{service:svc}})}
-                    style={{width:28,height:28,borderRadius:7,background:CARD2,border:`1px solid ${BORDER}`,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:TXT2}}>
-                    <Pencil size={11}/>
-                  </button>
-                  <ToggleSwitch value={isActive} onChange={()=>toggleActive(svc)}/>
-                </div>
-              </div>
+
+          {/* Tabs */}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginBottom:14}}>
+            {TABS.map(t=>{
+              const Icon=t.icon,active=tab===t.key
+              return(
+                <button key={t.key} onClick={()=>setTab(t.key)}
+                  style={{padding:'10px 6px',borderRadius:12,border:`1.5px solid ${active?t.color:BORDER}`,background:active?`${t.color}12`:'transparent',cursor:'pointer',...F,display:'flex',flexDirection:'column',alignItems:'center',gap:5,transition:'all 0.15s'}}>
+                  <Icon size={15} color={active?t.color:TXT3} strokeWidth={active?2.2:1.8}/>
+                  <span style={{color:active?t.color:TXT2,fontWeight:active?700:500,fontSize:11}}>{t.label}</span>
+                  <span style={{color:active?t.color:TXT3,fontWeight:800,fontSize:13}}>{counts[t.key]}</span>
+                </button>
+              )
             })}
           </div>
-        )}
-      </div>
-    </div>
 
-  </BarberLayout>
+          {/* Tab description */}
+          <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:10,padding:'8px 12px',marginBottom:10}}>
+            <p style={{color:TXT2,fontSize:11,margin:0}}>{activeTab?.desc}</p>
+          </div>
+
+          {/* Singles/Extras: hidden-from-clients hint */}
+          {(tab==='single'||tab==='extra')&&filtered.some(s=>s.visibleToClients===false)&&(
+            <div style={{background:`${ORANGE}08`,border:`1px solid ${ORANGE}18`,borderRadius:10,padding:'8px 12px',marginBottom:10,display:'flex',alignItems:'center',gap:7}}>
+              <EyeOff size={12} color={ORANGE}/>
+              <p style={{color:ORANGE,fontSize:11,margin:0,fontWeight:600}}>Hidden services still appear in your combos — clients can only book them through deals</p>
+            </div>
+          )}
+
+          {/* List */}
+          {filtered.length===0?(
+            <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,padding:'28px 16px',textAlign:'center'}}>
+              {activeTab&&<activeTab.icon size={20} style={{color:TXT3,display:'block',margin:'0 auto 8px'}} strokeWidth={1.5}/>}
+              <p style={{color:TXT2,fontSize:13,fontWeight:600,margin:'0 0 8px'}}>No {activeTab?.label.toLowerCase()} yet</p>
+              <button onClick={()=>navigate('/barber/services/add',{state:{serviceType:tab}})}
+                style={{background:ORANGE,border:'none',borderRadius:20,padding:'9px 20px',color:'#fff',fontWeight:700,fontSize:12,cursor:'pointer',...F}}>
+                + Add First {activeTab?.label.slice(0,-1)}
+              </button>
+            </div>
+          ):(
+            <div style={{display:'flex',flexDirection:'column',gap:1,background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,overflow:'hidden'}}>
+              {filtered.map((svc,i)=>{
+                const tabColor=TABS.find(t=>t.key===tab)?.color||ORANGE
+                // For singles/extras: visible = visibleToClients !== false (default true)
+                // For combos: visible = isActive !== false
+                const isVisible = tab==='combo'
+                  ? svc.isActive!==false
+                  : svc.visibleToClients!==false
+
+                return(
+                  <div key={svc.id} className="fu"
+                    style={{display:'flex',alignItems:'center',gap:12,padding:'13px 14px',borderBottom:i<filtered.length-1?`1px solid ${BORDER}`:'none',opacity:isVisible?1:0.5,transition:'opacity 0.15s'}}>
+
+                    {/* Icon */}
+                    <div style={{width:38,height:38,borderRadius:10,background:isVisible?`${tabColor}12`:CARD2,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden',position:'relative'}}>
+                      {svc.photoURL
+                        ?<img src={svc.photoURL} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
+                        :<span style={{fontSize:16}}>{tab==='combo'?'📦':tab==='extra'?'✨':'✂️'}</span>}
+                      {/* Eye-off badge when hidden */}
+                      {!isVisible&&(
+                        <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:10}}>
+                          <EyeOff size={12} color='#fff'/>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+                        <p style={{color:isVisible?TXT:TXT2,fontWeight:700,fontSize:13,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{svc.name}</p>
+                        {!isVisible&&tab!=='combo'&&(
+                          <span style={{background:CARD2,color:TXT3,fontSize:8,fontWeight:800,padding:'1px 6px',borderRadius:20,flexShrink:0,border:`1px solid ${BORDER}`}}>HIDDEN</span>
+                        )}
+                        {svc.serviceType==='combo'&&svc.discount?.value>0&&(
+                          <span style={{background:`${GREEN}14`,color:GREEN,fontSize:8,fontWeight:800,padding:'1px 6px',borderRadius:20,flexShrink:0}}>
+                            {svc.discount.type==='pct'?`${svc.discount.value}% OFF`:`$${svc.discount.value} OFF`}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        <span style={{color:isVisible?tabColor:TXT3,fontWeight:800,fontSize:13}}>{formatCurrency(svc.price)}</span>
+                        <span style={{color:TXT3,fontSize:11}}>{formatDuration(svc.duration)}</span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+                      <button onClick={()=>navigate('/barber/services/edit',{state:{service:svc}})}
+                        style={{width:28,height:28,borderRadius:7,background:CARD2,border:`1px solid ${BORDER}`,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:TXT2}}>
+                        <Pencil size={11}/>
+                      </button>
+                      {/* Singles/Extras: toggle client visibility (isActive stays true for combos) */}
+                      {/* Combos: toggle the combo deal on/off */}
+                      <ToggleSwitch
+                        value={isVisible}
+                        onChange={()=>tab==='combo'?toggleComboActive(svc):toggleVisible(svc)}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </BarberLayout>
+  )
 }
