@@ -84,12 +84,7 @@ export default function BarberServices(){
   const filtered=useMemo(()=>
     localServices
       .filter(s=>(s.serviceType||'single')===tab)
-      .sort((a,b)=>{
-        const aV=a.visibleToClients!==false&&a.isActive!==false
-        const bV=b.visibleToClients!==false&&b.isActive!==false
-        if(aV!==bV)return aV?-1:1
-        return(a.name||'').localeCompare(b.name||'')
-      })
+      // No sort — keep original Firestore order, hidden items stay in place
   ,[localServices,tab])
 
   const counts=useMemo(()=>({
@@ -103,7 +98,10 @@ export default function BarberServices(){
   }
 
   async function toggleVisible(svc){
-    const nv=svc.visibleToClients===false
+    // visibleToClients===false = hidden; anything else (undefined, true) = visible
+    // So toggling: if currently hidden (===false) → show (true); if visible → hide (false)
+    const currentlyHidden = svc.visibleToClients===false
+    const nv = currentlyHidden ? true : false
     // 1. Update local immediately
     updateLocal(svc.id,{visibleToClients:nv,isActive:true})
     // 2. Mark as pending so Firestore listener doesn't overwrite
@@ -111,23 +109,23 @@ export default function BarberServices(){
     try{
       await updateDoc(doc(db,'services',svc.id),{visibleToClients:nv,isActive:true})
     }catch{
-      // Revert
-      updateLocal(svc.id,{visibleToClients:svc.visibleToClients,isActive:svc.isActive})
+      // Revert to original — currentlyHidden captured above
+      updateLocal(svc.id,{visibleToClients:currentlyHidden?false:true,isActive:svc.isActive!==false})
       toast.error('Could not update')
     }finally{
-      // Remove from pending after Firestore confirms
       setTimeout(()=>pendingIds.current.delete(svc.id),2000)
     }
   }
 
   async function toggleComboActive(svc){
-    const nv=svc.isActive===false
+    const currentlyActive=svc.isActive!==false
+    const nv=!currentlyActive
     updateLocal(svc.id,{isActive:nv})
     pendingIds.current.add(svc.id)
     try{
       await updateDoc(doc(db,'services',svc.id),{isActive:nv})
     }catch{
-      updateLocal(svc.id,{isActive:svc.isActive})
+      updateLocal(svc.id,{isActive:currentlyActive})
       toast.error('Could not update')
     }finally{
       setTimeout(()=>pendingIds.current.delete(svc.id),2000)
@@ -205,8 +203,8 @@ export default function BarberServices(){
               {filtered.map((svc,i)=>{
                 const tabColor=TABS.find(t=>t.key===tab)?.color||ORANGE
                 const isVisible=tab==='combo'
-                  ?svc.isActive!==false
-                  :svc.visibleToClients!==false
+                  ?(svc.isActive!==false)
+                  :(svc.visibleToClients!==false)
                 const isPending=pendingIds.current.has(svc.id)
 
                 return(
