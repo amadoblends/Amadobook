@@ -54,32 +54,17 @@ export default function BarberServices(){
   const navigate=useNavigate()
   const[tab,setTab]=useState('single')
 
-  // ── Local copy of services — completely independent from Firestore listener ──
-  // This prevents onSnapshot from fighting with optimistic updates
-  const[localServices,setLocalServices]=useState([])
-  const pendingIds=useRef(new Set()) // track which IDs are mid-update
-  const initialized=useRef(false)
+  // ── Overrides map: {id: {field: value}} — applied on top of Firestore data ──
+  // Simple map, no race conditions — Firestore listener updates services,
+  // overrides win until explicitly cleared after confirmed write
+  const[overrides,setOverrides]=useState({})
 
-  // Only sync from Firestore when NOT in the middle of a toggle
-  useEffect(()=>{
-    if(!initialized.current){
-      setLocalServices(services)
-      initialized.current=true
-      return
-    }
-    // Merge: keep local value for pending IDs, use Firestore value for the rest
-    setLocalServices(prev=>{
-      if(!prev.length)return services
-      return services.map(fs=>{
-        if(pendingIds.current.has(fs.id)){
-          // Still pending — keep our local version
-          const local=prev.find(p=>p.id===fs.id)
-          return local||fs
-        }
-        return fs
-      })
-    })
-  },[services])
+  const localServices=useMemo(()=>
+    services.map(s=>overrides[s.id]?{...s,...overrides[s.id]}:s)
+  ,[services,overrides])
+
+  // pendingIds just disables the button during write
+  const pendingIds=useRef(new Set())
 
   const filtered=useMemo(()=>
     localServices
@@ -94,7 +79,10 @@ export default function BarberServices(){
   }),[localServices])
 
   function updateLocal(id,patch){
-    setLocalServices(prev=>prev.map(s=>s.id===id?{...s,...patch}:s))
+    setOverrides(prev=>({...prev,[id]:{...(prev[id]||{}), ...patch}}))
+  }
+  function clearOverride(id){
+    setOverrides(prev=>{const n={...prev};delete n[id];return n})
   }
 
   async function toggleVisible(svc){
@@ -113,22 +101,24 @@ export default function BarberServices(){
       updateLocal(svc.id,{visibleToClients:currentlyHidden?false:true,isActive:svc.isActive!==false})
       toast.error('Could not update')
     }finally{
-      setTimeout(()=>pendingIds.current.delete(svc.id),2000)
+      // After 2s Firestore listener has updated services — safe to clear override
+      setTimeout(()=>{pendingIds.current.delete(svc.id);clearOverride(svc.id)},2000)
     }
   }
 
   async function toggleComboActive(svc){
-    const currentlyActive=svc.isActive!==false
+    // undefined/null = was never set = treat as active
+    const currentlyActive=svc.isActive!==false  // false=inactive, anything else=active
     const nv=!currentlyActive
     updateLocal(svc.id,{isActive:nv})
     pendingIds.current.add(svc.id)
     try{
-      await updateDoc(doc(db,'services',svc.id),{isActive:nv})
+      await updateDoc(doc(db,'services',svc.id),{isActive:nv,visibleToClients:true})
     }catch{
       updateLocal(svc.id,{isActive:currentlyActive})
       toast.error('Could not update')
     }finally{
-      setTimeout(()=>pendingIds.current.delete(svc.id),2000)
+      setTimeout(()=>{pendingIds.current.delete(svc.id);clearOverride(svc.id)},2000)
     }
   }
 
@@ -202,6 +192,7 @@ export default function BarberServices(){
             <div style={{display:'flex',flexDirection:'column',gap:1,background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,overflow:'hidden'}}>
               {filtered.map((svc,i)=>{
                 const tabColor=TABS.find(t=>t.key===tab)?.color||ORANGE
+                // undefined/null = not set = treat as visible (legacy Firestore docs)
                 const isVisible=tab==='combo'
                   ?(svc.isActive!==false)
                   :(svc.visibleToClients!==false)
