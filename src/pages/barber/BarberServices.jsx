@@ -1,4 +1,11 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+/**
+ * BarberServices
+ * - Singles: toggle visibleToClients (hidden = not bookable alone, but usable in combos)
+ * - Extras: toggle visibleToClients
+ * - Combos: always show, toggle isActive
+ * - Toggle is stable: uses ref-based override, never reverts
+ */
+import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
@@ -23,102 +30,103 @@ const CSS=`
 `
 
 const TABS=[
-  {key:'single',label:'Singles',icon:Scissors,color:ORANGE,desc:'Hide singles to force clients into your combo deals'},
-  {key:'extra', label:'Extras', icon:Sparkles,color:GREEN, desc:'Add-ons stacked on top of any service'},
-  {key:'combo', label:'Combos', icon:Layers,  color:PURPLE,desc:'Bundled deals — hidden singles still appear here'},
+  {key:'single',label:'Singles',icon:Scissors,color:ORANGE,desc:'Hide a single to make it only available through combos'},
+  {key:'extra', label:'Extras', icon:Sparkles,color:GREEN, desc:'Add-ons that stack on top of any service'},
+  {key:'combo', label:'Combos', icon:Layers,  color:PURPLE,desc:'Bundle deals — built from all your singles regardless of visibility'},
 ]
 
-function ToggleSwitch({value,onChange,disabled}){
+function Toggle({on,onToggle,saving}){
   return(
     <button
-      onClick={e=>{e.stopPropagation();if(!disabled)onChange(!value)}}
-      disabled={disabled}
+      onClick={e=>{e.stopPropagation();if(!saving)onToggle()}}
       style={{
-        width:46,height:26,borderRadius:13,padding:3,
-        background:value?ORANGE:CARD2,
-        border:`1px solid ${value?ORANGE:BORDER}`,
-        cursor:disabled?'not-allowed':'pointer',
+        width:46,height:26,borderRadius:13,padding:3,flexShrink:0,
+        background:on?ORANGE:CARD2,
+        border:`1px solid ${on?ORANGE:BORDER}`,
+        cursor:saving?'not-allowed':'pointer',
+        opacity:saving?0.6:1,
         display:'flex',alignItems:'center',
-        justifyContent:value?'flex-end':'flex-start',
-        transition:'all 0.2s',flexShrink:0,
-        boxShadow:value?`0 0 10px ${ORANGE}44`:'none',
-        opacity:disabled?0.5:1,
+        justifyContent:on?'flex-end':'flex-start',
+        transition:'background 0.2s, border-color 0.2s',
+        boxShadow:on?`0 0 10px ${ORANGE}44`:'none',
       }}>
-      <div style={{width:20,height:20,borderRadius:'50%',background:'#fff',boxShadow:'0 1px 4px rgba(0,0,0,0.4)',transition:'all 0.2s'}}/>
+      <div style={{width:20,height:20,borderRadius:'50%',background:'#fff',
+        boxShadow:'0 1px 4px rgba(0,0,0,0.4)'}}/>
     </button>
   )
 }
 
+// ─── Key insight: we store overrides in a REF (not state) so Firestore's
+// onSnapshot never triggers a re-render that wipes our optimistic value.
+// We only force a re-render manually after updating the ref.
 export default function BarberServices(){
   const{services,loading}=useBarberData()
   const navigate=useNavigate()
   const[tab,setTab]=useState('single')
+  const[,forceRender]=useState(0) // used to trigger re-render after ref update
+  const overridesRef=useRef({}) // {[svcId]: {visibleToClients?:bool, isActive?:bool}}
+  const savingRef=useRef({})   // {[svcId]: true} while write is in-flight
 
-  // ── Overrides map: {id: {field: value}} — applied on top of Firestore data ──
-  // Simple map, no race conditions — Firestore listener updates services,
-  // overrides win until explicitly cleared after confirmed write
-  const[overrides,setOverrides]=useState({})
-
-  const localServices=useMemo(()=>
-    services.map(s=>overrides[s.id]?{...s,...overrides[s.id]}:s)
-  ,[services,overrides])
-
-  // pendingIds just disables the button during write
-  const pendingIds=useRef(new Set())
+  // Merge Firestore data with our overrides ref
+  const allServices=useMemo(()=>
+    services.map(s=>{
+      const ov=overridesRef.current[s.id]
+      return ov?{...s,...ov}:s
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ,[services, /* ref contents change triggers via forceRender */])
 
   const filtered=useMemo(()=>
-    localServices
-      .filter(s=>(s.serviceType||'single')===tab)
-      // No sort — keep original Firestore order, hidden items stay in place
-  ,[localServices,tab])
+    allServices.filter(s=>(s.serviceType||'single')===tab)
+  ,[allServices,tab])
 
   const counts=useMemo(()=>({
-    single:localServices.filter(s=>(s.serviceType||'single')==='single').length,
-    extra: localServices.filter(s=>s.serviceType==='extra').length,
-    combo: localServices.filter(s=>s.serviceType==='combo').length,
-  }),[localServices])
+    single:allServices.filter(s=>(s.serviceType||'single')==='single').length,
+    extra: allServices.filter(s=>s.serviceType==='extra').length,
+    combo: allServices.filter(s=>s.serviceType==='combo').length,
+  }),[allServices])
 
-  function updateLocal(id,patch){
-    setOverrides(prev=>({...prev,[id]:{...(prev[id]||{}), ...patch}}))
-  }
-  function clearOverride(id){
-    setOverrides(prev=>{const n={...prev};delete n[id];return n})
+  // isVisible: what the toggle reflects
+  function getVisible(svc){
+    if(tab==='combo') return svc.isActive!==false
+    // singles/extras: visibleToClients — undefined/null/true = visible, false = hidden
+    return svc.visibleToClients!==false
   }
 
-  async function toggleVisible(svc){
-    // visibleToClients===false = hidden; anything else (undefined, true) = visible
-    // So toggling: if currently hidden (===false) → show (true); if visible → hide (false)
-    const currentlyHidden = svc.visibleToClients===false
-    const nv = currentlyHidden ? true : false
-    // 1. Update local immediately
-    updateLocal(svc.id,{visibleToClients:nv,isActive:true})
-    // 2. Mark as pending so Firestore listener doesn't overwrite
-    pendingIds.current.add(svc.id)
-    try{
-      await updateDoc(doc(db,'services',svc.id),{visibleToClients:nv,isActive:true})
-    }catch{
-      // Revert to original — currentlyHidden captured above
-      updateLocal(svc.id,{visibleToClients:currentlyHidden?false:true,isActive:svc.isActive!==false})
-      toast.error('Could not update')
-    }finally{
-      // After 2s Firestore listener has updated services — safe to clear override
-      setTimeout(()=>{pendingIds.current.delete(svc.id);clearOverride(svc.id)},2000)
+  async function handleToggle(svc){
+    const id=svc.id
+    if(savingRef.current[id])return // debounce
+
+    const currentlyVisible=getVisible(svc)
+    const newVisible=!currentlyVisible
+
+    // 1. Write to ref immediately — this is what allServices will read
+    if(tab==='combo'){
+      overridesRef.current[id]={isActive:newVisible}
+    } else {
+      overridesRef.current[id]={visibleToClients:newVisible}
     }
-  }
+    savingRef.current[id]=true
+    forceRender(n=>n+1) // trigger re-render with new ref values
 
-  async function toggleComboActive(svc){
-    // undefined/null = was never set = treat as active
-    const currentlyActive=svc.isActive!==false  // false=inactive, anything else=active
-    const nv=!currentlyActive
-    updateLocal(svc.id,{isActive:nv})
-    pendingIds.current.add(svc.id)
+    // 2. Write to Firestore
     try{
-      await updateDoc(doc(db,'services',svc.id),{isActive:nv,visibleToClients:true})
+      const payload=tab==='combo'
+        ?{isActive:newVisible}
+        :{visibleToClients:newVisible, isActive:true}
+      await updateDoc(doc(db,'services',id),payload)
+      // 3. Success — keep override until Firestore listener catches up (1.5s)
+      setTimeout(()=>{
+        delete overridesRef.current[id]
+        delete savingRef.current[id]
+        forceRender(n=>n+1)
+      },1500)
     }catch{
-      updateLocal(svc.id,{isActive:currentlyActive})
-      toast.error('Could not update')
-    }finally{
-      setTimeout(()=>{pendingIds.current.delete(svc.id);clearOverride(svc.id)},2000)
+      // Revert
+      delete overridesRef.current[id]
+      delete savingRef.current[id]
+      forceRender(n=>n+1)
+      toast.error('Could not save')
     }
   }
 
@@ -175,7 +183,9 @@ export default function BarberServices(){
           {(tab==='single'||tab==='extra')&&filtered.some(s=>s.visibleToClients===false)&&(
             <div style={{background:`${ORANGE}08`,border:`1px solid ${ORANGE}18`,borderRadius:10,padding:'8px 12px',marginBottom:10,display:'flex',alignItems:'center',gap:7}}>
               <EyeOff size={12} color={ORANGE}/>
-              <p style={{color:ORANGE,fontSize:11,margin:0,fontWeight:600}}>Hidden singles still appear in combos — clients can only get them through deals</p>
+              <p style={{color:ORANGE,fontSize:11,margin:0,fontWeight:600}}>
+                Hidden singles still appear in your combos — clients must book them as a deal
+              </p>
             </div>
           )}
 
@@ -192,54 +202,67 @@ export default function BarberServices(){
             <div style={{display:'flex',flexDirection:'column',gap:1,background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,overflow:'hidden'}}>
               {filtered.map((svc,i)=>{
                 const tabColor=TABS.find(t=>t.key===tab)?.color||ORANGE
-                // undefined/null = not set = treat as visible (legacy Firestore docs)
-                const isVisible=tab==='combo'
-                  ?(svc.isActive!==false)
-                  :(svc.visibleToClients!==false)
-                const isPending=pendingIds.current.has(svc.id)
+                const isVisible=getVisible(svc)
+                const isSaving=!!savingRef.current[svc.id]
 
                 return(
                   <div key={svc.id} className="fu"
-                    style={{display:'flex',alignItems:'center',gap:12,padding:'13px 14px',borderBottom:i<filtered.length-1?`1px solid ${BORDER}`:'none',opacity:isVisible?1:0.5,transition:'opacity 0.15s'}}>
+                    style={{display:'flex',alignItems:'center',gap:12,padding:'13px 14px',
+                      borderBottom:i<filtered.length-1?`1px solid ${BORDER}`:'none',
+                      opacity:isVisible?1:0.45,transition:'opacity 0.2s'}}>
 
-                    <div style={{width:38,height:38,borderRadius:10,background:isVisible?`${tabColor}12`:CARD2,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden',position:'relative'}}>
+                    {/* Icon */}
+                    <div style={{width:38,height:38,borderRadius:10,
+                      background:isVisible?`${tabColor}12`:CARD2,
+                      display:'flex',alignItems:'center',justifyContent:'center',
+                      flexShrink:0,overflow:'hidden',position:'relative'}}>
                       {svc.photoURL
                         ?<img src={svc.photoURL} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
                         :<span style={{fontSize:16}}>{tab==='combo'?'📦':tab==='extra'?'✨':'✂️'}</span>}
                       {!isVisible&&(
-                        <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:10}}>
+                        <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.55)',
+                          display:'flex',alignItems:'center',justifyContent:'center',borderRadius:10}}>
                           <EyeOff size={12} color='#fff'/>
                         </div>
                       )}
                     </div>
 
+                    {/* Info */}
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
-                        <p style={{color:isVisible?TXT:TXT2,fontWeight:700,fontSize:13,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{svc.name}</p>
+                        <p style={{color:isVisible?TXT:TXT2,fontWeight:700,fontSize:13,margin:0,
+                          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{svc.name}</p>
                         {!isVisible&&tab!=='combo'&&(
-                          <span style={{background:CARD2,color:TXT3,fontSize:8,fontWeight:800,padding:'1px 6px',borderRadius:20,flexShrink:0,border:`1px solid ${BORDER}`}}>HIDDEN</span>
+                          <span style={{background:CARD2,color:TXT3,fontSize:8,fontWeight:800,
+                            padding:'1px 6px',borderRadius:20,flexShrink:0,border:`1px solid ${BORDER}`}}>HIDDEN</span>
                         )}
-                        {svc.serviceType==='combo'&&svc.discount?.value>0&&(
-                          <span style={{background:`${GREEN}14`,color:GREEN,fontSize:8,fontWeight:800,padding:'1px 6px',borderRadius:20,flexShrink:0}}>
+                        {tab==='combo'&&svc.discount?.value>0&&(
+                          <span style={{background:`${GREEN}14`,color:GREEN,fontSize:8,fontWeight:800,
+                            padding:'1px 6px',borderRadius:20,flexShrink:0}}>
                             {svc.discount.type==='pct'?`${svc.discount.value}% OFF`:`$${svc.discount.value} OFF`}
                           </span>
                         )}
                       </div>
                       <div style={{display:'flex',alignItems:'center',gap:8}}>
-                        <span style={{color:isVisible?tabColor:TXT3,fontWeight:800,fontSize:13}}>{formatCurrency(svc.price)}</span>
+                        <span style={{color:isVisible?tabColor:TXT3,fontWeight:800,fontSize:13}}>
+                          {formatCurrency(svc.price)}
+                        </span>
                         <span style={{color:TXT3,fontSize:11}}>{formatDuration(svc.duration)}</span>
                       </div>
                     </div>
 
+                    {/* Actions */}
                     <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
                       <button onClick={()=>navigate('/barber/services/edit',{state:{service:svc}})}
-                        style={{width:28,height:28,borderRadius:7,background:CARD2,border:`1px solid ${BORDER}`,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:TXT2}}>
+                        style={{width:28,height:28,borderRadius:7,background:CARD2,
+                          border:`1px solid ${BORDER}`,display:'flex',alignItems:'center',
+                          justifyContent:'center',cursor:'pointer',color:TXT2}}>
                         <Pencil size={11}/>
                       </button>
-                      <ToggleSwitch
-                        value={isVisible}
-                        disabled={isPending}
-                        onChange={()=>tab==='combo'?toggleComboActive(svc):toggleVisible(svc)}
+                      <Toggle
+                        on={isVisible}
+                        saving={isSaving}
+                        onToggle={()=>handleToggle(svc)}
                       />
                     </div>
                   </div>
