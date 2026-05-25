@@ -68,31 +68,29 @@ export default function BarberServices(){
 
   // Toggle visibility for clients — does NOT affect isActive (combos still use them)
   async function toggleVisible(svc){
-    // For singles/extras: toggle visibleToClients (separate from isActive)
-    // isActive stays true so combos can still reference this service
-    const nv = svc.visibleToClients===false ? true : false // toggle
-    setLocalOverrides(p=>({...p,[svc.id]:{visibleToClients:nv}}))
+    const nv = svc.visibleToClients===false ? true : false
+    // Apply override immediately — do NOT delete it until Firestore listener
+    // naturally updates `services`. The merged memo will use localOverrides first.
+    setLocalOverrides(p=>({...p,[svc.id]:{visibleToClients:nv,isActive:true}}))
     try{
-      await updateDoc(doc(db,'services',svc.id),{
-        visibleToClients: nv,
-        // Keep isActive=true so combos still work
-        isActive: true,
-      })
-      setLocalOverrides(p=>{const n={...p};delete n[svc.id];return n})
-      toast.success(nv?'Visible to clients':'Hidden from clients')
+      await updateDoc(doc(db,'services',svc.id),{visibleToClients:nv,isActive:true})
+      // Don't delete override here — let the onSnapshot listener update services,
+      // then on next render merged will read from services directly.
+      // We clear it after a short delay so the listener has time to propagate.
+      setTimeout(()=>setLocalOverrides(p=>{const n={...p};delete n[svc.id];return n}),1500)
     }catch{
       setLocalOverrides(p=>({...p,[svc.id]:{visibleToClients:svc.visibleToClients}}))
       toast.error('Could not update')
     }
   }
 
-  // For combos: toggle isActive (show/hide the combo deal itself)
+  // For combos: toggle isActive
   async function toggleComboActive(svc){
-    const nv=svc.isActive!==false?false:true
+    const nv = svc.isActive!==false ? false : true
     setLocalOverrides(p=>({...p,[svc.id]:{isActive:nv}}))
     try{
       await updateDoc(doc(db,'services',svc.id),{isActive:nv})
-      setLocalOverrides(p=>{const n={...p};delete n[svc.id];return n})
+      setTimeout(()=>setLocalOverrides(p=>{const n={...p};delete n[svc.id];return n}),1500)
     }catch{
       setLocalOverrides(p=>({...p,[svc.id]:{isActive:svc.isActive}}))
       toast.error('Could not update')
