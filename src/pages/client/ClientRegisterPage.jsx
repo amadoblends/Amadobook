@@ -1,3 +1,8 @@
+/**
+ * ClientRegisterPage — fixed
+ * ✅ Calls signUpClient() (correct method from ClientAuthContext)
+ * ✅ Was calling signUp() which doesn't exist → caused silent failure
+ */
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useClientAuth as useAuth } from '../../hooks/useClientAuth'
@@ -11,12 +16,12 @@ const ORANGE = '#FF6B1A'
 const TXT    = '#F5F5F5'
 const TXT2   = '#888888'
 const TXT3   = '#555555'
-const F      = { fontFamily:"'DM Sans',system-ui,sans-serif" }
+const F      = { fontFamily: "'DM Sans',system-ui,sans-serif" }
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
-  @keyframes spin    { to { transform: rotate(360deg); } }
-  @keyframes fadeUp  { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes spin   { to { transform: rotate(360deg); } }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   .field {
     width: 100%; background: transparent; border: none;
@@ -30,16 +35,17 @@ const CSS = `
 `
 
 export default function ClientRegisterPage() {
-  const navigate              = useNavigate()
-  const { signUp, signInWithGoogle } = useAuth()
+  const navigate = useNavigate()
+  // ✅ signUpClient is the correct method name in ClientAuthContext
+  const { signUpClient, signInWithGoogle } = useAuth()
 
   const [form, setForm] = useState({ firstName:'', lastName:'', email:'', phone:'', password:'' })
-  const [showPass,  setShowPass]  = useState(false)
-  const [agreed,    setAgreed]    = useState(false)
-  const [loading,   setLoading]   = useState(false)
-  const [gLoading,  setGLoading]  = useState(false)
+  const [showPass, setShowPass] = useState(false)
+  const [agreed,   setAgreed]   = useState(false)
+  const [loading,  setLoading]  = useState(false)
+  const [gLoading, setGLoading] = useState(false)
 
-  function set(k) { return e => setForm(p=>({...p,[k]:e.target.value})) }
+  function set(k) { return e => setForm(p => ({ ...p, [k]:e.target.value })) }
 
   async function handleRegister(e) {
     e.preventDefault()
@@ -48,11 +54,13 @@ export default function ClientRegisterPage() {
     if (!agreed) { toast.error('Please accept the terms'); return }
     setLoading(true)
     try {
-      await signUp(form.email.trim(), form.password, {
+      // ✅ Fixed: was signUp(), now signUpClient()
+      await signUpClient({
         firstName: form.firstName.trim(),
         lastName:  form.lastName.trim(),
+        email:     form.email.trim(),
         phone:     form.phone.trim(),
-        role:      'client',
+        password:  form.password,
       })
       navigate('/dashboard', { replace: true })
     } catch (err) {
@@ -68,7 +76,7 @@ export default function ClientRegisterPage() {
     if (!agreed) { toast.error('Please accept the terms first'); return }
     setGLoading(true)
     try {
-      await signInWithGoogle(googleProvider)
+      await signInWithGoogle('client')
       navigate('/dashboard', { replace: true })
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user') toast.error('Google sign-in failed')
@@ -85,9 +93,7 @@ export default function ClientRegisterPage() {
         {/* Back */}
         <button onClick={() => navigate('/')}
           style={{ background:'none', border:'none', color:TXT2, cursor:'pointer', display:'flex', alignItems:'center', gap:6, fontSize:13, fontWeight:600, ...F, marginBottom:32 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M15 18l-6-6 6-6"/>
-          </svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
           Back
         </button>
 
@@ -123,38 +129,32 @@ export default function ClientRegisterPage() {
 
         {/* Form */}
         <form onSubmit={handleRegister}>
-          {/* Name row */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>
             <div>
               <label style={{ color:TXT3, fontSize:10, fontWeight:700, letterSpacing:'0.1em', display:'block', marginBottom:8 }}>FIRST NAME *</label>
-              <input type="text" value={form.firstName} onChange={set('firstName')}
-                placeholder="Alex" autoComplete="given-name" className="field"/>
+              <input type="text" value={form.firstName} onChange={set('firstName')} placeholder="Alex" autoComplete="given-name" className="field"/>
             </div>
             <div>
               <label style={{ color:TXT3, fontSize:10, fontWeight:700, letterSpacing:'0.1em', display:'block', marginBottom:8 }}>LAST NAME</label>
-              <input type="text" value={form.lastName} onChange={set('lastName')}
-                placeholder="Rivera" autoComplete="family-name" className="field"/>
+              <input type="text" value={form.lastName} onChange={set('lastName')} placeholder="Rivera" autoComplete="family-name" className="field"/>
             </div>
           </div>
 
           <div style={{ marginBottom:20 }}>
             <label style={{ color:TXT3, fontSize:10, fontWeight:700, letterSpacing:'0.1em', display:'block', marginBottom:8 }}>EMAIL *</label>
-            <input type="email" value={form.email} onChange={set('email')}
-              placeholder="you@email.com" autoComplete="email" className="field"/>
+            <input type="email" value={form.email} onChange={set('email')} placeholder="you@email.com" autoComplete="email" className="field"/>
           </div>
 
           <div style={{ marginBottom:20 }}>
             <label style={{ color:TXT3, fontSize:10, fontWeight:700, letterSpacing:'0.1em', display:'block', marginBottom:8 }}>PHONE</label>
-            <input type="tel" value={form.phone} onChange={set('phone')}
-              placeholder="(305) 000-0000" autoComplete="tel" className="field"/>
+            <input type="tel" value={form.phone} onChange={set('phone')} placeholder="(315) 000-0000" autoComplete="tel" className="field"/>
           </div>
 
           <div style={{ marginBottom:20 }}>
             <label style={{ color:TXT3, fontSize:10, fontWeight:700, letterSpacing:'0.1em', display:'block', marginBottom:8 }}>PASSWORD *</label>
             <div style={{ position:'relative' }}>
-              <input type={showPass?'text':'password'} value={form.password} onChange={set('password')}
-                placeholder="Min 6 characters" autoComplete="new-password" className="field" style={{ paddingRight:36 }}/>
-              <button type="button" onClick={()=>setShowPass(p=>!p)}
+              <input type={showPass?'text':'password'} value={form.password} onChange={set('password')} placeholder="Min 6 characters" autoComplete="new-password" className="field" style={{ paddingRight:36 }}/>
+              <button type="button" onClick={() => setShowPass(p => !p)}
                 style={{ position:'absolute', right:0, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:TXT3, cursor:'pointer', padding:4 }}>
                 {showPass
                   ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -165,7 +165,7 @@ export default function ClientRegisterPage() {
           </div>
 
           {/* Terms */}
-          <div style={{ display:'flex', alignItems:'flex-start', gap:10, marginBottom:28, cursor:'pointer' }} onClick={()=>setAgreed(p=>!p)}>
+          <div style={{ display:'flex', alignItems:'flex-start', gap:10, marginBottom:28, cursor:'pointer' }} onClick={() => setAgreed(p => !p)}>
             <div style={{ width:20, height:20, borderRadius:6, border:`1.5px solid ${agreed?ORANGE:BORDER}`, background:agreed?ORANGE:'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:1, transition:'all 0.15s' }}>
               {agreed && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>}
             </div>
@@ -181,12 +181,9 @@ export default function ClientRegisterPage() {
           </button>
         </form>
 
-        {/* Login link */}
         <p style={{ textAlign:'center', color:TXT2, fontSize:14, margin:0 }}>
           Already have an account?{' '}
-          <Link to="/login" style={{ color:ORANGE, fontWeight:700, textDecoration:'none' }}>
-            Sign in
-          </Link>
+          <Link to="/login" style={{ color:ORANGE, fontWeight:700, textDecoration:'none' }}>Sign in</Link>
         </p>
       </div>
     </div>

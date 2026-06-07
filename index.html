@@ -2,19 +2,57 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- iPhone: maximum-scale=1 prevents zoom on input focus, viewport-fit=cover uses full screen -->
+
+    <!-- ── Viewport ── -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <!-- PWA / iOS home screen -->
+
+    <!-- ── PWA — Android / Chrome ── -->
+    <meta name="theme-color" content="#0A0A0A" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- ── PWA — iOS / Safari ── -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="theme-color" content="#0A0A0A" />
+    <meta name="apple-mobile-web-app-title" content="AmadoBook" />
+
+    <!-- iOS icons (Safari "Add to Home Screen") -->
+    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-167.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png" />
+
+    <!-- iOS splash screens (critical for standalone feel) -->
+    <!-- iPhone 15 Pro Max -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)"
+      href="/icons/splash-1290x2796.png" />
+    <!-- iPhone 15 / 14 Pro -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)"
+      href="/icons/splash-1179x2556.png" />
+    <!-- iPhone SE / 13 mini -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)"
+      href="/icons/splash-750x1334.png" />
+
+    <!-- ── Favicon ── -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+
+    <!-- ── SEO ── -->
+    <meta name="description" content="Book your next haircut with AmadoBlends — premium barbershop booking." />
+    <meta property="og:title" content="AmadoBook" />
+    <meta property="og:description" content="Book your next haircut with AmadoBlends" />
+    <meta property="og:type" content="website" />
+
     <title>AmadoBook</title>
+
+    <!-- ── Fonts preconnect ── -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Monda:wght@400;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap" rel="stylesheet" />
+
     <style>
-      /* Reset */
+      /* ── Reset ── */
       html, body, #root {
         margin: 0; padding: 0;
         width: 100%; height: 100%;
@@ -22,26 +60,34 @@
       }
       body { background: #0A0A0A; }
 
-      /* Global box model */
+      /* ── Global box model ── */
       *, *::before, *::after {
         box-sizing: border-box;
         -webkit-tap-highlight-color: transparent;
       }
 
-      /* CRITICAL: font-size 16px on all inputs prevents iPhone zoom */
-      input, select, textarea, button {
-        font-family: 'Monda', system-ui, sans-serif;
-      }
-      input, select, textarea {
-        font-size: 16px !important;
+      /* ── Font defaults ── */
+      body, input, select, textarea, button {
+        font-family: 'DM Sans', system-ui, sans-serif;
       }
 
-      /* Prevent iOS bounce scroll on fixed elements */
+      /* ── CRITICAL: 16px on inputs prevents iPhone zoom ── */
+      input, select, textarea { font-size: 16px !important; }
+
+      /* ── Prevent iOS bounce scroll on body ── */
       html { height: -webkit-fill-available; }
       body { min-height: -webkit-fill-available; }
 
-      /* Smooth scrolling */
+      /* ── Smooth momentum scroll ── */
       * { -webkit-overflow-scrolling: touch; }
+
+      /* ── Safe-area variable for easy use ── */
+      :root {
+        --sat: env(safe-area-inset-top);
+        --sab: env(safe-area-inset-bottom);
+        --sal: env(safe-area-inset-left);
+        --sar: env(safe-area-inset-right);
+      }
 
       @keyframes spin { to { transform: rotate(360deg); } }
     </style>

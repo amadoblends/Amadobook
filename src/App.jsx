@@ -8,6 +8,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { useBarberAuth } from './hooks/useBarberAuth'
 import { useClientAuth } from './hooks/useClientAuth'
 import { BarberDataProvider } from './hooks/useBarberData'
+import { PWAInstallPrompt } from './components/ui/PWAInstallPrompt'
 
 export const BARBER_SLUG = 'amadoblends'
 const APP_MODE = import.meta.env.VITE_APP_MODE || 'client'
@@ -61,7 +62,7 @@ const TOAST = {
   }
 }
 
-// ── Guards ────────────────────────────────────────────────────────────────
+// ── Route Guards ──────────────────────────────────────────────────────────
 function BarberRoute({ children }) {
   const { user, userData, loading } = useBarberAuth()
   if (loading) return <PageLoader />
@@ -99,7 +100,6 @@ function ClientThemeSync() {
 
 // ══════════════════════════════════════════════════════════════════════════
 // BARBER APP — amadobarber.vercel.app
-// ✅ FIX: All routes flat (no nested Routes) — BarberDataProvider wraps all
 // ══════════════════════════════════════════════════════════════════════════
 function BarberApp() {
   return (
@@ -116,7 +116,7 @@ function BarberApp() {
               <Route path="/barber/signup"             element={<BarberSignupPage />} />
               <Route path="/barber/forgot-password"    element={<ForgotPasswordPage />} />
 
-              {/* Protected — all use BarberDataProvider above */}
+              {/* Protected */}
               <Route path="/barber/dashboard"          element={<BarberRoute><BarberDashboard /></BarberRoute>} />
               <Route path="/barber/calendar"           element={<BarberRoute><BarberCalendar /></BarberRoute>} />
               <Route path="/barber/appointments"       element={<BarberRoute><BarberAppointments /></BarberRoute>} />
@@ -150,23 +150,26 @@ function ClientApp() {
       <ThemeProvider>
         <ClientThemeSync />
         <Toaster {...TOAST} />
+        {/* ✅ PWA install prompt — shows on iOS/Android after 3 seconds */}
+        <PWAInstallPrompt />
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            <Route path="/"                  element={<SplashPage />} />
-            <Route path="/login"             element={<ClientLoginPage />} />
-            <Route path="/register"          element={<ClientRegisterPage />} />
-            <Route path="/forgot-password"   element={<ForgotPasswordPage />} />
-            <Route path="/book"              element={<BookingPage />} />
-            <Route path="/confirmed"         element={<BookingConfirmedPage />} />
-            <Route path="/dashboard"         element={<ClientRoute><ClientDashboard /></ClientRoute>} />
-            <Route path="/appointments"      element={<ClientRoute><MyAppointmentsPage /></ClientRoute>} />
-            <Route path="/history"           element={<ClientRoute><HistoryPage /></ClientRoute>} />
-            <Route path="/portfolio"         element={<ClientRoute><PortfolioPage /></ClientRoute>} />
-            <Route path="/referrals"         element={<ClientRoute><ReferralsPage /></ClientRoute>} />
-            <Route path="/profile"           element={<ClientRoute><ClientProfilePage /></ClientRoute>} />
-            <Route path="/b/:s"              element={<Navigate to="/" replace />} />
-            <Route path="/b/:s/*"            element={<Navigate to="/" replace />} />
-            <Route path="*"                  element={<Navigate to="/" replace />} />
+            <Route path="/"                element={<SplashPage />} />
+            <Route path="/login"           element={<ClientLoginPage />} />
+            <Route path="/register"        element={<ClientRegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/book"            element={<BookingPage />} />
+            <Route path="/confirmed"       element={<BookingConfirmedPage />} />
+            <Route path="/dashboard"       element={<ClientRoute><ClientDashboard /></ClientRoute>} />
+            <Route path="/appointments"    element={<ClientRoute><MyAppointmentsPage /></ClientRoute>} />
+            <Route path="/history"         element={<ClientRoute><HistoryPage /></ClientRoute>} />
+            <Route path="/portfolio"       element={<ClientRoute><PortfolioPage /></ClientRoute>} />
+            <Route path="/referrals"       element={<ClientRoute><ReferralsPage /></ClientRoute>} />
+            <Route path="/profile"         element={<ClientRoute><ClientProfilePage /></ClientRoute>} />
+            {/* Legacy slug routes — redirect to home */}
+            <Route path="/b/:s"            element={<Navigate to="/" replace />} />
+            <Route path="/b/:s/*"          element={<Navigate to="/" replace />} />
+            <Route path="*"               element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </ThemeProvider>
