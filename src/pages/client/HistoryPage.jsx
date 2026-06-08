@@ -1,6 +1,8 @@
 /**
- * HistoryPage — fixed
- * ✅ Removed: useParams() / barberSlug
+ * HistoryPage — Migrated to Design System
+ * ✓ CSS Variables for Light/Dark mode
+ * ✓ Removed: useParams() / barberSlug
+ * ✓ Complete logic intact
  */
 import { useEffect, useState, useMemo } from 'react'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
@@ -11,19 +13,10 @@ import { useTheme } from '../../context/ThemeContext'
 import { format } from 'date-fns'
 import { useNavigate } from 'react-router-dom'
 
-const BG     = '#0D0D0D'
-const CARD   = '#171717'
-const BORDER = '#2A2A2A'
-const ORANGE = '#FF6B1A'
-const TXT    = '#F5F5F5'
-const TXT2   = '#888888'
-const TXT3   = '#555555'
-const RED    = '#EF4444'
-const GREEN  = '#22C55E'
-const F      = { fontFamily: "'DM Sans',system-ui,sans-serif" }
+const F = { fontFamily: "'Plus Jakarta Sans','DM Sans',system-ui,sans-serif" }
 
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
   @keyframes spin    { to { transform: rotate(360deg); } }
   @keyframes fadeUp  { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   .fade-up { animation: fadeUp 0.22s ease both; }
@@ -68,35 +61,35 @@ export function HistoryPage() {
   const totalVisits = appts.filter(a => a.bookingStatus === 'completed').length
 
   if (loading) return (
-    <div style={{ minHeight:'100vh', background:BG, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ width:24, height:24, border:`2px solid ${BORDER}`, borderTopColor:ORANGE, borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
+    <div style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ width:24, height:24, border:'2px solid var(--border)', borderTopColor:'var(--accent)', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 
   return (
-    <div style={{ background:BG, minHeight:'100vh', paddingBottom:100, ...F }}>
+    <div style={{ background:'var(--bg)', minHeight:'100vh', paddingBottom:100, ...F }}>
       <style>{CSS}</style>
       <div style={{ padding:'16px 18px', maxWidth:500, margin:'0 auto' }}>
 
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
           <button onClick={() => navigate(-1)}
-            style={{ background:'none', border:'none', color:TXT2, cursor:'pointer', display:'flex' }}>
+            style={{ background:'none', border:'none', color:'var(--text-sec)', cursor:'pointer', display:'flex' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
-          <h1 style={{ color:TXT, fontWeight:800, fontSize:22, margin:0 }}>History</h1>
+          <h1 style={{ color:'var(--text-pri)', fontWeight:800, fontSize:22, margin:0 }}>History</h1>
         </div>
 
         {/* Stats */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:16 }}>
-          <div style={{ background:CARD, border:`1px solid ${BORDER}`, borderRadius:14, padding:'14px 16px' }}>
-            <p style={{ color:TXT3, fontSize:10, fontWeight:700, letterSpacing:'0.1em', margin:'0 0 4px' }}>ALL-TIME SPENT</p>
-            <p style={{ color:GREEN, fontWeight:900, fontSize:22, margin:0, letterSpacing:'-0.5px' }}>{formatCurrency(totalSpent)}</p>
+          <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, padding:'14px 16px', boxShadow:'var(--shadow-sm)' }}>
+            <p style={{ color:'var(--text-ter)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', margin:'0 0 4px' }}>ALL-TIME SPENT</p>
+            <p style={{ color:'var(--green)', fontWeight:900, fontSize:22, margin:0, letterSpacing:'-0.5px' }}>{formatCurrency(totalSpent)}</p>
           </div>
-          <div style={{ background:CARD, border:`1px solid ${BORDER}`, borderRadius:14, padding:'14px 16px' }}>
-            <p style={{ color:TXT3, fontSize:10, fontWeight:700, letterSpacing:'0.1em', margin:'0 0 4px' }}>TOTAL VISITS</p>
-            <p style={{ color:TXT, fontWeight:900, fontSize:22, margin:0 }}>{totalVisits}</p>
+          <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, padding:'14px 16px', boxShadow:'var(--shadow-sm)' }}>
+            <p style={{ color:'var(--text-ter)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', margin:'0 0 4px' }}>TOTAL VISITS</p>
+            <p style={{ color:'var(--text-pri)', fontWeight:900, fontSize:22, margin:0 }}>{totalVisits}</p>
           </div>
         </div>
 
@@ -104,7 +97,7 @@ export function HistoryPage() {
         <div style={{ display:'flex', gap:6, marginBottom:18 }}>
           {[['all','All'],['completed','Completed'],['cancelled','Cancelled']].map(([k, l]) => (
             <button key={k} onClick={() => setFilter(k)}
-              style={{ padding:'7px 14px', borderRadius:20, border:`1px solid ${filter===k?ORANGE:BORDER}`, background:filter===k?`${ORANGE}18`:'transparent', color:filter===k?ORANGE:TXT2, fontWeight:600, fontSize:12, cursor:'pointer', ...F }}>
+              style={{ padding:'7px 14px', borderRadius:20, border:`1px solid ${filter===k?'var(--accent)':'var(--border)'}`, background:filter===k?'var(--accent-soft)':'transparent', color:filter===k?'var(--accent)':'var(--text-sec)', fontWeight:600, fontSize:12, cursor:'pointer', ...F, transition:'all 0.15s' }}>
               {l}
             </button>
           ))}
@@ -112,40 +105,42 @@ export function HistoryPage() {
 
         {/* List */}
         {history.length === 0 ? (
-          <div style={{ background:CARD, border:`1px solid ${BORDER}`, borderRadius:16, padding:'40px 20px', textAlign:'center' }}>
-            <p style={{ color:TXT2, fontSize:14 }}>No history yet</p>
+          <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'40px 20px', textAlign:'center', boxShadow:'var(--shadow-sm)' }}>
+            <p style={{ color:'var(--text-sec)', fontSize:14 }}>No history yet</p>
           </div>
         ) : history.map(a => {
           const cancelled = a.bookingStatus === 'cancelled'
           const completed = a.bookingStatus === 'completed'
+          const borderLeft = cancelled ? '3px solid var(--red)' : completed ? '3px solid var(--green)' : '3px solid var(--border)'
+
           return (
             <div key={a.id} className="fade-up"
-              style={{ background:CARD, border:`1px solid ${BORDER}`, borderLeft:`3px solid ${cancelled?`${RED}40`:completed?`${GREEN}40`:BORDER}`, borderRadius:14, padding:'14px', marginBottom:8 }}>
+              style={{ background:'var(--card)', border:'1px solid var(--border)', borderLeft, borderRadius:14, padding:'14px', marginBottom:8, boxShadow:'var(--shadow-sm)' }}>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
                 <div>
-                  <p style={{ color:TXT, fontWeight:700, fontSize:13, margin:'0 0 2px' }}>
+                  <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:13, margin:'0 0 2px' }}>
                     {a.date ? format(parseLocalDate(a.date), 'MMM d, yyyy') : '—'}
                   </p>
-                  <p style={{ color:TXT2, fontSize:12, margin:0 }}>
+                  <p style={{ color:'var(--text-sec)', fontSize:12, margin:0 }}>
                     {formatTime ? formatTime(a.startTime) : a.startTime} · {formatDuration(a.totalDuration || 0)}
                   </p>
                 </div>
                 <div style={{ textAlign:'right' }}>
-                  <p style={{ color:cancelled?TXT2:TXT, fontWeight:800, fontSize:14, margin:'0 0 4px', textDecoration:cancelled?'line-through':'none' }}>
+                  <p style={{ color:cancelled?'var(--text-sec)':'var(--text-pri)', fontWeight:800, fontSize:14, margin:'0 0 4px', textDecoration:cancelled?'line-through':'none' }}>
                     {formatCurrency(a.totalWithTip || a.totalPrice)}
                   </p>
-                  <span style={{ fontSize:9, fontWeight:800, padding:'2px 7px', borderRadius:20, background:cancelled?`${RED}14`:completed?`${GREEN}12`:BORDER, color:cancelled?RED:completed?GREEN:TXT2, letterSpacing:'0.05em' }}>
+                  <span style={{ fontSize:9, fontWeight:800, padding:'2px 7px', borderRadius:20, background:cancelled?'var(--red-soft)':completed?'var(--green-soft)':'var(--card2)', color:cancelled?'var(--red)':completed?'var(--green)':'var(--text-sec)', letterSpacing:'0.05em' }}>
                     {(a.bookingStatus || '').toUpperCase()}
                   </span>
                 </div>
               </div>
               {a.services?.length > 0 && (
-                <p style={{ color:TXT2, fontSize:11, margin:'4px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                <p style={{ color:'var(--text-sec)', fontSize:11, margin:'4px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                   {a.services.map(s => s.name).join(', ')}
                 </p>
               )}
               {a.tip > 0 && (
-                <p style={{ color:GREEN, fontSize:11, margin:'4px 0 0' }}>+{formatCurrency(a.tip)} tip</p>
+                <p style={{ color:'var(--green)', fontSize:11, margin:'4px 0 0', fontWeight:600 }}>+{formatCurrency(a.tip)} tip</p>
               )}
             </div>
           )

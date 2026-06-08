@@ -1,50 +1,329 @@
-/* theme.css — import once in main.jsx or index.css
-   All components reference these variables.
-   ThemeContext swaps them on toggle → whole app updates instantly.
-*/
+/* ═══════════════════════════════════════════════════════════════════════════
+   theme.css — AmadoBook2 design system
+   Import once in main.jsx → all components use var(--token)
+   ThemeContext swaps data-theme attribute → whole app updates instantly
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-:root {
-  --bg:        #0D0D0D;
-  --surface:   #111111;
-  --card:      #141414;
-  --card2:     #1C1C1E;
-  --card3:     #222224;
-  --border:    #252525;
-  --border2:   #2A2A2A;
-  --text-pri:  #F0F0F0;
-  --text-sec:  #888888;
-  --text-ter:  #444444;
-  --accent:    #FF6B1A;
-  --green:     #22C55E;
-  --red:       #EF4444;
-  --walkin:    #7C3AED;
+/* ── LIGHT MODE (default — matches mockup) ─────────────────────────────── */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Backgrounds */
+  --bg:          #F5F5F3;       /* page background — warm off-white */
+  --surface:     #FFFFFF;       /* navbar, modals */
+  --card:        #FFFFFF;       /* standard cards */
+  --card2:       #F8F8F6;       /* secondary cards, input backgrounds */
+  --card3:       #F0F0EE;       /* tertiary, chips */
+
+  /* Borders */
+  --border:      #EBEBЕ8;       /* primary border */
+  --border2:     #E0E0DD;       /* stronger border */
+
+  /* Text */
+  --text-pri:    #1A1A1A;       /* headings, primary text */
+  --text-sec:    #888888;       /* secondary labels */
+  --text-ter:    #BBBBBB;       /* placeholders, disabled */
+
+  /* Brand */
+  --accent:      #FF6B1A;
+  --accent-soft: rgba(255, 107, 26, 0.10);
+  --accent-mid:  rgba(255, 107, 26, 0.18);
+
+  /* Status */
+  --green:       #16A34A;
+  --green-soft:  rgba(22, 163, 74, 0.10);
+  --red:         #DC2626;
+  --red-soft:    rgba(220, 38, 38, 0.10);
+  --amber:       #D97706;
+  --amber-soft:  rgba(217, 119, 6, 0.10);
+  --purple:      #7C3AED;
+  --purple-soft: rgba(124, 58, 237, 0.10);
+
+  /* Shadows — visible on light backgrounds */
+  --shadow-sm:   0 1px 2px rgba(0,0,0,0.05);
+  --shadow:      0 1px 4px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:   0 4px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-lg:   0 8px 24px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.05);
+  --shadow-accent: 0 4px 16px rgba(255,107,26,0.30);
+
+  /* Nav */
+  --nav-bg:      rgba(255,255,255,0.95);
+  --nav-border:  rgba(0,0,0,0.08);
 }
 
-/* Apply to body so no element has a hardcoded background */
+/* ── DARK MODE ─────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Backgrounds */
+  --bg:          #0D0D0D;
+  --surface:     #111111;
+  --card:        #141414;
+  --card2:       #1C1C1E;
+  --card3:       #222224;
+
+  /* Borders */
+  --border:      #252525;
+  --border2:     #2A2A2A;
+
+  /* Text */
+  --text-pri:    #F0F0F0;
+  --text-sec:    #888888;
+  --text-ter:    #444444;
+
+  /* Brand */
+  --accent:      #FF6B1A;
+  --accent-soft: rgba(255, 107, 26, 0.12);
+  --accent-mid:  rgba(255, 107, 26, 0.22);
+
+  /* Status */
+  --green:       #22C55E;
+  --green-soft:  rgba(34, 197, 94, 0.12);
+  --red:         #EF4444;
+  --red-soft:    rgba(239, 68, 68, 0.12);
+  --amber:       #F59E0B;
+  --amber-soft:  rgba(245, 158, 11, 0.12);
+  --purple:      #8B5CF6;
+  --purple-soft: rgba(139, 92, 246, 0.12);
+
+  /* Shadows — subtle on dark backgrounds */
+  --shadow-sm:   0 1px 2px rgba(0,0,0,0.30);
+  --shadow:      0 1px 4px rgba(0,0,0,0.40);
+  --shadow-md:   0 4px 12px rgba(0,0,0,0.50);
+  --shadow-lg:   0 8px 24px rgba(0,0,0,0.60);
+  --shadow-accent: 0 4px 16px rgba(255,107,26,0.35);
+
+  /* Nav */
+  --nav-bg:      rgba(13,13,13,0.97);
+  --nav-border:  rgba(255,255,255,0.06);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   GLOBAL BASE STYLES
+   ══════════════════════════════════════════════════════════════════════════ */
+
+html {
+  height: -webkit-fill-available;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   background: var(--bg) !important;
-  color: var(--text-pri) !important;
+  color:      var(--text-pri) !important;
+  min-height: -webkit-fill-available;
+  font-family: 'Plus Jakarta Sans', 'DM Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Smooth theme transitions */
+/* ── Safe area helpers ─────────────────────────────────────────────────── */
+:root {
+  --sat: env(safe-area-inset-top);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
+  --sar: env(safe-area-inset-right);
+}
+
+/* ── Box model & tap behavior ──────────────────────────────────────────── */
 *, *::before, *::after {
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Disable transition on images/icons */
-img, svg, canvas {
+/* ── Smooth theme transitions ──────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  transition:
+    background-color 0.18s ease,
+    border-color     0.18s ease,
+    color            0.15s ease,
+    box-shadow       0.18s ease;
+}
+
+/* No transition on media, icons, transforms */
+img, svg, canvas, video {
   transition: none !important;
 }
 
-/* Native input color scheme */
-[data-theme="light"] { color-scheme: light; }
-[data-theme="dark"]  { color-scheme: dark; }
+/* Preserve transform transitions for animations */
+.animate-spin,
+.animate-pulse,
+.animate-fade-up,
+.animate-slide-up,
+.animate-pop-in {
+  transition: none !important;
+}
 
-/* Scrollbar hide */
+/* ── Scrollbar — always hidden ─────────────────────────────────────────── */
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }
+
+/* ── Inputs ────────────────────────────────────────────────────────────── */
+
+/* Prevent iOS zoom on focus (font-size must be ≥ 16px) */
+input, select, textarea, button {
+  font-family: inherit;
+}
+input, select, textarea {
+  font-size: 16px !important;
+}
 
 input[type="time"],
 input[type="date"] {
   color-scheme: inherit;
+}
+
+/* Input autofill override */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px var(--card) inset !important;
+  -webkit-text-fill-color: var(--text-pri) !important;
+  caret-color: var(--text-pri) !important;
+}
+
+/* ── Momentum scroll ───────────────────────────────────────────────────── */
+* { -webkit-overflow-scrolling: touch; }
+
+/* ── Typography utilities (complement Tailwind) ────────────────────────── */
+.font-tabular { font-variant-numeric: tabular-nums; }
+.text-balance  { text-wrap: balance; }
+
+/* ── Skeleton shimmer ──────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--card2) 25%,
+    var(--card3) 50%,
+    var(--card2) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: 8px;
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* ── Reusable animation classes ────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px);  }
+  to   { opacity: 1; transform: translateY(0);     }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(0.85); }
+  60%  {             transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1);    }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1;   }
+  50%       { opacity: 0.3; }
+}
+
+.fade-up   { animation: fadeUp   0.22s cubic-bezier(0.22,1,0.36,1) both; }
+.fade-in   { animation: fadeIn   0.18s ease both; }
+.slide-up  { animation: slideUp  0.22s cubic-bezier(0.22,1,0.36,1) both; }
+.pop-in    { animation: popIn    0.28s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* ── Reusable component base classes ───────────────────────────────────── */
+
+/* Card */
+.ab-card {
+  background:    var(--card);
+  border:        1px solid var(--border);
+  border-radius: 16px;
+  box-shadow:    var(--shadow);
+}
+.ab-card-sm {
+  background:    var(--card);
+  border:        1px solid var(--border);
+  border-radius: 12px;
+  box-shadow:    var(--shadow-sm);
+}
+
+/* Accent button */
+.ab-btn-accent {
+  background:    var(--accent);
+  color:         #fff;
+  border:        none;
+  border-radius: 9999px;
+  font-weight:   700;
+  cursor:        pointer;
+  box-shadow:    var(--shadow-accent);
+  transition:    transform 0.1s, box-shadow 0.1s;
+  font-family:   inherit;
+}
+.ab-btn-accent:active {
+  transform:  scale(0.97);
+  box-shadow: 0 2px 8px rgba(255,107,26,0.2);
+}
+
+/* Ghost button */
+.ab-btn-ghost {
+  background:    transparent;
+  border:        1px solid var(--border);
+  border-radius: 9999px;
+  color:         var(--text-sec);
+  font-weight:   600;
+  cursor:        pointer;
+  font-family:   inherit;
+}
+
+/* Badge */
+.ab-badge {
+  display:       inline-flex;
+  align-items:   center;
+  padding:       2px 8px;
+  border-radius: 9999px;
+  font-size:     10px;
+  font-weight:   700;
+  letter-spacing: 0.04em;
+}
+.ab-badge-accent  { background: var(--accent-soft); color: var(--accent); }
+.ab-badge-green   { background: var(--green-soft);  color: var(--green);  }
+.ab-badge-red     { background: var(--red-soft);    color: var(--red);    }
+.ab-badge-amber   { background: var(--amber-soft);  color: var(--amber);  }
+.ab-badge-purple  { background: var(--purple-soft); color: var(--purple); }
+
+/* Divider */
+.ab-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0;
+}
+
+/* ── Bottom nav safe area ───────────────────────────────────────────────── */
+.bottom-nav {
+  position:   fixed;
+  bottom:     0;
+  left:       0;
+  right:      0;
+  background: var(--nav-bg);
+  border-top: 1px solid var(--nav-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 40;
+}
+
+/* ── Page container ─────────────────────────────────────────────────────── */
+.page-container {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0 16px 24px;
 }

@@ -1,5 +1,5 @@
 /**
- * BarberCalendar — Fixed
+ * BarberCalendar — Migrated to Design System
  * ✓ NO expand/collapse arrows (removed completely)
  * ✓ Click on week label (e.g. "May 18–24, 2026") → opens floating month calendar
  * ✓ Month calendar shows all available days + appointment count per day
@@ -27,10 +27,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const BG='#0D0D0D', CARD='#141414', CARD2='#1C1C1E', BORDER='#252525'
-const ORANGE='#FF6B1A', TXT='#F0F0F0', TXT2='#666666', TXT3='#3A3A3A'
-const GREEN='#22C55E', WALKIN='#7C3AED'
-const F = { fontFamily:"'DM Sans',system-ui,sans-serif" }
+const F = { fontFamily: "'Plus Jakarta Sans','DM Sans',system-ui,sans-serif" }
 
 const HOUR_H  = 64
 const START_H = 7
@@ -74,17 +71,17 @@ function layoutAppts(appts) {
 }
 
 function apptColor(a) {
-  if (a.isWalkIn) return WALKIN
-  if (a.bookingStatus==='confirmed') return GREEN
-  if (a.bookingStatus==='completed') return TXT3
-  if (a.bookingStatus==='cancelled') return '#EF4444'
-  return ORANGE
+  if (a.isWalkIn) return 'var(--purple)'
+  if (a.bookingStatus==='confirmed') return 'var(--green)'
+  if (a.bookingStatus==='completed') return 'var(--text-ter)'
+  if (a.bookingStatus==='cancelled') return 'var(--red)'
+  return 'var(--accent)'
 }
 
 function MiniAv({ name, photoURL, size=18 }) {
   const i=name?.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2)||'?'
   return (
-    <div style={{ width:size, height:size, borderRadius:'50%', overflow:'hidden', background:CARD2, border:'1.5px solid rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:7, color:TXT2, flexShrink:0 }}>
+    <div style={{ width:size, height:size, borderRadius:'50%', overflow:'hidden', background:'var(--card2)', border:'1.5px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:7, color:'var(--text-sec)', flexShrink:0 }}>
       {photoURL ? <img src={photoURL} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/> : i}
     </div>
   )
@@ -119,20 +116,20 @@ function MonthPicker({ selectedDay, onSelect, onClose, availability, appointment
       style={{ position:'fixed', inset:0, zIndex:65, display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:80 }}
       onClick={onClose}
     >
-      <div style={{ background:'rgba(0,0,0,0.6)', position:'absolute', inset:0 }}/>
+      <div style={{ background:'rgba(0,0,0,0.45)', position:'absolute', inset:0 }}/>
       <div
-        style={{ position:'relative', width:'calc(100% - 28px)', maxWidth:360, background:CARD, border:`1px solid ${BORDER}`, borderRadius:20, overflow:'hidden', ...F, boxShadow:'0 20px 60px rgba(0,0,0,0.7)' }}
+        style={{ position:'relative', width:'calc(100% - 28px)', maxWidth:360, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, overflow:'hidden', ...F, boxShadow:'var(--shadow-lg)' }}
         onClick={e=>e.stopPropagation()}
       >
         {/* Month nav */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', borderBottom:`1px solid ${BORDER}` }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', borderBottom:'1px solid var(--border)' }}>
           <button onClick={() => setMonth(m=>subMonths(m,1))}
-            style={{ background:'none', border:'none', color:TXT2, cursor:'pointer', display:'flex', padding:6 }}>
+            style={{ background:'none', border:'none', color:'var(--text-sec)', cursor:'pointer', display:'flex', padding:6 }}>
             <ChevronLeft size={16}/>
           </button>
-          <span style={{ color:TXT, fontWeight:700, fontSize:14 }}>{format(month,'MMMM yyyy')}</span>
+          <span style={{ color:'var(--text-pri)', fontWeight:700, fontSize:14 }}>{format(month,'MMMM yyyy')}</span>
           <button onClick={() => setMonth(m=>addMonths(m,1))}
-            style={{ background:'none', border:'none', color:TXT2, cursor:'pointer', display:'flex', padding:6 }}>
+            style={{ background:'none', border:'none', color:'var(--text-sec)', cursor:'pointer', display:'flex', padding:6 }}>
             <ChevronRight size={16}/>
           </button>
         </div>
@@ -140,7 +137,7 @@ function MonthPicker({ selectedDay, onSelect, onClose, availability, appointment
         {/* Day headers */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', padding:'8px 8px 0' }}>
           {['M','T','W','T','F','S','S'].map((d,i)=>(
-            <div key={i} style={{ textAlign:'center', fontSize:9, fontWeight:700, color:TXT3, padding:'2px 0' }}>{d}</div>
+            <div key={i} style={{ textAlign:'center', fontSize:9, fontWeight:700, color:'var(--text-ter)', padding:'2px 0' }}>{d}</div>
           ))}
         </div>
 
@@ -161,20 +158,20 @@ function MonthPicker({ selectedDay, onSelect, onClose, availability, appointment
                 style={{
                   padding:'4px 2px', borderRadius:8, border:'none',
                   cursor: outRange?'not-allowed':'pointer',
-                  background: sel ? ORANGE : 'transparent',
+                  background: sel ? 'var(--accent)' : 'transparent',
                   opacity: !inMonth?0.06 : outRange?0.12 : past?0.35 : 1,
                   display:'flex', flexDirection:'column', alignItems:'center', gap:1,
                 }}>
                 <span style={{
                   fontSize:13, fontWeight: sel?800:tod?700:500,
-                  color: sel?'#fff':tod?ORANGE:off&&!past?TXT3:TXT,
+                  color: sel?'#fff':tod?'var(--accent)':off&&!past?'var(--text-ter)':'var(--text-pri)',
                 }}>
                   {date.getDate()}
                 </span>
                 {/* Count or dot */}
                 <span style={{
                   fontSize:9, fontWeight:800, lineHeight:1, minHeight:10,
-                  color: sel?'rgba(255,255,255,0.75)':count>0?ORANGE:off&&!past?TXT3:'transparent',
+                  color: sel?'rgba(255,255,255,0.75)':count>0?'var(--accent)':off&&!past?'var(--text-ter)':'transparent',
                 }}>
                   {count>0 ? count : off&&!past&&!outRange ? '·' : '·'}
                 </span>
@@ -186,12 +183,12 @@ function MonthPicker({ selectedDay, onSelect, onClose, availability, appointment
         {/* Legend */}
         <div style={{ display:'flex', gap:12, padding:'0 16px 12px', justifyContent:'center' }}>
           <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-            <div style={{ width:6, height:6, borderRadius:'50%', background:ORANGE }}/>
-            <span style={{ color:TXT3, fontSize:9 }}>Appointments</span>
+            <div style={{ width:6, height:6, borderRadius:'50%', background:'var(--accent)' }}/>
+            <span style={{ color:'var(--text-ter)', fontSize:9 }}>Appointments</span>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-            <div style={{ width:6, height:6, borderRadius:'50%', background:ORANGE }}/>
-            <span style={{ color:TXT3, fontSize:9 }}>Selected</span>
+            <div style={{ width:6, height:6, borderRadius:'50%', background:'var(--accent)' }}/>
+            <span style={{ color:'var(--text-ter)', fontSize:9 }}>Selected</span>
           </div>
         </div>
       </div>
@@ -247,32 +244,33 @@ function NewApptModal({ onClose, barber, activeServices, availability, appointme
   const canNext=step===1?name.trim().length>0:step===2?!!selSvc:!!selSlot
 
   return(
-    <div style={{position:'fixed',inset:0,zIndex:70,background:'rgba(0,0,0,0.9)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onClick={onClose}>
-      <div style={{width:'100%',maxWidth:400,background:CARD,borderRadius:20,border:`1px solid ${BORDER}`,maxHeight:'88dvh',overflowY:'auto',...F}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'13px 15px',borderBottom:`1px solid ${BORDER}`}}>
+    <div style={{position:'fixed',inset:0,zIndex:70,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onClick={onClose}>
+      <div style={{width:'100%',maxWidth:400,background:'var(--surface)',borderRadius:20,border:'1px solid var(--border)',boxShadow:'var(--shadow-lg)',maxHeight:'88dvh',overflowY:'auto',...F}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'13px 15px',borderBottom:'1px solid var(--border)'}}>
           <div style={{display:'flex',alignItems:'center',gap:8}}>
-            {step>1&&<button onClick={()=>setStep(s=>s-1)} style={{background:'none',border:'none',color:TXT2,cursor:'pointer',display:'flex',padding:0}}><ChevronLeft size={17}/></button>}
+            {step>1&&<button onClick={()=>setStep(s=>s-1)} style={{background:'none',border:'none',color:'var(--text-sec)',cursor:'pointer',display:'flex',padding:0}}><ChevronLeft size={17}/></button>}
             <div>
-              <p style={{color:TXT,fontWeight:700,fontSize:14,margin:'0 0 1px'}}>{step===1?'Client Info':step===2?'Service':'Date & Time'}</p>
-              <div style={{display:'flex',gap:4}}>{[1,2,3].map(s=><div key={s} style={{width:s===step?12:4,height:4,borderRadius:2,background:s<=step?ORANGE:BORDER,transition:'all 0.2s'}}/>)}</div>
+              <p style={{color:'var(--text-pri)',fontWeight:700,fontSize:14,margin:'0 0 1px'}}>{step===1?'Client Info':step===2?'Service':'Date & Time'}</p>
+              <div style={{display:'flex',gap:4}}>{[1,2,3].map(s=><div key={s} style={{width:s===step?12:4,height:4,borderRadius:2,background:s<=step?'var(--accent)':'var(--border)',transition:'all 0.2s'}}/>)}</div>
             </div>
           </div>
-          <button onClick={onClose} style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:8,padding:'5px 6px',color:TXT2,cursor:'pointer',display:'flex'}}><X size={14}/></button>
+          <button onClick={onClose} style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 6px',color:'var(--text-sec)',cursor:'pointer',display:'flex'}}><X size={14}/></button>
         </div>
         <div style={{padding:'13px 15px 20px'}}>
           {step===1&&<div style={{display:'flex',flexDirection:'column',gap:10}}>
             {[{l:'Name *',v:name,s:setName,t:'text',p:'Client name'},{l:'Phone',v:phone,s:setPhone,t:'tel',p:'(305) 000-0000'}].map(f=>(
               <div key={f.l}>
-                <label style={{display:'block',color:TXT3,fontSize:9,fontWeight:700,letterSpacing:'0.08em',marginBottom:4}}>{f.l.toUpperCase()}</label>
+                <label style={{display:'block',color:'var(--text-ter)',fontSize:9,fontWeight:700,letterSpacing:'0.08em',marginBottom:4}}>{f.l.toUpperCase()}</label>
                 <input type={f.t} value={f.v} onChange={e=>f.s(e.target.value)} placeholder={f.p}
-                  style={{width:'100%',background:CARD2,border:`1px solid ${BORDER}`,borderRadius:9,padding:'9px 11px',color:TXT,fontSize:14,outline:'none',...F}}
-                  onFocus={e=>e.target.style.borderColor=ORANGE} onBlur={e=>e.target.style.borderColor=BORDER}/>
+                  style={{width:'100%',background:'var(--card2)',border:'1px solid var(--border)',borderRadius:9,padding:'9px 11px',color:'var(--text-pri)',fontSize:14,outline:'none',...F}}
+                  onFocus={e=>e.target.style.borderColor='var(--accent)'} onBlur={e=>e.target.style.borderColor='var(--border)'}/>
               </div>
             ))}
             <div>
-              <label style={{display:'block',color:TXT3,fontSize:9,fontWeight:700,letterSpacing:'0.08em',marginBottom:4}}>NOTES</label>
+              <label style={{display:'block',color:'var(--text-ter)',fontSize:9,fontWeight:700,letterSpacing:'0.08em',marginBottom:4}}>NOTES</label>
               <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Style notes…" rows={2}
-                style={{width:'100%',background:CARD2,border:`1px solid ${BORDER}`,borderRadius:9,padding:'9px 11px',color:TXT,fontSize:13,outline:'none',resize:'none',...F}}/>
+                style={{width:'100%',background:'var(--card2)',border:'1px solid var(--border)',borderRadius:9,padding:'9px 11px',color:'var(--text-pri)',fontSize:13,outline:'none',resize:'none',...F}}
+                onFocus={e=>e.target.style.borderColor='var(--accent)'} onBlur={e=>e.target.style.borderColor='var(--border)'}/>
             </div>
           </div>}
 
@@ -280,15 +278,15 @@ function NewApptModal({ onClose, barber, activeServices, availability, appointme
             {activeServices.map(svc=>{
               const sel=selSvc?.id===svc.id
               return<button key={svc.id} onClick={()=>setSelSvc(svc)}
-                style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:11,background:sel?`${ORANGE}12`:CARD2,border:`1.5px solid ${sel?ORANGE:BORDER}`,cursor:'pointer',textAlign:'left',...F,width:'100%'}}>
-                <Scissors size={14} color={sel?ORANGE:TXT3} strokeWidth={1.8} style={{flexShrink:0}}/>
+                style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:11,background:sel?'var(--accent-soft)':'var(--card2)',border:`1.5px solid ${sel?'var(--accent)':'var(--border)'}`,cursor:'pointer',textAlign:'left',...F,width:'100%'}}>
+                <Scissors size={14} color={sel?'var(--accent)':'var(--text-ter)'} strokeWidth={1.8} style={{flexShrink:0}}/>
                 <div style={{flex:1,minWidth:0}}>
-                  <p style={{color:TXT,fontWeight:700,fontSize:13,margin:'0 0 1px'}}>{svc.name}</p>
-                  <p style={{color:TXT2,fontSize:11,margin:0}}>{formatDuration(svc.duration)}</p>
+                  <p style={{color:'var(--text-pri)',fontWeight:700,fontSize:13,margin:'0 0 1px'}}>{svc.name}</p>
+                  <p style={{color:'var(--text-sec)',fontSize:11,margin:0}}>{formatDuration(svc.duration)}</p>
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:7,flexShrink:0}}>
-                  <p style={{color:ORANGE,fontWeight:800,fontSize:13,margin:0}}>{formatCurrency(svc.price)}</p>
-                  <div style={{width:16,height:16,borderRadius:'50%',border:`2px solid ${sel?ORANGE:BORDER}`,background:sel?ORANGE:'transparent',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <p style={{color:'var(--accent)',fontWeight:800,fontSize:13,margin:0}}>{formatCurrency(svc.price)}</p>
+                  <div style={{width:16,height:16,borderRadius:'50%',border:`2px solid ${sel?'var(--accent)':'var(--border)'}`,background:sel?'var(--accent)':'transparent',display:'flex',alignItems:'center',justifyContent:'center'}}>
                     {sel&&<Check size={9} color="#fff"/>}
                   </div>
                 </div>
@@ -299,40 +297,40 @@ function NewApptModal({ onClose, barber, activeServices, availability, appointme
           {step===3&&<div>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:9}}>
               <button onClick={()=>{setWeekOff(w=>Math.max(0,w-1));setSelSlot(null)}} disabled={weekOff===0}
-                style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:7,width:28,height:28,display:'flex',alignItems:'center',justifyContent:'center',cursor:weekOff===0?'not-allowed':'pointer',opacity:weekOff===0?0.3:1,color:TXT}}><ChevronLeft size={13}/></button>
-              <span style={{color:TXT2,fontSize:11,fontWeight:600}}>{weekDays[0]&&format(weekDays[0],'MMM d')} – {weekDays[weekDays.length-1]&&format(weekDays[weekDays.length-1],'MMM d')}</span>
+                style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:7,width:28,height:28,display:'flex',alignItems:'center',justifyContent:'center',cursor:weekOff===0?'not-allowed':'pointer',opacity:weekOff===0?0.3:1,color:'var(--text-pri)'}}><ChevronLeft size={13}/></button>
+              <span style={{color:'var(--text-sec)',fontSize:11,fontWeight:600}}>{weekDays[0]&&format(weekDays[0],'MMM d')} – {weekDays[weekDays.length-1]&&format(weekDays[weekDays.length-1],'MMM d')}</span>
               <button onClick={()=>{setWeekOff(w=>w+1);setSelSlot(null)}} disabled={weekDays.length<7}
-                style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:7,width:28,height:28,display:'flex',alignItems:'center',justifyContent:'center',cursor:weekDays.length<7?'not-allowed':'pointer',opacity:weekDays.length<7?0.3:1,color:TXT}}><ChevronRight size={13}/></button>
+                style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:7,width:28,height:28,display:'flex',alignItems:'center',justifyContent:'center',cursor:weekDays.length<7?'not-allowed':'pointer',opacity:weekDays.length<7?0.3:1,color:'var(--text-pri)'}}><ChevronRight size={13}/></button>
             </div>
             <div style={{display:'grid',gridTemplateColumns:`repeat(${weekDays.length},1fr)`,gap:5,marginBottom:12}}>
               {weekDays.map((date,i)=>{
                 const dis=isDayOff(date),sel=isSameDay(date,selDate)
                 return<button key={i} onClick={()=>{if(!dis){setSelDate(date);setSelSlot(null)}}} disabled={dis}
-                  style={{padding:'7px 2px',borderRadius:9,border:`1.5px solid ${sel?ORANGE:BORDER}`,background:sel?ORANGE:CARD2,cursor:dis?'not-allowed':'pointer',opacity:dis?0.2:1,display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
-                  <span style={{color:sel?'rgba(255,255,255,0.7)':TXT3,fontSize:8,fontWeight:700}}>{format(date,'EEE').toUpperCase()}</span>
-                  <span style={{color:sel?'#fff':isToday(date)?ORANGE:TXT,fontSize:13,fontWeight:800}}>{format(date,'d')}</span>
+                  style={{padding:'7px 2px',borderRadius:9,border:`1.5px solid ${sel?'var(--accent)':'var(--border)'}`,background:sel?'var(--accent)':'var(--card2)',cursor:dis?'not-allowed':'pointer',opacity:dis?0.2:1,display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+                  <span style={{color:sel?'rgba(255,255,255,0.7)':'var(--text-ter)',fontSize:8,fontWeight:700}}>{format(date,'EEE').toUpperCase()}</span>
+                  <span style={{color:sel?'#fff':isToday(date)?'var(--accent)':'var(--text-pri)',fontSize:13,fontWeight:800}}>{format(date,'d')}</span>
                 </button>
               })}
             </div>
-            <p style={{color:TXT3,fontSize:9,fontWeight:700,letterSpacing:'0.08em',marginBottom:8}}>{format(selDate,'EEE, MMM d').toUpperCase()}</p>
-            {slots.length===0?<p style={{color:TXT2,fontSize:12,textAlign:'center',padding:'10px 0'}}>No available times</p>
+            <p style={{color:'var(--text-ter)',fontSize:9,fontWeight:700,letterSpacing:'0.08em',marginBottom:8}}>{format(selDate,'EEE, MMM d').toUpperCase()}</p>
+            {slots.length===0?<p style={{color:'var(--text-sec)',fontSize:12,textAlign:'center',padding:'10px 0'}}>No available times</p>
             :<div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:5,marginBottom:10}}>
               {slots.map(slot=>{
                 const sel=selSlot?.startTime===slot.startTime
                 return<button key={slot.startTime} onClick={()=>setSelSlot(slot)}
-                  style={{padding:'9px 3px',borderRadius:9,border:`1.5px solid ${sel?ORANGE:BORDER}`,background:sel?ORANGE:CARD2,color:sel?'#fff':TXT2,fontWeight:700,fontSize:11,cursor:'pointer',...F}}>
+                  style={{padding:'9px 3px',borderRadius:9,border:`1.5px solid ${sel?'var(--accent)':'var(--border)'}`,background:sel?'var(--accent)':'var(--card2)',color:sel?'#fff':'var(--text-sec)',fontWeight:700,fontSize:11,cursor:'pointer',...F}}>
                   {slot.startTime}
                 </button>
               })}
             </div>}
-            {selSlot&&<div style={{background:`${ORANGE}10`,border:`1px solid ${ORANGE}28`,borderRadius:9,padding:'9px 11px'}}>
-              <p style={{color:ORANGE,fontWeight:700,fontSize:12,margin:0}}>{format(selDate,'MMM d')} · {selSlot.startTime}–{selSlot.endTime}</p>
-              <p style={{color:TXT2,fontSize:10,margin:'2px 0 0'}}>{selSvc?.name} · {formatCurrency(selSvc?.price)}</p>
+            {selSlot&&<div style={{background:'var(--accent-soft)',border:'1px solid var(--accent)',borderRadius:9,padding:'9px 11px'}}>
+              <p style={{color:'var(--accent)',fontWeight:700,fontSize:12,margin:0}}>{format(selDate,'MMM d')} · {selSlot.startTime}–{selSlot.endTime}</p>
+              <p style={{color:'var(--text-sec)',fontSize:10,margin:'2px 0 0'}}>{selSvc?.name} · {formatCurrency(selSvc?.price)}</p>
             </div>}
           </div>}
 
           <button onClick={step<3?()=>canNext&&setStep(s=>s+1):create} disabled={!canNext||saving}
-            style={{width:'100%',marginTop:14,background:canNext?ORANGE:BORDER,border:'none',borderRadius:20,padding:'13px',color:canNext?'#fff':TXT3,fontWeight:700,fontSize:14,cursor:canNext?'pointer':'not-allowed',...F,display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+            style={{width:'100%',marginTop:14,background:canNext?'var(--accent)':'var(--border)',border:'none',borderRadius:20,padding:'13px',color:canNext?'#fff':'var(--text-ter)',fontWeight:700,fontSize:14,cursor:canNext?'pointer':'not-allowed',...F,display:'flex',alignItems:'center',justifyContent:'center',gap:6,boxShadow:canNext?'var(--shadow-accent)':'none'}}>
             {saving&&<div style={{width:14,height:14,border:'2px solid rgba(255,255,255,0.4)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin 0.75s linear infinite'}}/>}
             {step<3?'Continue →':saving?'Adding…':'✓ Confirm'}
           </button>
@@ -370,58 +368,58 @@ function ApptModal({ appt, onClose, onComplete, onCancel }) {
   }
 
   return (
-    <div style={{position:'fixed',inset:0,zIndex:70,background:'rgba(0,0,0,0.9)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onClick={onClose}>
-      <div style={{width:'100%',maxWidth:380,background:CARD,borderRadius:20,border:`1px solid ${BORDER}`,maxHeight:'88dvh',overflowY:'auto',...F}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'13px 15px',borderBottom:`1px solid ${BORDER}`}}>
+    <div style={{position:'fixed',inset:0,zIndex:70,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onClick={onClose}>
+      <div style={{width:'100%',maxWidth:380,background:'var(--surface)',borderRadius:20,border:'1px solid var(--border)',boxShadow:'var(--shadow-lg)',maxHeight:'88dvh',overflowY:'auto',...F}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'13px 15px',borderBottom:'1px solid var(--border)'}}>
           <div>
-            <p style={{color:TXT,fontWeight:700,fontSize:14,margin:'0 0 3px'}}>{appt.clientName}</p>
-            {appt.isWalkIn&&<span style={{background:`${WALKIN}20`,color:WALKIN,fontSize:9,padding:'2px 6px',borderRadius:20,fontWeight:800}}>WALK-IN</span>}
+            <p style={{color:'var(--text-pri)',fontWeight:700,fontSize:14,margin:'0 0 3px'}}>{appt.clientName}</p>
+            {appt.isWalkIn&&<span style={{background:'var(--purple-soft)',color:'var(--purple)',fontSize:9,padding:'2px 6px',borderRadius:20,fontWeight:800}}>WALK-IN</span>}
           </div>
-          <button onClick={onClose} style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:8,padding:'5px 6px',color:TXT2,cursor:'pointer',display:'flex'}}><X size={14}/></button>
+          <button onClick={onClose} style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 6px',color:'var(--text-sec)',cursor:'pointer',display:'flex'}}><X size={14}/></button>
         </div>
         <div style={{padding:'13px 15px 18px'}}>
           {/* Services */}
-          <div style={{background:BG,border:`1px solid ${BORDER}`,borderRadius:10,padding:'9px 12px',marginBottom:10}}>
+          <div style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'9px 12px',marginBottom:10}}>
             {appt.services?.map((s,i)=>(
-              <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 0',borderBottom:i<appt.services.length-1?`1px solid ${BORDER}`:'none'}}>
-                <div><p style={{color:TXT,fontWeight:600,fontSize:12,margin:'0 0 1px'}}>{s.name}</p><p style={{color:TXT2,fontSize:10,margin:0}}>{formatDuration(s.duration)}</p></div>
-                <p style={{color:ORANGE,fontWeight:800,fontSize:13,margin:0}}>{formatCurrency(s.price)}</p>
+              <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 0',borderBottom:i<appt.services.length-1?'1px solid var(--border)':'none'}}>
+                <div><p style={{color:'var(--text-pri)',fontWeight:600,fontSize:12,margin:'0 0 1px'}}>{s.name}</p><p style={{color:'var(--text-sec)',fontSize:10,margin:0}}>{formatDuration(s.duration)}</p></div>
+                <p style={{color:'var(--accent)',fontWeight:800,fontSize:13,margin:0}}>{formatCurrency(s.price)}</p>
               </div>
             ))}
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingTop:5}}>
-              <span style={{color:TXT2,fontSize:11}}>{formatTime(appt.startTime)}–{formatTime(appt.endTime)}</span>
-              <span style={{color:ORANGE,fontWeight:900,fontSize:14}}>{formatCurrency(total)}</span>
+              <span style={{color:'var(--text-sec)',fontSize:11}}>{formatTime(appt.startTime)}–{formatTime(appt.endTime)}</span>
+              <span style={{color:'var(--accent)',fontWeight:900,fontSize:14}}>{formatCurrency(total)}</span>
             </div>
           </div>
 
           {/* Tip — can add/change after the fact */}
-          <div style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:10,padding:'10px 12px',marginBottom:10}}>
-            <p style={{color:TXT3,fontSize:9,fontWeight:700,letterSpacing:'0.08em',margin:'0 0 8px'}}>TIP (add or change anytime)</p>
+          <div style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:10}}>
+            <p style={{color:'var(--text-ter)',fontSize:9,fontWeight:700,letterSpacing:'0.08em',margin:'0 0 8px'}}>TIP (add or change anytime)</p>
             <div style={{display:'flex',gap:5,marginBottom:8}}>
               {[0,10,15,20,25].map(pct=>{
                 const amt=pct===0?0:Math.round((appt.totalPrice||0)*pct/100),sel=+tip===amt
                 return<button key={pct} onClick={()=>setTip(amt)}
-                  style={{flex:1,padding:'6px 2px',borderRadius:8,border:`1.5px solid ${sel?ORANGE:BORDER}`,background:sel?`${ORANGE}14`:BG,color:sel?ORANGE:TXT2,fontWeight:700,fontSize:10,cursor:'pointer',...F}}>
+                  style={{flex:1,padding:'6px 2px',borderRadius:8,border:`1.5px solid ${sel?'var(--accent)':'var(--border)'}`,background:sel?'var(--accent-soft)':'var(--bg)',color:sel?'var(--accent)':'var(--text-sec)',fontWeight:700,fontSize:10,cursor:'pointer',...F}}>
                   {pct===0?'None':`${pct}%`}
                 </button>
               })}
             </div>
-            <div style={{display:'flex',alignItems:'center',gap:8,background:BG,borderRadius:8,padding:'7px 10px'}}>
-              <DollarSign size={12} color={TXT3}/>
+            <div style={{display:'flex',alignItems:'center',gap:8,background:'var(--bg)',borderRadius:8,padding:'7px 10px'}}>
+              <DollarSign size={12} color="var(--text-ter)"/>
               <input type="number" value={tip} onChange={e=>setTip(Math.max(0,+e.target.value))} min="0"
-                style={{flex:1,background:'transparent',border:'none',outline:'none',color:TXT,fontSize:15,fontWeight:700,...F}}/>
-              <span style={{color:TXT3,fontSize:11}}>tip</span>
+                style={{flex:1,background:'transparent',border:'none',outline:'none',color:'var(--text-pri)',fontSize:15,fontWeight:700,...F}}/>
+              <span style={{color:'var(--text-ter)',fontSize:11}}>tip</span>
             </div>
-            {+tip>0&&<p style={{color:ORANGE,fontSize:11,fontWeight:700,margin:'5px 0 0',textAlign:'right'}}>Total: {formatCurrency(total)}</p>}
+            {+tip>0&&<p style={{color:'var(--accent)',fontSize:11,fontWeight:700,margin:'5px 0 0',textAlign:'right'}}>Total: {formatCurrency(total)}</p>}
           </div>
 
           {/* Payment method */}
           <div style={{marginBottom:12}}>
-            <p style={{color:TXT3,fontSize:9,fontWeight:700,letterSpacing:'0.08em',margin:'0 0 6px'}}>PAYMENT</p>
+            <p style={{color:'var(--text-ter)',fontSize:9,fontWeight:700,letterSpacing:'0.08em',margin:'0 0 6px'}}>PAYMENT</p>
             <div style={{display:'flex',gap:5}}>
               {['cash','card','zelle','other'].map(m=>(
                 <button key={m} onClick={()=>setPay(m)}
-                  style={{flex:1,padding:'7px 2px',borderRadius:8,border:`1.5px solid ${pay===m?ORANGE:BORDER}`,background:pay===m?`${ORANGE}14`:BG,color:pay===m?ORANGE:TXT2,fontWeight:700,fontSize:10,cursor:'pointer',...F,textTransform:'capitalize'}}>
+                  style={{flex:1,padding:'7px 2px',borderRadius:8,border:`1.5px solid ${pay===m?'var(--accent)':'var(--border)'}`,background:pay===m?'var(--accent-soft)':'var(--bg)',color:pay===m?'var(--accent)':'var(--text-sec)',fontWeight:700,fontSize:10,cursor:'pointer',...F,textTransform:'capitalize'}}>
                   {m}
                 </button>
               ))}
@@ -432,26 +430,26 @@ function ApptModal({ appt, onClose, onComplete, onCancel }) {
           <div style={{display:'flex',flexDirection:'column',gap:6}}>
             {appt.bookingStatus!=='completed'&&appt.bookingStatus!=='cancelled'&&<>
               <button onClick={()=>save('completed','paid')}
-                style={{display:'flex',alignItems:'center',gap:8,padding:'11px 13px',borderRadius:10,background:`${GREEN}10`,color:GREEN,border:`1px solid ${GREEN}20`,cursor:'pointer',fontWeight:700,fontSize:13,...F}}>
+                style={{display:'flex',alignItems:'center',gap:8,padding:'11px 13px',borderRadius:10,background:'var(--green-soft)',color:'var(--green)',border:'1px solid var(--green)',cursor:'pointer',fontWeight:700,fontSize:13,...F}}>
                 <CheckCircle size={15}/> Complete & Mark Paid
               </button>
               <button onClick={()=>save('completed','pending')}
-                style={{display:'flex',alignItems:'center',gap:8,padding:'11px 13px',borderRadius:10,background:CARD2,color:TXT2,border:`1px solid ${BORDER}`,cursor:'pointer',fontWeight:600,fontSize:13,...F}}>
+                style={{display:'flex',alignItems:'center',gap:8,padding:'11px 13px',borderRadius:10,background:'var(--card2)',color:'var(--text-sec)',border:'1px solid var(--border)',cursor:'pointer',fontWeight:600,fontSize:13,...F}}>
                 <Check size={15}/> Complete (Collect Later)
               </button>
             </>}
             {(appt.bookingStatus==='completed'||appt.bookingStatus==='cancelled')&&
               <button onClick={()=>save('confirmed','pending')}
-                style={{display:'flex',alignItems:'center',gap:8,padding:'11px 13px',borderRadius:10,background:`${ORANGE}10`,color:ORANGE,border:`1px solid ${ORANGE}20`,cursor:'pointer',fontWeight:600,fontSize:13,...F}}>
+                style={{display:'flex',alignItems:'center',gap:8,padding:'11px 13px',borderRadius:10,background:'var(--accent-soft)',color:'var(--accent)',border:'1px solid var(--accent)',cursor:'pointer',fontWeight:600,fontSize:13,...F}}>
                 <AlertCircle size={15}/> Revert to Pending
               </button>}
             {appt.bookingStatus!=='cancelled'&&
               <button onClick={()=>save('cancelled','cancelled')}
-                style={{display:'flex',alignItems:'center',gap:8,padding:'11px 13px',borderRadius:10,background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.15)',color:'#EF4444',cursor:'pointer',fontWeight:600,fontSize:13,...F}}>
+                style={{display:'flex',alignItems:'center',gap:8,padding:'11px 13px',borderRadius:10,background:'var(--red-soft)',border:'1px solid var(--red)',color:'var(--red)',cursor:'pointer',fontWeight:600,fontSize:13,...F}}>
                 <XCircle size={15}/> Cancel Appointment
               </button>}
             <button onClick={()=>save()} disabled={saving}
-              style={{display:'flex',alignItems:'center',justifyContent:'center',gap:7,padding:'12px',borderRadius:10,background:ORANGE,border:'none',color:'#fff',cursor:'pointer',fontWeight:700,fontSize:14,...F,marginTop:2}}>
+              style={{display:'flex',alignItems:'center',justifyContent:'center',gap:7,padding:'12px',borderRadius:10,background:'var(--accent)',border:'none',color:'#fff',cursor:'pointer',fontWeight:700,fontSize:14,...F,marginTop:2,boxShadow:'var(--shadow-accent)'}}>
               {saving&&<div style={{width:14,height:14,border:'2px solid rgba(255,255,255,0.4)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin 0.75s linear infinite'}}/>}
               {saving?'Saving…':'Save Changes'}
             </button>
@@ -464,8 +462,10 @@ function ApptModal({ appt, onClose, onComplete, onCancel }) {
 
 // ── CSS ───────────────────────────────────────────────────────────────────
 const CSS2 = `
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,0.4)}70%{box-shadow:0 0 0 4px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 ::-webkit-scrollbar{display:none}
 input,textarea{font-size:16px!important}
@@ -567,7 +567,7 @@ export default function BarberCalendar() {
   if (loading) return (
     <BarberLayout>
       <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh'}}>
-        <div style={{width:20,height:20,border:'2px solid #252525',borderTopColor:ORANGE,borderRadius:'50%',animation:'spin 0.65s linear infinite'}}/>
+        <div style={{width:20,height:20,border:'2px solid var(--border)',borderTopColor:'var(--accent)',borderRadius:'50%',animation:'spin 0.65s linear infinite'}}/>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     </BarberLayout>
@@ -576,15 +576,15 @@ export default function BarberCalendar() {
   return (
     <BarberLayout>
       <style>{CSS2}</style>
-      <div style={{ background:BG, display:'flex', flexDirection:'column', height:'calc(100dvh - max(62px, calc(env(safe-area-inset-top) + 52px)) - calc(52px + env(safe-area-inset-bottom)))', ...F }}>
+      <div style={{ background:'var(--bg)', display:'flex', flexDirection:'column', height:'calc(100dvh - max(62px, calc(env(safe-area-inset-top) + 52px)) - calc(52px + env(safe-area-inset-bottom)))', ...F }}>
 
         {/* ── WEEK HEADER ── */}
-        <div style={{ background:CARD, borderBottom:`0.5px solid ${BORDER}`, flexShrink:0 }}>
+        <div style={{ background:'var(--card)', borderBottom:'0.5px solid var(--border)', flexShrink:0 }}>
 
           {/* Week nav — NO expand icon */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px 6px' }}>
             <button onClick={() => setWeekBase(w=>subWeeks(w,1))}
-              style={{ background:'none', border:'none', color:TXT2, cursor:'pointer', padding:4, display:'flex' }}>
+              style={{ background:'none', border:'none', color:'var(--text-sec)', cursor:'pointer', padding:4, display:'flex' }}>
               <ChevronLeft size={17}/>
             </button>
 
@@ -592,11 +592,11 @@ export default function BarberCalendar() {
             <button
               onClick={() => setShowPicker(true)}
               style={{ background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:6, padding:'4px 8px' }}>
-              <span style={{ color:TXT, fontWeight:700, fontSize:14, letterSpacing:'-0.2px' }}>{weekLabel}</span>
+              <span style={{ color:'var(--text-pri)', fontWeight:700, fontSize:14, letterSpacing:'-0.2px' }}>{weekLabel}</span>
             </button>
 
             <button onClick={() => setWeekBase(w=>addWeeks(w,1))}
-              style={{ background:'none', border:'none', color:TXT2, cursor:'pointer', padding:4, display:'flex' }}>
+              style={{ background:'none', border:'none', color:'var(--text-sec)', cursor:'pointer', padding:4, display:'flex' }}>
               <ChevronRight size={17}/>
             </button>
             {/* ✅ NO expand/collapse icon */}
@@ -616,15 +616,15 @@ export default function BarberCalendar() {
               return (
                 <button key={i} onClick={()=>setSelectedDay(date)}
                   style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'5px 2px', borderRadius:10, border:'none', cursor: outRange?'not-allowed':'pointer', background:'transparent', opacity: outRange?0.12:isPast?0.45:1 }}>
-                  <span style={{ color: sel?ORANGE:off&&!isPast?TXT3:TXT3, fontSize:8, fontWeight:700, letterSpacing:'0.04em' }}>
+                  <span style={{ color: sel?'var(--accent)':off&&!isPast?'var(--text-ter)':'var(--text-ter)', fontSize:8, fontWeight:700, letterSpacing:'0.04em' }}>
                     {format(date,'EEE').toUpperCase()}
                   </span>
-                  <div style={{ width:28, height:28, borderRadius:'50%', background:sel?ORANGE:'transparent', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s' }}>
-                    <span style={{ fontSize:14, fontWeight:sel?800:tod?700:500, color:sel?'#fff':tod?ORANGE:off&&!isPast?TXT3:TXT }}>
+                  <div style={{ width:28, height:28, borderRadius:'50%', background:sel?'var(--accent)':'transparent', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s' }}>
+                    <span style={{ fontSize:14, fontWeight:sel?800:tod?700:500, color:sel?'#fff':tod?'var(--accent)':off&&!isPast?'var(--text-ter)':'var(--text-pri)' }}>
                       {format(date,'d')}
                     </span>
                   </div>
-                  <span style={{ fontSize:9, fontWeight:800, color:sel?ORANGE:count>0?ORANGE:off&&!isPast?TXT3:'transparent', lineHeight:1, minHeight:10 }}>
+                  <span style={{ fontSize:9, fontWeight:800, color:sel?'var(--accent)':count>0?'var(--accent)':off&&!isPast?'var(--text-ter)':'transparent', lineHeight:1, minHeight:10 }}>
                     {count>0 ? count : off&&!isPast&&!outRange ? '·' : ''}
                   </span>
                 </button>
@@ -634,18 +634,18 @@ export default function BarberCalendar() {
         </div>
 
         {/* ── TIMELINE ── */}
-        <div ref={timelineRef} style={{ flex:1, overflowY:'auto', background:BG }}>
+        <div ref={timelineRef} style={{ flex:1, overflowY:'auto', background:'var(--bg)' }}>
           <div style={{ position:'relative', minHeight:visHours.length*HOUR_H+HOUR_H }}>
 
             {/* Hour rows */}
             {visHours.map(hour=>(
               <div key={hour} style={{ position:'absolute', left:0, right:0, top:(hour-visStartH)*HOUR_H, display:'flex', alignItems:'flex-start', pointerEvents:'none' }}>
                 <div style={{ width:54, flexShrink:0, paddingTop:2, textAlign:'right', paddingRight:8 }}>
-                  <span style={{ color:TXT3, fontSize:10, fontWeight:600, whiteSpace:'nowrap' }}>
+                  <span style={{ color:'var(--text-ter)', fontSize:10, fontWeight:600, whiteSpace:'nowrap' }}>
                     {hour===12?'12 PM':hour>12?`${hour-12} PM`:`${hour} AM`}
                   </span>
                 </div>
-                <div style={{ flex:1, height:1, background:BORDER, opacity:0.45 }}/>
+                <div style={{ flex:1, height:1, background:'var(--border)', opacity:0.45 }}/>
               </div>
             ))}
 
@@ -657,8 +657,8 @@ export default function BarberCalendar() {
               return(ds.breaks||[]).map((b,i)=>{
                 const bTop=minsPx(timeMins(b.startTime),visStartH)
                 const bH=Math.max(((timeMins(b.endTime)-timeMins(b.startTime))/60)*HOUR_H,16)
-                return<div key={i} style={{position:'absolute',left:54,right:8,top:bTop,height:bH,background:`${ORANGE}05`,border:`1px dashed ${ORANGE}18`,borderRadius:6,zIndex:1,display:'flex',alignItems:'center',paddingLeft:8,pointerEvents:'none'}}>
-                  <span style={{color:ORANGE,fontSize:9,fontWeight:700,opacity:0.6}}>{b.label||'Break'}</span>
+                return<div key={i} style={{position:'absolute',left:54,right:8,top:bTop,height:bH,background:'var(--accent-soft)',border:'1px dashed var(--accent)',borderRadius:6,zIndex:1,display:'flex',alignItems:'center',paddingLeft:8,pointerEvents:'none'}}>
+                  <span style={{color:'var(--accent)',fontSize:9,fontWeight:700,opacity:0.6}}>{b.label||'Break'}</span>
                 </div>
               })
             })()}
@@ -685,26 +685,27 @@ export default function BarberCalendar() {
                       width: `calc(${colW}% - ${gap*2}px)`,
                       height: hPx,
                       borderRadius: 9,
-                      background: CARD2,
-                      border: `1px solid ${BORDER}`,
+                      background: 'var(--card2)',
+                      border: '1px solid var(--border)',
                       borderLeft: `3px solid ${color}`,
                       cursor:'pointer', textAlign:'left',
                       padding:'5px 7px',
                       display:'flex', alignItems:'flex-start', gap:5,
                       overflow:'hidden', zIndex:2, ...F,
+                      boxShadow: 'var(--shadow-sm)'
                     }}>
                     <MiniAv name={appt.clientName} photoURL={appt.clientPhotoURL} size={18}/>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ color:TXT, fontWeight:700, fontSize:11, margin:'0 0 1px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:11, margin:'0 0 1px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                         {appt.clientName}
-                        {appt.isWalkIn&&<span style={{color:WALKIN,fontSize:8,fontWeight:800,marginLeft:4}}>W</span>}
+                        {appt.isWalkIn&&<span style={{color:'var(--purple)',fontSize:8,fontWeight:800,marginLeft:4}}>W</span>}
                       </p>
-                      <p style={{ color:TXT2, fontSize:10, margin:'0 0 1px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      <p style={{ color:'var(--text-sec)', fontSize:10, margin:'0 0 1px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                         {appt.services?.map(s=>s.name).join(' + ')}
                       </p>
-                      {hPx>48&&<p style={{ color:TXT3, fontSize:9, margin:0 }}>{formatTime(appt.startTime)}–{formatTime(appt.endTime)}</p>}
+                      {hPx>48&&<p style={{ color:'var(--text-ter)', fontSize:9, margin:0 }}>{formatTime(appt.startTime)}–{formatTime(appt.endTime)}</p>}
                     </div>
-                    <p style={{ color:ORANGE, fontWeight:800, fontSize:10, margin:0, flexShrink:0 }}>
+                    <p style={{ color:'var(--accent)', fontWeight:800, fontSize:10, margin:0, flexShrink:0 }}>
                       {formatCurrency(appt.totalWithTip||appt.totalPrice)}
                     </p>
                   </button>
@@ -715,8 +716,8 @@ export default function BarberCalendar() {
             {/* Day off / out of range message */}
             {!isDayWorking(selectedDay)&&dayAppts.length===0&&(
               <div style={{ position:'absolute', left:54, right:8, top:minsPx(9*60,visStartH), zIndex:3 }}>
-                <div style={{ background:CARD, border:`1px solid ${BORDER}`, borderRadius:12, padding:'12px 16px', textAlign:'center' }}>
-                  <p style={{ color:TXT2, fontSize:12, fontWeight:600, margin:'0 0 2px' }}>
+                <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:'12px 16px', textAlign:'center', boxShadow:'var(--shadow)' }}>
+                  <p style={{ color:'var(--text-sec)', fontSize:12, fontWeight:600, margin:'0 0 2px' }}>
                     {selectedDay<today?'Past day':selectedDay>maxDate?`Outside ${advance}-day range`:'Day off'}
                   </p>
                 </div>
@@ -732,12 +733,12 @@ export default function BarberCalendar() {
               const ts=`${h%12||12}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
               const ap=h<12?'AM':'PM'
               return<div key="now-line" style={{position:'absolute',left:0,right:0,top:top,zIndex:10,pointerEvents:'none'}}>
-                <div style={{position:'absolute',left:2,top:-12,background:ORANGE,borderRadius:20,padding:'2px 8px',display:'inline-flex',alignItems:'center',gap:4,boxShadow:`0 2px 8px ${ORANGE}50`}}>
+                <div style={{position:'absolute',left:2,top:-12,background:'var(--accent)',borderRadius:20,padding:'2px 8px',display:'inline-flex',alignItems:'center',gap:4,boxShadow:'var(--shadow-accent)'}}>
                   <div style={{width:4,height:4,borderRadius:'50%',background:'rgba(255,255,255,0.85)',animation:'pulse 1.5s infinite',flexShrink:0}}/>
-                  <span style={{color:'#fff',fontWeight:800,fontSize:8,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap',fontFamily:"'DM Sans',system-ui,sans-serif"}}>{ts} {ap}</span>
+                  <span style={{color:'#fff',fontWeight:800,fontSize:8,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap',fontFamily:"'Plus Jakarta Sans','DM Sans',system-ui,sans-serif"}}>{ts} {ap}</span>
                 </div>
-                <div style={{position:'absolute',left:50,top:-4,width:9,height:9,borderRadius:'50%',background:ORANGE,boxShadow:`0 0 8px ${ORANGE}90`}}/>
-                <div style={{position:'absolute',left:54,right:0,top:0,height:1.5,background:`linear-gradient(90deg,${ORANGE},${ORANGE}30)`}}/>
+                <div style={{position:'absolute',left:50,top:-4,width:9,height:9,borderRadius:'50%',background:'var(--accent)'}}/>
+                <div style={{position:'absolute',left:54,right:0,top:0,height:1.5,background:'linear-gradient(90deg, var(--accent), transparent)'}}/>
               </div>
             })()}
           </div>
@@ -745,7 +746,7 @@ export default function BarberCalendar() {
 
         {/* ── FAB ── */}
         <button onClick={()=>setShowNew(true)}
-          style={{ position:'fixed', bottom:'calc(64px + env(safe-area-inset-bottom))', right:16, width:48, height:48, borderRadius:'50%', background:ORANGE, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:`0 4px 18px ${ORANGE}55`, zIndex:30 }}>
+          style={{ position:'fixed', bottom:'calc(64px + env(safe-area-inset-bottom))', right:16, width:48, height:48, borderRadius:'50%', background:'var(--accent)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'var(--shadow-accent)', zIndex:30 }}>
           <Plus size={20} color="#fff" strokeWidth={2.5}/>
         </button>
       </div>

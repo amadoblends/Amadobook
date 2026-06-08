@@ -1,5 +1,5 @@
 /**
- * BarberClientDetail — Fixed
+ * BarberClientDetail — Migrated to Design System
  * ✓ Loads correctly from useBarberData (no empty screen)
  * ✓ Shows all appointments, stats, notes, contact
  * ✓ Edit notes, new appointment button
@@ -17,13 +17,10 @@ import { useTheme } from '../../context/ThemeContext'
 import { ChevronLeft, Phone, Mail, Plus, Edit2, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const BG='#0D0D0D', CARD='#141414', CARD2='#1C1C1E', BORDER='#252525'
-const ORANGE='#FF6B1A', TXT='#F0F0F0', TXT2='#666', TXT3='#3A3A3A'
-const GREEN='#22C55E', RED='#EF4444'
-const F = { fontFamily:"'DM Sans',system-ui,sans-serif" }
+const F = { fontFamily: "'Plus Jakarta Sans','DM Sans',system-ui,sans-serif" }
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap');
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 .fu{animation:fadeUp 0.22s ease both}
@@ -33,34 +30,34 @@ textarea{font-size:16px!important}
 `
 
 const STATUS = {
-  confirmed:{ bg:`${GREEN}14`,  c:GREEN, l:'Confirmed' },
-  pending:  { bg:`${ORANGE}14`, c:ORANGE,l:'Pending'   },
-  completed:{ bg:'rgba(255,255,255,0.05)', c:TXT2, l:'Done' },
-  cancelled:{ bg:'rgba(239,68,68,0.1)', c:RED, l:'Cancelled' },
+  confirmed: { bg: 'var(--green-soft)', c: 'var(--green)', l: 'Confirmed' },
+  pending:   { bg: 'var(--accent-soft)', c: 'var(--accent)', l: 'Pending' },
+  completed: { bg: 'var(--card3)', c: 'var(--text-sec)', l: 'Done' },
+  cancelled: { bg: 'var(--red-soft)', c: 'var(--red)', l: 'Cancelled' },
 }
 
 function SBadge({status}){
-  const s=STATUS[status]||STATUS.pending
-  return<span style={{background:s.bg,color:s.c,fontSize:9,fontWeight:800,padding:'2px 6px',borderRadius:20,whiteSpace:'nowrap'}}>{s.l}</span>
+  const s = STATUS[status] || STATUS.pending
+  return <span style={{background:s.bg,color:s.c,fontSize:9,fontWeight:800,padding:'2px 6px',borderRadius:20,whiteSpace:'nowrap'}}>{s.l}</span>
 }
 
 function Avatar({name,photoURL,size=60,fontSize=20}){
   const i=name?.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2)||'?'
-  return<div style={{width:size,height:size,borderRadius:'50%',overflow:'hidden',background:CARD2,border:`2px solid ${BORDER}`,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize,color:TXT2,flexShrink:0}}>
+  return <div style={{width:size,height:size,borderRadius:'50%',overflow:'hidden',background:'var(--card2)',border:'2px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize,color:'var(--text-sec)',flexShrink:0}}>
     {photoURL?<img src={photoURL} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>:i}
   </div>
 }
 
 function NoteModal({note,onSave,onClose}){
   const[val,setVal]=useState(note||'')
-  return<div style={{position:'fixed',inset:0,zIndex:60,background:'rgba(0,0,0,0.88)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onClick={onClose}>
-    <div style={{width:'100%',maxWidth:420,background:CARD,borderRadius:20,border:`1px solid ${BORDER}`,padding:'20px',...F}} onClick={e=>e.stopPropagation()}>
-      <p style={{color:TXT,fontWeight:700,fontSize:15,marginBottom:12}}>Client Notes</p>
+  return <div style={{position:'fixed',inset:0,zIndex:60,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onClick={onClose}>
+    <div style={{width:'100%',maxWidth:420,background:'var(--surface)',borderRadius:20,border:'1px solid var(--border)',padding:'20px',boxShadow:'var(--shadow-lg)',...F}} onClick={e=>e.stopPropagation()}>
+      <p style={{color:'var(--text-pri)',fontWeight:700,fontSize:15,marginBottom:12}}>Client Notes</p>
       <textarea value={val} onChange={e=>setVal(e.target.value)} rows={5} placeholder="Add notes about this client…"
-        style={{width:'100%',background:BG,border:`1px solid ${BORDER}`,borderRadius:12,padding:14,color:TXT,fontSize:14,resize:'none',outline:'none',...F}}/>
+        style={{width:'100%',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:12,padding:14,color:'var(--text-pri)',fontSize:14,resize:'none',outline:'none',...F}}/>
       <div style={{display:'flex',gap:8,marginTop:12}}>
-        <button onClick={onClose} style={{flex:1,padding:'11px',borderRadius:12,background:'transparent',border:`1px solid ${BORDER}`,color:TXT2,fontWeight:600,cursor:'pointer',...F}}>Cancel</button>
-        <button onClick={()=>{onSave(val);onClose()}} style={{flex:1,padding:'11px',borderRadius:12,background:ORANGE,border:'none',color:'#fff',fontWeight:700,cursor:'pointer',...F}}>Save</button>
+        <button onClick={onClose} style={{flex:1,padding:'11px',borderRadius:12,background:'transparent',border:'1px solid var(--border)',color:'var(--text-sec)',fontWeight:600,cursor:'pointer',...F}}>Cancel</button>
+        <button onClick={()=>{onSave(val);onClose()}} style={{flex:1,padding:'11px',borderRadius:12,background:'var(--accent)',border:'none',color:'#fff',fontWeight:700,cursor:'pointer',boxShadow:'var(--shadow-accent)',...F}}>Save</button>
       </div>
     </div>
   </div>
@@ -143,45 +140,45 @@ export default function BarberClientDetail(){
 
   if(loading)return<BarberLayout>
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh'}}>
-      <div style={{width:20,height:20,border:'2px solid #252525',borderTopColor:ORANGE,borderRadius:'50%',animation:'spin 0.65s linear infinite'}}/>
+      <div style={{width:20,height:20,border:'2px solid var(--border)',borderTopColor:'var(--accent)',borderRadius:'50%',animation:'spin 0.65s linear infinite'}}/>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   </BarberLayout>
 
   return<BarberLayout>
     <style>{CSS}</style>
-    <div style={{background:BG,minHeight:'100%',paddingBottom:100,...F}}>
+    <div style={{background:'var(--bg)',minHeight:'100%',paddingBottom:100,...F}}>
       <div style={{padding:'16px',maxWidth:540,margin:'0 auto'}}>
 
         {/* Back + Book */}
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
           <button onClick={()=>navigate(-1)}
-            style={{background:'none',border:'none',color:TXT2,cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontSize:14,fontWeight:600,...F}}>
+            style={{background:'none',border:'none',color:'var(--text-sec)',cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontSize:14,fontWeight:600,...F}}>
             <ChevronLeft size={18}/> Back
           </button>
           <div style={{display:'flex',gap:8}}>
-            <p style={{color:TXT,fontWeight:800,fontSize:16,margin:0,alignSelf:'center'}}>{displayName}</p>
-            <span style={{color:TXT2,fontSize:12,fontWeight:600,alignSelf:'center'}}>Edit</span>
+            <p style={{color:'var(--text-pri)',fontWeight:800,fontSize:16,margin:0,alignSelf:'center'}}>{displayName}</p>
+            <span style={{color:'var(--text-sec)',fontSize:12,fontWeight:600,alignSelf:'center'}}>Edit</span>
           </div>
         </div>
 
         {/* Profile card */}
-        <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'16px',marginBottom:12}}>
+        <div className="fu" style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:16,padding:'16px',marginBottom:12,boxShadow:'var(--shadow-sm)'}}>
           <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14}}>
             <Avatar name={displayName} photoURL={photo}/>
             <div>
-              <p style={{color:TXT,fontWeight:800,fontSize:18,margin:'0 0 4px',letterSpacing:'-0.3px'}}>{displayName}</p>
-              {appts[0]?.isGuest&&<span style={{background:CARD2,color:TXT2,fontSize:10,padding:'2px 8px',borderRadius:10,fontWeight:700,border:`1px solid ${BORDER}`}}>Guest</span>}
+              <p style={{color:'var(--text-pri)',fontWeight:800,fontSize:18,margin:'0 0 4px',letterSpacing:'-0.3px'}}>{displayName}</p>
+              {appts[0]?.isGuest&&<span style={{background:'var(--card2)',color:'var(--text-sec)',fontSize:10,padding:'2px 8px',borderRadius:10,fontWeight:700,border:'1px solid var(--border)'}}>Guest</span>}
             </div>
           </div>
           <div style={{display:'flex',flexDirection:'column',gap:7}}>
-            {phone&&<div style={{display:'flex',alignItems:'center',gap:10,background:CARD2,borderRadius:10,padding:'9px 12px'}}>
-              <Phone size={14} color={TXT3}/>
-              <a href={`tel:${phone}`} style={{color:ORANGE,fontSize:13,textDecoration:'none',fontWeight:600}}>{fPhone(phone)}</a>
+            {phone&&<div style={{display:'flex',alignItems:'center',gap:10,background:'var(--card2)',borderRadius:10,padding:'9px 12px'}}>
+              <Phone size={14} color="var(--text-ter)"/>
+              <a href={`tel:${phone}`} style={{color:'var(--accent)',fontSize:13,textDecoration:'none',fontWeight:600}}>{fPhone(phone)}</a>
             </div>}
-            {email&&<div style={{display:'flex',alignItems:'center',gap:10,background:CARD2,borderRadius:10,padding:'9px 12px'}}>
-              <Mail size={14} color={TXT3}/>
-              <span style={{color:TXT2,fontSize:13}}>{email}</span>
+            {email&&<div style={{display:'flex',alignItems:'center',gap:10,background:'var(--card2)',borderRadius:10,padding:'9px 12px'}}>
+              <Mail size={14} color="var(--text-ter)"/>
+              <span style={{color:'var(--text-sec)',fontSize:13}}>{email}</span>
             </div>}
           </div>
         </div>
@@ -189,38 +186,38 @@ export default function BarberClientDetail(){
         {/* Stats */}
         <div className="fu" style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:12}}>
           {[
-            {l:'Total Visits',v:stats.visits,c:TXT},
-            {l:'Total Spent',v:formatCurrency(stats.totalSpent),c:GREEN},
-            {l:'Last Visit',v:stats.lastVisit?format(parseLocalDate(stats.lastVisit.date),'MMM d'):'—',c:ORANGE},
+            {l:'Total Visits',v:stats.visits,c:'var(--text-pri)'},
+            {l:'Total Spent',v:formatCurrency(stats.totalSpent),c:'var(--green)'},
+            {l:'Last Visit',v:stats.lastVisit?format(parseLocalDate(stats.lastVisit.date),'MMM d'):'—',c:'var(--accent)'},
           ].map(s=>(
-            <div key={s.l} style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:12,padding:'12px 8px',textAlign:'center'}}>
+            <div key={s.l} style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:12,padding:'12px 8px',textAlign:'center',boxShadow:'var(--shadow-sm)'}}>
               <p style={{color:s.c,fontWeight:900,fontSize:18,margin:'0 0 3px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.v}</p>
-              <p style={{color:TXT3,fontSize:9,margin:0,fontWeight:600}}>{s.l}</p>
+              <p style={{color:'var(--text-ter)',fontSize:9,margin:0,fontWeight:600}}>{s.l}</p>
             </div>
           ))}
         </div>
 
         {/* Appointment History */}
-        <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'14px',marginBottom:12}}>
+        <div className="fu" style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:16,padding:'14px',marginBottom:12,boxShadow:'var(--shadow-sm)'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-            <p style={{color:TXT,fontWeight:700,fontSize:14,margin:0}}>Appointment History</p>
+            <p style={{color:'var(--text-pri)',fontWeight:700,fontSize:14,margin:0}}>Appointment History</p>
             {appts.length>5&&<button onClick={()=>setShowAll(p=>!p)}
-              style={{background:'none',border:'none',color:ORANGE,fontSize:12,fontWeight:700,cursor:'pointer',...F}}>
+              style={{background:'none',border:'none',color:'var(--accent)',fontSize:12,fontWeight:700,cursor:'pointer',...F}}>
               {showAll?'Show less':'View all'}
             </button>}
           </div>
           {appts.length===0?(
-            <p style={{color:TXT3,fontSize:13,textAlign:'center',padding:'16px 0'}}>No appointments yet</p>
+            <p style={{color:'var(--text-ter)',fontSize:13,textAlign:'center',padding:'16px 0'}}>No appointments yet</p>
           ):(
             <div style={{display:'flex',flexDirection:'column',gap:7}}>
               {visible.map(a=>(
-                <div key={a.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 11px',background:BG,border:`1px solid ${BORDER}`,borderLeft:`3px solid ${STATUS[a.bookingStatus]?.c||BORDER}`,borderRadius:11}}>
+                <div key={a.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 11px',background:'var(--bg)',border:'1px solid var(--border)',borderLeft:`3px solid ${STATUS[a.bookingStatus]?.c||'var(--border)'}`,borderRadius:11}}>
                   <div>
-                    <p style={{color:TXT2,fontWeight:600,fontSize:12,margin:'0 0 2px'}}>{a.date?format(parseLocalDate(a.date),'MMM d, yyyy'):'—'}</p>
-                    <p style={{color:TXT3,fontSize:11,margin:0}}>{formatTime?formatTime(a.startTime):a.startTime} · {a.services?.map(s=>s.name).join(', ')}</p>
+                    <p style={{color:'var(--text-sec)',fontWeight:600,fontSize:12,margin:'0 0 2px'}}>{a.date?format(parseLocalDate(a.date),'MMM d, yyyy'):'—'}</p>
+                    <p style={{color:'var(--text-ter)',fontSize:11,margin:0}}>{formatTime?formatTime(a.startTime):a.startTime} · {a.services?.map(s=>s.name).join(', ')}</p>
                   </div>
                   <div style={{textAlign:'right'}}>
-                    <p style={{color:a.paymentStatus==='paid'?GREEN:TXT2,fontWeight:700,fontSize:13,margin:'0 0 4px'}}>{formatCurrency(a.totalWithTip||a.totalPrice)}</p>
+                    <p style={{color:a.paymentStatus==='paid'?'var(--green)':'var(--text-sec)',fontWeight:700,fontSize:13,margin:'0 0 4px'}}>{formatCurrency(a.totalWithTip||a.totalPrice)}</p>
                     <SBadge status={a.bookingStatus}/>
                   </div>
                 </div>
@@ -230,22 +227,22 @@ export default function BarberClientDetail(){
         </div>
 
         {/* Notes */}
-        <div className="fu" style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'14px',marginBottom:14}}>
+        <div className="fu" style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:16,padding:'14px',marginBottom:14,boxShadow:'var(--shadow-sm)'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-            <p style={{color:TXT,fontWeight:700,fontSize:14,margin:0}}>Notes</p>
+            <p style={{color:'var(--text-pri)',fontWeight:700,fontSize:14,margin:0}}>Notes</p>
             <button onClick={()=>setShowNote(true)}
-              style={{background:'none',border:'none',color:TXT2,cursor:'pointer',display:'flex',alignItems:'center',gap:4,fontSize:12,...F}}>
+              style={{background:'none',border:'none',color:'var(--text-sec)',cursor:'pointer',display:'flex',alignItems:'center',gap:4,fontSize:12,...F}}>
               <Edit2 size={12}/> Edit
             </button>
           </div>
-          <p style={{color:note?TXT2:TXT3,fontSize:13,margin:0,lineHeight:1.5}}>
+          <p style={{color:note?'var(--text-sec)':'var(--text-ter)',fontSize:13,margin:0,lineHeight:1.5}}>
             {note||'No notes yet. Tap edit to add preferences, style notes…'}
           </p>
         </div>
 
         {/* New Appointment CTA */}
         <button onClick={()=>navigate('/barber/calendar',{state:{prefillClient:{name:displayName,email,phone}}})}
-          style={{width:'100%',background:ORANGE,color:'#fff',border:'none',borderRadius:22,padding:'14px',fontWeight:700,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,...F,boxShadow:`0 4px 18px ${ORANGE}38`}}>
+          style={{width:'100%',background:'var(--accent)',color:'#fff',border:'none',borderRadius:22,padding:'14px',fontWeight:700,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,...F,boxShadow:'var(--shadow-accent)'}}>
           <Plus size={16}/> New Appointment
         </button>
       </div>

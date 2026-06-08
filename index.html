@@ -3,53 +3,75 @@
   <head>
     <meta charset="UTF-8" />
 
-    <!-- ── Viewport ── -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 
-    <!-- ── PWA — Android / Chrome ── -->
     <meta name="theme-color" content="#0A0A0A" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <link rel="manifest" href="/manifest.webmanifest" />
 
-    <!-- ── PWA — iOS / Safari ── -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="AmadoBook" />
 
-    <!-- iOS icons (Safari "Add to Home Screen") -->
-    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png" />
-    <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-167.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png" />
+    <script>
+      (function() {
+        var hostname = window.location.hostname;
+        var isBarber = hostname.includes('amadobarber') || hostname.includes('localhost'); 
+        // Cambia 'localhost' al dominio que prefieras probar localmente
 
-    <!-- iOS splash screens (critical for standalone feel) -->
-    <!-- iPhone 15 Pro Max -->
-    <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)"
-      href="/icons/splash-1290x2796.png" />
-    <!-- iPhone 15 / 14 Pro -->
-    <link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)"
-      href="/icons/splash-1179x2556.png" />
-    <!-- iPhone SE / 13 mini -->
-    <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)"
-      href="/icons/splash-750x1334.png" />
+        // Configuración de rutas
+        var manifestPath = isBarber ? '/manifest-barber.webmanifest' : '/manifest-client.webmanifest';
+        var iconPath = isBarber ? '/icons/barber/' : '/icons/client/';
+        var appName = isBarber ? 'AmadoBarber' : 'AmadoBook';
 
-    <!-- ── Favicon ── -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png" />
-    <link rel="shortcut icon" href="/favicon.ico" />
+        // Cambiar título de la página
+        document.title = appName;
+        var metaAppleTitle = document.createElement('meta');
+        metaAppleTitle.name = 'apple-mobile-web-app-title';
+        metaAppleTitle.content = appName;
+        document.head.appendChild(metaAppleTitle);
 
-    <!-- ── SEO ── -->
-    <meta name="description" content="Book your next haircut with AmadoBlends — premium barbershop booking." />
-    <meta property="og:title" content="AmadoBook" />
-    <meta property="og:description" content="Book your next haircut with AmadoBlends" />
+        // Añadir manifest
+        var linkManifest = document.createElement('link');
+        linkManifest.rel = 'manifest';
+        linkManifest.href = manifestPath;
+        document.head.appendChild(linkManifest);
+
+        // Añadir favicons básicos
+        var favicons = [
+          { rel: 'icon', type: 'image/png', sizes: '32x32', href: iconPath + 'icon-32.png' },
+          { rel: 'icon', type: 'image/png', sizes: '16x16', href: iconPath + 'icon-16.png' },
+          { rel: 'shortcut icon', href: iconPath + 'favicon.ico' }
+        ];
+
+        // Añadir iconos de iOS
+        var appleIcons = [
+          { rel: 'apple-touch-icon', href: iconPath + 'icon-180.png' },
+          { rel: 'apple-touch-icon', sizes: '152x152', href: iconPath + 'icon-152.png' },
+          { rel: 'apple-touch-icon', sizes: '167x167', href: iconPath + 'icon-167.png' },
+          { rel: 'apple-touch-icon', sizes: '180x180', href: iconPath + 'icon-180.png' }
+        ];
+
+        var allIcons = favicons.concat(appleIcons);
+        allIcons.forEach(function(icon) {
+          var link = document.createElement('link');
+          link.rel = icon.rel;
+          link.href = icon.href;
+          if (icon.type) link.type = icon.type;
+          if (icon.sizes) link.sizes = icon.sizes;
+          document.head.appendChild(link);
+        });
+      })();
+    </script>
+
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="/icons/splash-1290x2796.png" />
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" href="/icons/splash-1179x2556.png" />
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" href="/icons/splash-750x1334.png" />
+
+    <meta name="description" content="Premium barbershop management and booking." />
     <meta property="og:type" content="website" />
 
-    <title>AmadoBook</title>
-
-    <!-- ── Fonts preconnect ── -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet" />
 
     <style>
       /* ── Reset ── */
@@ -58,7 +80,7 @@
         width: 100%; height: 100%;
         overflow-x: hidden;
       }
-      body { background: #0A0A0A; }
+      body { background: #0D0D0D; } /* Este color será sobreescrito por tu context de tema, pero da un buen fallback */
 
       /* ── Global box model ── */
       *, *::before, *::after {
@@ -68,7 +90,7 @@
 
       /* ── Font defaults ── */
       body, input, select, textarea, button {
-        font-family: 'DM Sans', system-ui, sans-serif;
+        font-family: 'Plus Jakarta Sans', 'DM Sans', system-ui, sans-serif;
       }
 
       /* ── CRITICAL: 16px on inputs prevents iPhone zoom ── */
@@ -88,8 +110,6 @@
         --sal: env(safe-area-inset-left);
         --sar: env(safe-area-inset-right);
       }
-
-      @keyframes spin { to { transform: rotate(360deg); } }
     </style>
   </head>
   <body>

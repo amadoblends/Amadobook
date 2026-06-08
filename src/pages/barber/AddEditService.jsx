@@ -10,16 +10,14 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { ChevronLeft, Camera, Trash2, Check, ChevronDown, Scissors, Sparkles, Layers } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const BG=('#0D0D0D'),CARD=('#171717'),CARD2=('#1F1F1F'),BORDER=('#2A2A2A'),ORANGE=('#FF6B1A'),TXT=('#F5F5F5'),TXT2=('#888888'),TXT3=('#555555')
-const GREEN='#22C55E', PURPLE='#7C3AED'
-const F={fontFamily:"'DM Sans',system-ui,sans-serif"}
-const CSS=`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');@keyframes spin{to{transform:rotate(360deg)}}*{box-sizing:border-box}`
+const F = { fontFamily: "'Plus Jakarta Sans','DM Sans',system-ui,sans-serif" }
+const CSS = `@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');@keyframes spin{to{transform:rotate(360deg)}}*{box-sizing:border-box}`
 
 const DAYS_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 const SERVICE_TYPES = [
-  { key:'single', label:'Single',  icon:Scissors, color:ORANGE, desc:'Individual service' },
-  { key:'extra',  label:'Extra',   icon:Sparkles,  color:GREEN,  desc:'Add-on service' },
-  { key:'combo',  label:'Combo',   icon:Layers,    color:PURPLE, desc:'Bundle of singles' },
+  { key:'single', label:'Single',  icon:Scissors, color:'var(--accent)', desc:'Individual service' },
+  { key:'extra',  label:'Extra',   icon:Sparkles,  color:'var(--green)',  desc:'Add-on service' },
+  { key:'combo',  label:'Combo',   icon:Layers,    color:'var(--purple)', desc:'Bundle of singles' },
 ]
 const CATEGORIES = ['Haircut','Beard','Color','Treatment','Combo','Other']
 const DURATIONS  = [15,20,30,45,60,75,90,105,120]
@@ -27,8 +25,8 @@ const BUFFERS    = [0,5,10,15,20,30]
 
 function FieldRow({ label, children, last }) {
   return (
-    <div style={{padding:'14px 0',borderBottom:last?'none':`1px solid ${BORDER}`}}>
-      <p style={{color:TXT3,fontSize:10,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 8px'}}>{label.toUpperCase()}</p>
+    <div style={{padding:'14px 0',borderBottom:last?'none':`1px solid var(--border)`}}>
+      <p style={{color:'var(--text-ter)',fontSize:10,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 8px'}}>{label.toUpperCase()}</p>
       {children}
     </div>
   )
@@ -38,14 +36,14 @@ function Select({ value, onChange, options }) {
   return (
     <div style={{position:'relative'}}>
       <select value={value} onChange={e=>onChange(e.target.value)}
-        style={{width:'100%',background:'transparent',border:'none',outline:'none',color:TXT,fontSize:15,fontWeight:600,...F,appearance:'none',cursor:'pointer'}}>
+        style={{width:'100%',background:'transparent',border:'none',outline:'none',color:'var(--text-pri)',fontSize:15,fontWeight:600,...F,appearance:'none',cursor:'pointer'}}>
         {options.map(o=>(
-          <option key={typeof o==='object'?o.value:o} value={typeof o==='object'?o.value:o} style={{background:'#1a1a1a'}}>
+          <option key={typeof o==='object'?o.value:o} value={typeof o==='object'?o.value:o} style={{background:'var(--surface)'}}>
             {typeof o==='object'?o.label:o}
           </option>
         ))}
       </select>
-      <ChevronDown size={14} color={TXT3} style={{position:'absolute',right:0,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}/>
+      <ChevronDown size={14} color="var(--text-ter)" style={{position:'absolute',right:0,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}/>
     </div>
   )
 }
@@ -181,19 +179,19 @@ export default function AddEditService() {
   return (
     <BarberLayout>
       <style>{CSS}</style>
-      <div style={{background:BG,minHeight:'100vh',paddingBottom:100,...F}}>
+      <div style={{background:'var(--bg)',minHeight:'100vh',paddingBottom:100,...F}}>
         <div style={{padding:'16px 18px',maxWidth:640,margin:'0 auto'}}>
 
           {/* Header */}
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:22}}>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <button onClick={()=>navigate(-1)} style={{background:'none',border:'none',color:TXT2,cursor:'pointer',display:'flex',alignItems:'center',gap:4,fontSize:14,fontWeight:600,...F}}>
+              <button onClick={()=>navigate(-1)} style={{background:'none',border:'none',color:'var(--text-sec)',cursor:'pointer',display:'flex',alignItems:'center',gap:4,fontSize:14,fontWeight:600,...F}}>
                 <ChevronLeft size={18}/>
               </button>
-              <h1 style={{color:TXT,fontWeight:800,fontSize:20,margin:0}}>{editService ? 'Edit Service' : 'Add Service'}</h1>
+              <h1 style={{color:'var(--text-pri)',fontWeight:800,fontSize:20,margin:0}}>{editService ? 'Edit Service' : 'Add Service'}</h1>
             </div>
             <button onClick={save} disabled={saving}
-              style={{background:ORANGE,border:'none',borderRadius:10,padding:'9px 16px',color:'#fff',cursor:'pointer',fontWeight:700,fontSize:14,...F,display:'flex',alignItems:'center',gap:6}}>
+              style={{background:'var(--accent)',border:'none',borderRadius:10,padding:'9px 16px',color:'#fff',cursor:'pointer',fontWeight:700,fontSize:14,...F,display:'flex',alignItems:'center',gap:6,boxShadow:'var(--shadow-accent)'}}>
               {saving ? <div style={{width:14,height:14,border:'2px solid #fff',borderTopColor:'transparent',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/> : <Check size={14}/>}
               {saving ? 'Saving…' : 'Save'}
             </button>
@@ -203,27 +201,30 @@ export default function AddEditService() {
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginBottom:14}}>
             {SERVICE_TYPES.map(t=>{
               const Icon=t.icon; const active=form.serviceType===t.key
+              // Create soft background color logic dynamically or map them
+              const softBg = active ? (t.key === 'single' ? 'var(--accent-soft)' : t.key === 'extra' ? 'var(--green-soft)' : 'var(--purple-soft)') : 'transparent'
+              
               return<button key={t.key} onClick={()=>setForm(p=>({...p,serviceType:t.key}))}
-                style={{padding:'10px 6px',borderRadius:12,border:`1.5px solid ${active?t.color:BORDER}`,background:active?`${t.color}14`:'transparent',cursor:'pointer',...F,display:'flex',flexDirection:'column',alignItems:'center',gap:4,transition:'all 0.15s'}}>
-                <Icon size={14} color={active?t.color:TXT3}/>
-                <span style={{color:active?t.color:TXT2,fontWeight:active?700:500,fontSize:11}}>{t.label}</span>
-                <span style={{color:active?t.color:TXT3,fontSize:9,fontWeight:500}}>{t.desc}</span>
+                style={{padding:'10px 6px',borderRadius:12,border:`1.5px solid ${active?t.color:'var(--border)'}`,background:softBg,cursor:'pointer',...F,display:'flex',flexDirection:'column',alignItems:'center',gap:4,transition:'all 0.15s'}}>
+                <Icon size={14} color={active?t.color:'var(--text-ter)'}/>
+                <span style={{color:active?t.color:'var(--text-sec)',fontWeight:active?700:500,fontSize:11}}>{t.label}</span>
+                <span style={{color:active?t.color:'var(--text-ter)',fontSize:9,fontWeight:500}}>{t.desc}</span>
               </button>
             })}
           </div>
 
           {/* Photo */}
-          <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:20,padding:'20px 18px',marginBottom:14}}>
+          <div style={{background:'var(--card)',border:`1px solid var(--border)`,borderRadius:20,padding:'20px 18px',marginBottom:14,boxShadow:'var(--shadow-sm)'}}>
             <div style={{textAlign:'center',marginBottom:16}}>
               <div style={{position:'relative',display:'inline-block',cursor:'pointer'}} onClick={()=>photoRef.current?.click()}>
-                <div style={{width:80,height:80,borderRadius:16,overflow:'hidden',background:CARD2,border:`1.5px solid ${BORDER}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:32}}>
+                <div style={{width:80,height:80,borderRadius:16,overflow:'hidden',background:'var(--card2)',border:`1.5px solid var(--border)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:32}}>
                   {form.photoURL ? <img src={form.photoURL} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/> : '✂️'}
                 </div>
-                <div style={{position:'absolute',bottom:-4,right:-4,width:24,height:24,borderRadius:'50%',background:ORANGE,border:`2px solid ${CARD}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <div style={{position:'absolute',bottom:-4,right:-4,width:24,height:24,borderRadius:'50%',background:'var(--accent)',border:`2px solid var(--card)`,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   <Camera size={11} color="#fff"/>
                 </div>
               </div>
-              <p style={{color:TXT3,fontSize:12,marginTop:10}}>Tap to add photo</p>
+              <p style={{color:'var(--text-ter)',fontSize:12,marginTop:10}}>Tap to add photo</p>
               <input ref={photoRef} type="file" accept="image/*" style={{display:'none'}}
                 onChange={async e=>{
                   const file=e.target.files?.[0]; if(!file)return
@@ -234,16 +235,16 @@ export default function AddEditService() {
           </div>
 
           {/* Form fields */}
-          <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:20,padding:'4px 18px',marginBottom:14}}>
+          <div style={{background:'var(--card)',border:`1px solid var(--border)`,borderRadius:20,padding:'4px 18px',marginBottom:14,boxShadow:'var(--shadow-sm)'}}>
             <FieldRow label="Service Name">
               <input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}
                 placeholder="e.g. Skin Fade"
-                style={{width:'100%',background:'transparent',border:'none',outline:'none',color:TXT,fontSize:16,fontWeight:600,...F}}/>
+                style={{width:'100%',background:'transparent',border:'none',outline:'none',color:'var(--text-pri)',fontSize:16,fontWeight:600,...F}}/>
             </FieldRow>
             <FieldRow label="Description">
               <textarea value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} rows={3}
                 placeholder="Describe the service…"
-                style={{width:'100%',background:'transparent',border:'none',outline:'none',color:TXT,fontSize:14,resize:'none',...F}}/>
+                style={{width:'100%',background:'transparent',border:'none',outline:'none',color:'var(--text-pri)',fontSize:14,resize:'none',...F}}/>
             </FieldRow>
             <FieldRow label="Duration (minutes)">
               <Select value={form.duration} onChange={v=>setForm(p=>({...p,duration:parseInt(v)}))}
@@ -253,7 +254,7 @@ export default function AddEditService() {
               <FieldRow label="Price ($)">
                 <input type="number" value={form.price} onChange={e=>setForm(p=>({...p,price:e.target.value}))}
                   placeholder="0.00" min="0" step="0.01"
-                  style={{width:'100%',background:'transparent',border:'none',outline:'none',color:TXT,fontSize:16,fontWeight:600,...F}}/>
+                  style={{width:'100%',background:'transparent',border:'none',outline:'none',color:'var(--text-pri)',fontSize:16,fontWeight:600,...F}}/>
               </FieldRow>
             )}
             <FieldRow label="Category">
@@ -266,15 +267,15 @@ export default function AddEditService() {
           </div>
 
           {/* Active toggle */}
-          <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'14px 18px',marginBottom:14,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div style={{background:'var(--card)',border:`1px solid var(--border)`,borderRadius:16,padding:'14px 18px',marginBottom:14,display:'flex',alignItems:'center',justifyContent:'space-between',boxShadow:'var(--shadow-sm)'}}>
             <div>
-              <p style={{color:TXT,fontWeight:700,fontSize:14,margin:'0 0 2px'}}>Active</p>
-              <p style={{color:TXT3,fontSize:12,margin:0}}>Clients can book this service</p>
+              <p style={{color:'var(--text-pri)',fontWeight:700,fontSize:14,margin:'0 0 2px'}}>Active</p>
+              <p style={{color:'var(--text-ter)',fontSize:12,margin:0}}>Clients can book this service</p>
             </div>
             <button onClick={()=>setForm(p=>({...p,isActive:!p.isActive}))}
               style={{
                 width:48,height:26,borderRadius:13,border:'none',cursor:'pointer',
-                background:form.isActive?ORANGE:BORDER,
+                background:form.isActive?'var(--accent)':'var(--border)',
                 position:'relative',transition:'background 0.2s',
               }}>
               <div style={{
@@ -289,27 +290,27 @@ export default function AddEditService() {
           {form.serviceType==='combo'&&(
             <>
               {/* Service Picker */}
-              <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'14px 18px',marginBottom:10}}>
-                <p style={{color:TXT3,fontSize:10,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 10px'}}>INCLUDED SERVICES</p>
+              <div style={{background:'var(--card)',border:`1px solid var(--border)`,borderRadius:16,padding:'14px 18px',marginBottom:10,boxShadow:'var(--shadow-sm)'}}>
+                <p style={{color:'var(--text-ter)',fontSize:10,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 10px'}}>INCLUDED SERVICES</p>
                 {comboPickerServices.length===0?(
-                  <p style={{color:TXT3,fontSize:12,margin:0}}>No services yet. Add singles or extras first.</p>
+                  <p style={{color:'var(--text-ter)',fontSize:12,margin:0}}>No services yet. Add singles or extras first.</p>
                 ):(
                   <div style={{display:'flex',flexDirection:'column',gap:4}}>
                     {['single','extra'].map(type=>{
                       const group=comboPickerServices.filter(s=>(s.serviceType||'single')===type)
                       if(!group.length)return null
                       return<div key={type} style={{marginBottom:6}}>
-                        <p style={{color:TXT3,fontSize:9,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 5px',textTransform:'uppercase'}}>{type==='single'?'✂️ Singles':'✨ Extras'}</p>
+                        <p style={{color:'var(--text-ter)',fontSize:9,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 5px',textTransform:'uppercase'}}>{type==='single'?'✂️ Singles':'✨ Extras'}</p>
                         {group.map(s=>{
                           const sel=form.includesIds.includes(s.id)
                           return<button key={s.id}
                             onClick={()=>setForm(p=>({...p,includesIds:sel?p.includesIds.filter(i=>i!==s.id):[...p.includesIds,s.id]}))}
-                            style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 11px',borderRadius:10,border:`1px solid ${sel?PURPLE:BORDER}`,background:sel?`${PURPLE}12`:'transparent',cursor:'pointer',...F,marginBottom:4,width:'100%',textAlign:'left'}}>
-                            <span style={{color:sel?TXT:TXT2,fontWeight:sel?700:500,fontSize:13}}>{s.name}</span>
+                            style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 11px',borderRadius:10,border:`1px solid ${sel?'var(--purple)':'var(--border)'}`,background:sel?'var(--purple-soft)':'transparent',cursor:'pointer',...F,marginBottom:4,width:'100%',textAlign:'left'}}>
+                            <span style={{color:sel?'var(--text-pri)':'var(--text-sec)',fontWeight:sel?700:500,fontSize:13}}>{s.name}</span>
                             <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
-                              <span style={{color:TXT3,fontSize:10}}>{s.duration}m</span>
-                              <span style={{color:TXT3,fontSize:11}}>${(s.price||0).toFixed(2)}</span>
-                              <div style={{width:18,height:18,borderRadius:5,background:sel?PURPLE:CARD2,border:`1px solid ${sel?PURPLE:BORDER}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                              <span style={{color:'var(--text-ter)',fontSize:10}}>{s.duration}m</span>
+                              <span style={{color:'var(--text-ter)',fontSize:11}}>${(s.price||0).toFixed(2)}</span>
+                              <div style={{width:18,height:18,borderRadius:5,background:sel?'var(--purple)':'var(--card2)',border:`1px solid ${sel?'var(--purple)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
                                 {sel&&<Check size={10} color="#fff"/>}
                               </div>
                             </div>
@@ -321,39 +322,39 @@ export default function AddEditService() {
                 )}
                 {/* Price + Duration Summary — BELOW selection */}
                 {form.includesIds.length>0&&(
-                  <div style={{background:BG,border:`1px solid ${BORDER}`,borderRadius:12,padding:'12px 14px',marginTop:10}}>
-                    {comboAutoDesc&&<p style={{color:TXT3,fontSize:11,margin:'0 0 8px',fontStyle:'italic'}}>📦 {comboAutoDesc}</p>}
+                  <div style={{background:'var(--bg)',border:`1px solid var(--border)`,borderRadius:12,padding:'12px 14px',marginTop:10}}>
+                    {comboAutoDesc&&<p style={{color:'var(--text-ter)',fontSize:11,margin:'0 0 8px',fontStyle:'italic'}}>📦 {comboAutoDesc}</p>}
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                      <span style={{color:TXT3,fontSize:12}}>Duration</span>
-                      <span style={{color:TXT2,fontSize:12,fontWeight:600}}>{comboDuration} min</span>
+                      <span style={{color:'var(--text-ter)',fontSize:12}}>Duration</span>
+                      <span style={{color:'var(--text-sec)',fontSize:12,fontWeight:600}}>{comboDuration} min</span>
                     </div>
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:comboSavings>0?4:6}}>
-                      <span style={{color:TXT3,fontSize:12}}>Subtotal</span>
-                      <span style={{color:TXT2,fontSize:12,textDecoration:comboSavings>0?'line-through':'none'}}>${comboBaseTotal.toFixed(2)}</span>
+                      <span style={{color:'var(--text-ter)',fontSize:12}}>Subtotal</span>
+                      <span style={{color:'var(--text-sec)',fontSize:12,textDecoration:comboSavings>0?'line-through':'none'}}>${comboBaseTotal.toFixed(2)}</span>
                     </div>
                     {comboSavings>0&&<>
                       <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                        <span style={{color:GREEN,fontSize:12}}>Discount</span>
-                        <span style={{color:GREEN,fontSize:12,fontWeight:700}}>−${comboSavings.toFixed(2)}</span>
+                        <span style={{color:'var(--green)',fontSize:12}}>Discount</span>
+                        <span style={{color:'var(--green)',fontSize:12,fontWeight:700}}>−${comboSavings.toFixed(2)}</span>
                       </div>
-                      <div style={{height:1,background:BORDER,margin:'6px 0'}}/>
+                      <div style={{height:1,background:'var(--border)',margin:'6px 0'}}/>
                     </>}
                     <div style={{display:'flex',justifyContent:'space-between'}}>
-                      <span style={{color:TXT,fontSize:13,fontWeight:700}}>Total</span>
-                      <span style={{color:PURPLE,fontSize:15,fontWeight:800}}>${comboFinalPrice.toFixed(2)}</span>
+                      <span style={{color:'var(--text-pri)',fontSize:13,fontWeight:700}}>Total</span>
+                      <span style={{color:'var(--purple)',fontSize:15,fontWeight:800}}>${comboFinalPrice.toFixed(2)}</span>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Discount */}
-              <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'14px 18px',marginBottom:10}}>
-                <p style={{color:TXT3,fontSize:10,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 10px'}}>DISCOUNT</p>
+              <div style={{background:'var(--card)',border:`1px solid var(--border)`,borderRadius:16,padding:'14px 18px',marginBottom:10,boxShadow:'var(--shadow-sm)'}}>
+                <p style={{color:'var(--text-ter)',fontSize:10,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 10px'}}>DISCOUNT</p>
                 <div style={{display:'flex',gap:8}}>
-                  <div style={{display:'flex',background:CARD2,borderRadius:8,padding:2,border:`1px solid ${BORDER}`,flexShrink:0}}>
+                  <div style={{display:'flex',background:'var(--card2)',borderRadius:8,padding:2,border:`1px solid var(--border)`,flexShrink:0}}>
                     {['pct','fixed'].map(t=>(
                       <button key={t} onClick={()=>setForm(p=>({...p,discount:{...p.discount,type:t}}))}
-                        style={{padding:'6px 10px',borderRadius:6,border:'none',cursor:'pointer',background:form.discount.type===t?PURPLE:'transparent',color:form.discount.type===t?'#fff':TXT2,fontWeight:700,fontSize:11,...F}}>
+                        style={{padding:'6px 10px',borderRadius:6,border:'none',cursor:'pointer',background:form.discount.type===t?'var(--purple)':'transparent',color:form.discount.type===t?'#fff':'var(--text-sec)',fontWeight:700,fontSize:11,...F}}>
                         {t==='pct'?'%':'$'}
                       </button>
                     ))}
@@ -361,19 +362,19 @@ export default function AddEditService() {
                   <input type="number" value={form.discount.value} min="0"
                     onChange={e=>setForm(p=>({...p,discount:{...p.discount,value:e.target.value}}))}
                     placeholder={form.discount.type==='pct'?'e.g. 15':'e.g. 5'}
-                    style={{flex:1,background:'transparent',border:`1px solid ${BORDER}`,borderRadius:8,padding:'6px 12px',color:TXT,fontSize:14,fontWeight:600,...F,outline:'none'}}/>
+                    style={{flex:1,background:'transparent',border:`1px solid var(--border)`,borderRadius:8,padding:'6px 12px',color:'var(--text-pri)',fontSize:14,fontWeight:600,...F,outline:'none'}}/>
                 </div>
               </div>
 
               {/* Active Days */}
-              <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:16,padding:'14px 18px',marginBottom:14}}>
-                <p style={{color:TXT3,fontSize:10,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 10px'}}>ACTIVE DAYS</p>
+              <div style={{background:'var(--card)',border:`1px solid var(--border)`,borderRadius:16,padding:'14px 18px',marginBottom:14,boxShadow:'var(--shadow-sm)'}}>
+                <p style={{color:'var(--text-ter)',fontSize:10,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 10px'}}>ACTIVE DAYS</p>
                 <div style={{display:'flex',gap:5}}>
                   {DAYS_LABELS.map((d,i)=>{
                     const on=form.activeDays.includes(i)
                     return<button key={i}
                       onClick={()=>setForm(p=>({...p,activeDays:on?p.activeDays.filter(x=>x!==i):[...p.activeDays,i]}))}
-                      style={{flex:1,padding:'7px 0',borderRadius:8,border:`1px solid ${on?PURPLE:BORDER}`,background:on?`${PURPLE}18`:'transparent',cursor:'pointer',color:on?PURPLE:TXT3,fontWeight:on?700:500,fontSize:10,...F}}>
+                      style={{flex:1,padding:'7px 0',borderRadius:8,border:`1px solid ${on?'var(--purple)':'var(--border)'}`,background:on?'var(--purple-soft)':'transparent',cursor:'pointer',color:on?'var(--purple)':'var(--text-ter)',fontWeight:on?700:500,fontSize:10,...F}}>
                       {d}
                     </button>
                   })}
@@ -388,8 +389,8 @@ export default function AddEditService() {
               style={{
                 width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:8,
                 padding:'14px',borderRadius:16,
-                background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',
-                color:'#EF4444',fontWeight:700,fontSize:14,cursor:'pointer',...F,
+                background:'var(--red-soft)',border:'1px solid rgba(239,68,68,0.2)',
+                color:'var(--red)',fontWeight:700,fontSize:14,cursor:'pointer',...F,
               }}>
               <Trash2 size={15}/>
               {deleting ? 'Deleting…' : 'Delete Service'}

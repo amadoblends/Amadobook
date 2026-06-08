@@ -9,10 +9,8 @@ import BarberLayout from '../../components/layout/BarberLayout'
 import { PageLoader } from '../../components/ui/Spinner'
 import { ChevronLeft, TrendingUp, TrendingDown } from 'lucide-react'
 
-const BG=('#0D0D0D'),CARD=('#171717'),CARD2=('#1F1F1F'),BORDER=('#2A2A2A'),ORANGE=('#FF6B1A'),TXT=('#F5F5F5'),TXT2=('#888888'),TXT3=('#555555')
-const GREEN='#22C55E'
-const F={fontFamily:"'DM Sans',system-ui,sans-serif"}
-const CSS=`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');*{box-sizing:border-box}`
+const F={fontFamily:"'Plus Jakarta Sans','DM Sans',system-ui,sans-serif"}
+const CSS=`@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');*{box-sizing:border-box}`
 
 function parseLocalDate(d) {
   if (!d) return new Date()
@@ -22,8 +20,8 @@ function parseLocalDate(d) {
 function MiniBar({ value, max, color }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0
   return (
-    <div style={{height:4,borderRadius:2,background:BORDER,overflow:'hidden',marginTop:6}}>
-      <div style={{height:'100%',borderRadius:2,background:color||ORANGE,width:`${pct}%`,transition:'width 0.5s ease'}}/>
+    <div style={{height:4,borderRadius:2,background:'var(--border)',overflow:'hidden',marginTop:6}}>
+      <div style={{height:'100%',borderRadius:2,background:color||'var(--accent)',width:`${pct}%`,transition:'width 0.5s ease'}}/>
     </div>
   )
 }
@@ -45,16 +43,16 @@ function LineChart({ data, color }) {
     <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',height:80}}>
       <defs>
         <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color||ORANGE} stopOpacity="0.3"/>
-          <stop offset="100%" stopColor={color||ORANGE} stopOpacity="0"/>
+          <stop offset="0%" stopColor={color||'var(--accent)'} stopOpacity="0.3"/>
+          <stop offset="100%" stopColor={color||'var(--accent)'} stopOpacity="0"/>
         </linearGradient>
       </defs>
       <path d={fillD} fill="url(#lg)" stroke="none"/>
-      <path d={pathD} fill="none" stroke={color||ORANGE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d={pathD} fill="none" stroke={color||'var(--accent)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
       {data.map((d,i) => {
         const x = PAD + (i/(data.length-1)) * (W - PAD*2)
         const y = H - PAD - ((d.v/max) * (H - PAD*2))
-        return <circle key={i} cx={x} cy={y} r={2.5} fill={color||ORANGE}/>
+        return <circle key={i} cx={x} cy={y} r={2.5} fill={color||'var(--accent)'}/>
       })}
     </svg>
   )
@@ -83,13 +81,13 @@ function DonutChart({ segments, size=120 }) {
         offset += pct
         return circle
       })}
-      <circle cx={C} cy={C} r={29} fill={BG}/>
+      <circle cx={C} cy={C} r={29} fill="var(--card)"/>
     </svg>
   )
 }
 
 const RANGE_OPTIONS = ['This Week','This Month','Last 7 Days','Last 30 Days']
-const COLORS = [ORANGE,'#22C55E','#3B82F6','#A78BFA','#F43F5E','#FB923C']
+const COLORS = ['var(--accent)','var(--green)','var(--purple)','var(--amber)','var(--red)','var(--text-sec)']
 
 export default function BarberReportDetail() {
   const { user }    = useAuth()
@@ -159,38 +157,38 @@ export default function BarberReportDetail() {
   return (
     <BarberLayout>
       <style>{CSS}</style>
-      <div style={{background:BG,minHeight:'100vh',paddingBottom:100,...F}}>
+      <div style={{background:'var(--bg)',minHeight:'100vh',paddingBottom:100,...F}}>
         <div style={{padding:'16px 18px',maxWidth:640,margin:'0 auto'}}>
 
           {/* Header */}
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <button onClick={()=>navigate(-1)} style={{background:'none',border:'none',color:TXT2,cursor:'pointer',display:'flex'}}>
+              <button onClick={()=>navigate(-1)} style={{background:'none',border:'none',color:'var(--text-sec)',cursor:'pointer',display:'flex'}}>
                 <ChevronLeft size={20}/>
               </button>
-              <h1 style={{color:TXT,fontWeight:800,fontSize:20,margin:0}}>Report Details</h1>
+              <h1 style={{color:'var(--text-pri)',fontWeight:800,fontSize:20,margin:0}}>Report Details</h1>
             </div>
             {/* Range selector */}
             <div style={{display:'flex',gap:4}}>
               <select value={range} onChange={e=>setRange(e.target.value)}
-                style={{background:CARD2,border:`1px solid ${BORDER}`,borderRadius:10,padding:'7px 12px',color:TXT,fontSize:12,fontWeight:700,outline:'none',...F,cursor:'pointer'}}>
-                {RANGE_OPTIONS.map(r=><option key={r} value={r} style={{background:'#1a1a1a'}}>{r}</option>)}
+                style={{background:'var(--card2)',border:'1px solid var(--border)',borderRadius:10,padding:'7px 12px',color:'var(--text-pri)',fontSize:12,fontWeight:700,outline:'none',...F,cursor:'pointer'}}>
+                {RANGE_OPTIONS.map(r=><option key={r} value={r} style={{background:'var(--surface)'}}>{r}</option>)}
               </select>
             </div>
           </div>
 
           {/* Big number */}
-          <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:20,padding:'20px 18px',marginBottom:14}}>
-            <p style={{color:TXT3,fontSize:11,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 6px'}}>TOTAL EARNINGS</p>
-            <p style={{color:TXT,fontWeight:900,fontSize:36,margin:'0 0 2px',letterSpacing:'-1px'}}>{formatCurrency(earnings)}</p>
-            <p style={{color:GREEN,fontSize:13,fontWeight:700,margin:'0 0 16px'}}>
+          <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:20,padding:'20px 18px',marginBottom:14,boxShadow:'var(--shadow-sm)'}}>
+            <p style={{color:'var(--text-ter)',fontSize:11,fontWeight:700,letterSpacing:'0.1em',margin:'0 0 6px'}}>TOTAL EARNINGS</p>
+            <p style={{color:'var(--text-pri)',fontWeight:900,fontSize:36,margin:'0 0 2px',letterSpacing:'-1px'}}>{formatCurrency(earnings)}</p>
+            <p style={{color:'var(--green)',fontSize:13,fontWeight:700,margin:'0 0 16px'}}>
               <TrendingUp size={13} style={{display:'inline',marginRight:4}}/>
               {apptCount} appointments · {efficiency}% paid
             </p>
-            <LineChart data={chartData} color={ORANGE}/>
+            <LineChart data={chartData} color="var(--accent)"/>
             <div style={{display:'flex',justifyContent:'space-between',marginTop:4}}>
               {chartData.filter((_,i)=>i===0||i===Math.floor(chartData.length/2)||i===chartData.length-1).map(d=>(
-                <span key={d.label} style={{color:TXT3,fontSize:10,fontWeight:600}}>{d.label}</span>
+                <span key={d.label} style={{color:'var(--text-ter)',fontSize:10,fontWeight:600}}>{d.label}</span>
               ))}
             </div>
           </div>
@@ -198,40 +196,40 @@ export default function BarberReportDetail() {
           {/* Stats grid */}
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:14}}>
             {[
-              { label:'Appointments',  value:apptCount,            color:TXT     },
-              { label:'Paid',          value:paidAppts.length,     color:GREEN   },
-              { label:'Tips Earned',   value:formatCurrency(tips), color:ORANGE  },
-              { label:'Efficiency',    value:`${efficiency}%`,     color:ORANGE  },
+              { label:'Appointments',  value:apptCount,            color:'var(--text-pri)' },
+              { label:'Paid',          value:paidAppts.length,     color:'var(--green)'    },
+              { label:'Tips Earned',   value:formatCurrency(tips), color:'var(--accent)'   },
+              { label:'Efficiency',    value:`${efficiency}%`,     color:'var(--accent)'   },
             ].map(s=>(
-              <div key={s.label} style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,padding:'14px 12px'}}>
+              <div key={s.label} style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:14,padding:'14px 12px',boxShadow:'var(--shadow-sm)'}}>
                 <p style={{color:s.color,fontWeight:900,fontSize:22,margin:'0 0 4px',letterSpacing:'-0.5px'}}>{s.value}</p>
-                <p style={{color:TXT3,fontSize:11,margin:0,fontWeight:600}}>{s.label}</p>
+                <p style={{color:'var(--text-ter)',fontSize:11,margin:0,fontWeight:600}}>{s.label}</p>
               </div>
             ))}
           </div>
 
           {/* Services breakdown */}
           {svcBreakdown.length > 0 && (
-            <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:20,padding:'16px 18px',marginBottom:14}}>
+            <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:20,padding:'16px 18px',marginBottom:14,boxShadow:'var(--shadow-sm)'}}>
               <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:16}}>
                 <div>
-                  <p style={{color:TXT,fontWeight:700,fontSize:15,margin:'0 0 2px'}}>Earnings by Service</p>
-                  <p style={{color:TXT3,fontSize:12,margin:0}}>{svcBreakdown.length} services</p>
+                  <p style={{color:'var(--text-pri)',fontWeight:700,fontSize:15,margin:'0 0 2px'}}>Earnings by Service</p>
+                  <p style={{color:'var(--text-ter)',fontSize:12,margin:0}}>{svcBreakdown.length} services</p>
                 </div>
                 {svcBreakdown.length >= 2 && (
-                  <DonutChart size={80} segments={svcBreakdown.slice(0,5).map((s,i)=>({value:s.revenue,color:COLORS[i]||TXT3}))}/>
+                  <DonutChart size={80} segments={svcBreakdown.slice(0,5).map((s,i)=>({value:s.revenue,color:COLORS[i]||'var(--text-ter)'}))}/>
                 )}
               </div>
               {svcBreakdown.map((sv,i) => (
                 <div key={sv.name} style={{marginBottom:14}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:2}}>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <div style={{width:8,height:8,borderRadius:'50%',background:COLORS[i]||TXT3,flexShrink:0}}/>
-                      <span style={{color:TXT,fontWeight:600,fontSize:14}}>{sv.name}</span>
+                      <div style={{width:8,height:8,borderRadius:'50%',background:COLORS[i]||'var(--text-ter)',flexShrink:0}}/>
+                      <span style={{color:'var(--text-pri)',fontWeight:600,fontSize:14}}>{sv.name}</span>
                     </div>
                     <div style={{textAlign:'right'}}>
-                      <span style={{color:ORANGE,fontWeight:800,fontSize:13}}>{formatCurrency(sv.revenue)}</span>
-                      <span style={{color:TXT3,fontSize:11,marginLeft:8}}>{sv.count}x</span>
+                      <span style={{color:'var(--accent)',fontWeight:800,fontSize:13}}>{formatCurrency(sv.revenue)}</span>
+                      <span style={{color:'var(--text-ter)',fontSize:11,marginLeft:8}}>{sv.count}x</span>
                     </div>
                   </div>
                   <MiniBar value={sv.revenue} max={svcTotal} color={COLORS[i]}/>

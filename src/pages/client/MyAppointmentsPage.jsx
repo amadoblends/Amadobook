@@ -1,7 +1,8 @@
 /**
- * MyAppointmentsPage — fixed
- * ✅ Removed: useParams() / barberSlug
- * ✅ Fixed: navigate routes (/book, not /b/slug/book)
+ * MyAppointmentsPage — Migrated to Design System
+ * ✓ CSS Variables for Light/Dark mode
+ * ✓ Consistent typography and status colors
+ * ✓ Full logic integration maintained
  */
 import { useEffect, useState, useMemo } from 'react'
 import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore'
@@ -14,20 +15,10 @@ import { useNavigate } from 'react-router-dom'
 import { RefreshCw, X, Scissors } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const BG     = '#0D0D0D'
-const CARD   = '#171717'
-const CARD2  = '#1F1F1F'
-const BORDER = '#2A2A2A'
-const ORANGE = '#FF6B1A'
-const TXT    = '#F5F5F5'
-const TXT2   = '#888888'
-const TXT3   = '#555555'
-const RED    = '#EF4444'
-const GREEN  = '#22C55E'
-const F      = { fontFamily: "'DM Sans',system-ui,sans-serif" }
+const F = { fontFamily: "'Plus Jakarta Sans','DM Sans',system-ui,sans-serif" }
 
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
   @keyframes spin    { to { transform: rotate(360deg); } }
   @keyframes fadeUp  { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   .fade-up { animation: fadeUp 0.22s ease both; }
@@ -44,8 +35,8 @@ function isUpcoming(a) {
 
 function Loader() {
   return (
-    <div style={{ minHeight:'100vh', background:BG, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ width:24, height:24, border:`2px solid ${BORDER}`, borderTopColor:ORANGE, borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
+    <div style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ width:24, height:24, border:'2px solid var(--border)', borderTopColor:'var(--accent)', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
@@ -56,32 +47,32 @@ function ApptCard({ a, formatTime, onCancel, onReschedule }) {
   const cancelled = a.bookingStatus === 'cancelled'
   const completed = a.bookingStatus === 'completed'
   const borderLeft = cancelled
-    ? `3px solid ${RED}40`
+    ? `3px solid var(--red)`
     : completed
-    ? `3px solid ${GREEN}40`
-    : `3px solid ${ORANGE}60`
+    ? `3px solid var(--green)`
+    : `3px solid var(--accent)`
 
   return (
     <div className="fade-up"
-      style={{ background:CARD, border:`1px solid ${BORDER}`, borderLeft, borderRadius:14, padding:'14px', marginBottom:8, opacity:cancelled?0.6:1 }}>
+      style={{ background:'var(--card)', border:'1px solid var(--border)', borderLeft, borderRadius:14, padding:'14px', marginBottom:8, opacity:cancelled?0.6:1, boxShadow:'var(--shadow-sm)' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
         <div>
-          <p style={{ color:TXT, fontWeight:700, fontSize:14, margin:'0 0 3px' }}>
+          <p style={{ color:'var(--text-pri)', fontWeight:700, fontSize:14, margin:'0 0 3px' }}>
             {a.date ? format(parseLocalDate(a.date), 'EEE, MMM d, yyyy') : '—'}
           </p>
-          <p style={{ color:TXT2, fontSize:12, margin:0 }}>
+          <p style={{ color:'var(--text-sec)', fontSize:12, margin:0 }}>
             {formatTime ? formatTime(a.startTime) : a.startTime}
             {a.totalDuration ? ` · ${formatDuration(a.totalDuration)}` : ''}
           </p>
         </div>
         <div style={{ textAlign:'right', flexShrink:0 }}>
-          <p style={{ color:cancelled?TXT2:ORANGE, fontWeight:800, fontSize:14, margin:'0 0 4px', textDecoration:cancelled?'line-through':'none' }}>
+          <p style={{ color:cancelled?'var(--text-sec)':'var(--accent)', fontWeight:800, fontSize:14, margin:'0 0 4px', textDecoration:cancelled?'line-through':'none' }}>
             {formatCurrency(a.totalWithTip || a.totalPrice)}
           </p>
           <span style={{
             fontSize:9, fontWeight:800, padding:'2px 8px', borderRadius:20, letterSpacing:'0.05em',
-            background: cancelled ? `${RED}14` : completed ? `${GREEN}12` : `${ORANGE}18`,
-            color:      cancelled ? RED        : completed ? GREEN       : ORANGE,
+            background: cancelled ? 'var(--red-soft)' : completed ? 'var(--green-soft)' : 'var(--accent-soft)',
+            color:      cancelled ? 'var(--red)'      : completed ? 'var(--green)'      : 'var(--accent)',
           }}>
             {(a.bookingStatus || 'pending').toUpperCase()}
           </span>
@@ -89,7 +80,7 @@ function ApptCard({ a, formatTime, onCancel, onReschedule }) {
       </div>
 
       {a.services?.length > 0 && (
-        <p style={{ color:TXT2, fontSize:12, margin:'0 0 10px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+        <p style={{ color:'var(--text-sec)', fontSize:12, margin:'0 0 10px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
           {a.services.map(s => s.name).join(', ')}
         </p>
       )}
@@ -97,11 +88,11 @@ function ApptCard({ a, formatTime, onCancel, onReschedule }) {
       {upcoming && (
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={() => onReschedule(a)}
-            style={{ display:'flex', alignItems:'center', gap:5, background:CARD2, border:`1px solid ${BORDER}`, borderRadius:8, padding:'7px 12px', color:TXT2, fontSize:12, fontWeight:700, cursor:'pointer', ...F }}>
+            style={{ display:'flex', alignItems:'center', gap:5, background:'var(--card2)', border:'1px solid var(--border)', borderRadius:8, padding:'7px 12px', color:'var(--text-sec)', fontSize:12, fontWeight:700, cursor:'pointer', ...F }}>
             <RefreshCw size={11}/> Reschedule
           </button>
           <button onClick={() => onCancel(a.id)}
-            style={{ display:'flex', alignItems:'center', gap:5, background:`${RED}08`, border:`1px solid ${RED}20`, borderRadius:8, padding:'7px 12px', color:RED, fontSize:12, fontWeight:700, cursor:'pointer', ...F }}>
+            style={{ display:'flex', alignItems:'center', gap:5, background:'var(--red-soft)', border:'1px solid var(--red)', borderRadius:8, padding:'7px 12px', color:'var(--red)', fontSize:12, fontWeight:700, cursor:'pointer', ...F }}>
             <X size={11}/> Cancel
           </button>
         </div>
@@ -155,7 +146,7 @@ export function MyAppointmentsPage() {
   if (loading) return <Loader/>
 
   return (
-    <div style={{ background:BG, minHeight:'100vh', paddingBottom:100, ...F }}>
+    <div style={{ background:'var(--bg)', minHeight:'100vh', paddingBottom:100, ...F }}>
       <style>{CSS}</style>
       <div style={{ padding:'16px 18px', maxWidth:500, margin:'0 auto' }}>
 
@@ -163,26 +154,26 @@ export function MyAppointmentsPage() {
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <button onClick={() => navigate(-1)}
-              style={{ background:'none', border:'none', color:TXT2, cursor:'pointer', display:'flex' }}>
+              style={{ background:'none', border:'none', color:'var(--text-sec)', cursor:'pointer', display:'flex' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
             </button>
-            <h1 style={{ color:TXT, fontWeight:800, fontSize:22, margin:0, letterSpacing:'-0.4px' }}>My Appointments</h1>
+            <h1 style={{ color:'var(--text-pri)', fontWeight:800, fontSize:22, margin:0, letterSpacing:'-0.4px' }}>My Appointments</h1>
           </div>
           {/* ✅ Fixed route */}
           <button onClick={() => navigate('/book')}
-            style={{ background:ORANGE, border:'none', borderRadius:10, padding:'8px 14px', color:'#fff', fontWeight:700, fontSize:13, ...F, cursor:'pointer' }}>
+            style={{ background:'var(--accent)', border:'none', borderRadius:10, padding:'8px 14px', color:'#fff', fontWeight:700, fontSize:13, ...F, cursor:'pointer', boxShadow:'var(--shadow-accent)' }}>
             + Book
           </button>
         </div>
 
         {/* Tabs */}
-        <div style={{ display:'flex', gap:6, marginBottom:20, background:CARD, border:`1px solid ${BORDER}`, borderRadius:14, padding:4 }}>
+        <div style={{ display:'flex', gap:6, marginBottom:20, background:'var(--card)', border:'1px solid var(--border)', borderRadius:14, padding:4, boxShadow:'var(--shadow-sm)' }}>
           {TABS.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              style={{ flex:1, padding:'9px 4px', borderRadius:10, border:'none', cursor:'pointer', background:tab===t.key?ORANGE:'transparent', color:tab===t.key?'#fff':TXT2, fontWeight:700, fontSize:12, ...F, transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:4 }}>
+              style={{ flex:1, padding:'9px 4px', borderRadius:10, border:'none', cursor:'pointer', background:tab===t.key?'var(--accent)':'transparent', color:tab===t.key?'#fff':'var(--text-sec)', fontWeight:700, fontSize:12, ...F, transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:4 }}>
               {t.label}
               {t.count > 0 && (
-                <span style={{ background:tab===t.key?'rgba(255,255,255,0.25)':CARD2, color:tab===t.key?'#fff':TXT3, fontSize:10, fontWeight:800, borderRadius:10, padding:'1px 5px' }}>
+                <span style={{ background:tab===t.key?'rgba(255,255,255,0.25)':'var(--card2)', color:tab===t.key?'#fff':'var(--text-ter)', fontSize:10, fontWeight:800, borderRadius:10, padding:'1px 5px' }}>
                   {t.count}
                 </span>
               )}
@@ -192,16 +183,16 @@ export function MyAppointmentsPage() {
 
         {/* List */}
         {lists[tab].length === 0 ? (
-          <div style={{ background:CARD, border:`1px solid ${BORDER}`, borderRadius:16, padding:'40px 20px', textAlign:'center' }}>
-            <Scissors size={28} style={{ color:TXT3, display:'block', margin:'0 auto 10px' }} strokeWidth={1.5}/>
-            <p style={{ color:TXT2, fontWeight:600, fontSize:15, margin:'0 0 6px' }}>
+          <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:16, padding:'40px 20px', textAlign:'center', boxShadow:'var(--shadow-sm)' }}>
+            <Scissors size={28} style={{ color:'var(--text-ter)', display:'block', margin:'0 auto 10px' }} strokeWidth={1.5}/>
+            <p style={{ color:'var(--text-sec)', fontWeight:600, fontSize:15, margin:'0 0 6px' }}>
               {tab==='upcoming' ? 'No upcoming appointments'
                 : tab==='past' ? 'No past appointments'
                 : 'No cancelled appointments'}
             </p>
             {tab === 'upcoming' && (
               <button onClick={() => navigate('/book')}
-                style={{ marginTop:14, background:ORANGE, border:'none', borderRadius:22, padding:'12px 24px', color:'#fff', fontWeight:700, fontSize:14, cursor:'pointer', ...F }}>
+                style={{ marginTop:14, background:'var(--accent)', border:'none', borderRadius:22, padding:'12px 24px', color:'#fff', fontWeight:700, fontSize:14, cursor:'pointer', boxShadow:'var(--shadow-accent)', ...F }}>
                 Book Now
               </button>
             )}
@@ -216,17 +207,17 @@ export function MyAppointmentsPage() {
 
       {/* Cancel confirm modal */}
       {cancelId && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-          <div style={{ background:CARD, border:`1px solid ${BORDER}`, borderRadius:22, padding:24, width:'100%', maxWidth:360, ...F }}>
-            <p style={{ color:TXT, fontWeight:800, fontSize:18, marginBottom:8 }}>Cancel appointment?</p>
-            <p style={{ color:TXT2, fontSize:14, marginBottom:20 }}>This action cannot be undone.</p>
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:22, padding:24, width:'100%', maxWidth:360, boxShadow:'var(--shadow-lg)', ...F }}>
+            <p style={{ color:'var(--text-pri)', fontWeight:800, fontSize:18, marginBottom:8 }}>Cancel appointment?</p>
+            <p style={{ color:'var(--text-sec)', fontSize:14, marginBottom:20 }}>This action cannot be undone.</p>
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={() => setCancelId(null)}
-                style={{ flex:1, padding:'13px', borderRadius:14, background:'transparent', border:`1px solid ${BORDER}`, color:TXT2, fontWeight:600, cursor:'pointer', ...F }}>
+                style={{ flex:1, padding:'13px', borderRadius:14, background:'transparent', border:'1px solid var(--border)', color:'var(--text-sec)', fontWeight:600, cursor:'pointer', ...F }}>
                 Keep it
               </button>
               <button onClick={doCancel}
-                style={{ flex:1, padding:'13px', borderRadius:14, background:`${RED}10`, border:`1px solid ${RED}25`, color:RED, fontWeight:700, cursor:'pointer', ...F }}>
+                style={{ flex:1, padding:'13px', borderRadius:14, background:'var(--red-soft)', border:'1px solid var(--red)', color:'var(--red)', fontWeight:700, cursor:'pointer', ...F }}>
                 Cancel it
               </button>
             </div>

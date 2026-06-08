@@ -1,9 +1,9 @@
 /**
- * BarberClientList — Rediseño
- * ✅ Cards más compactas
- * ✅ Tema más oscuro y consistente
- * ✅ Stats más claras
- * ✅ Sin código innecesario
+ * BarberClientList — Migrated to Design System
+ * ✓ Cards más compactas
+ * ✓ Tema más oscuro y consistente (Light/Dark automático)
+ * ✓ Stats más claras
+ * ✓ Sin código innecesario
  */
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -12,19 +12,10 @@ import { formatCurrency } from '../../utils/helpers'
 import BarberLayout from '../../components/layout/BarberLayout'
 import { Search, X, ChevronRight, Users } from 'lucide-react'
 
-const BG    = '#0A0A0D'
-const CARD  = '#111114'
-const CARD2 = '#18181C'
-const BORDER= '#1E1E22'
-const ORANGE= '#FF6B1A'
-const TXT   = '#EDEDF0'
-const TXT2  = '#555558'
-const TXT3  = '#2E2E32'
-const GREEN = '#22C55E'
-const F = { fontFamily:"'DM Sans',system-ui,sans-serif" }
+const F = { fontFamily: "'Plus Jakarta Sans','DM Sans',system-ui,sans-serif" }
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
 @keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 .fu{animation:fadeUp 0.18s ease both}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -36,10 +27,10 @@ function Avatar({ name, photoURL, size=40, fontSize=12 }) {
   return (
     <div style={{
       width:size, height:size, borderRadius:'50%',
-      overflow:'hidden', background:CARD2,
-      border:`1.5px solid ${BORDER}`,
+      overflow:'hidden', background:'var(--card2)',
+      border:'1.5px solid var(--border)',
       display:'flex', alignItems:'center', justifyContent:'center',
-      fontWeight:800, fontSize, color:TXT2, flexShrink:0,
+      fontWeight:800, fontSize, color:'var(--text-sec)', flexShrink:0,
     }}>
       {photoURL
         ? <img src={photoURL} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
@@ -97,7 +88,7 @@ export default function BarberClientList() {
   if (loading) return (
     <BarberLayout>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh' }}>
-        <div style={{ width:20, height:20, border:'2px solid #1E1E22', borderTopColor:ORANGE, borderRadius:'50%', animation:'spin 0.65s linear infinite' }}/>
+        <div style={{ width:20, height:20, border:'2px solid var(--border)', borderTopColor:'var(--accent)', borderRadius:'50%', animation:'spin 0.65s linear infinite' }}/>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     </BarberLayout>
@@ -106,38 +97,40 @@ export default function BarberClientList() {
   return (
     <BarberLayout>
       <style>{CSS}</style>
-      <div style={{ background:BG, minHeight:'100%', paddingBottom:20, ...F }}>
+      <div style={{ background:'var(--bg)', minHeight:'100%', paddingBottom:20, ...F }}>
         <div style={{ padding:'12px 14px', maxWidth:540, margin:'0 auto' }}>
 
           {/* Header */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
             <div>
-              <h1 style={{ color:TXT, fontWeight:800, fontSize:18, margin:'0 0 1px', letterSpacing:'-0.3px' }}>Clients</h1>
-              <p style={{ color:TXT2, fontSize:11, margin:0 }}>{allClients.length} total clients</p>
+              <h1 style={{ color:'var(--text-pri)', fontWeight:800, fontSize:18, margin:'0 0 1px', letterSpacing:'-0.3px' }}>Clients</h1>
+              <p style={{ color:'var(--text-sec)', fontSize:11, margin:0 }}>{allClients.length} total clients</p>
             </div>
             <div style={{
-              background:CARD, border:`1px solid ${BORDER}`,
+              background:'var(--card)', border:'1px solid var(--border)',
               borderRadius:10, padding:'6px 12px', textAlign:'center',
+              boxShadow:'var(--shadow-sm)'
             }}>
-              <p style={{ color:ORANGE, fontWeight:800, fontSize:16, margin:'0 0 0px' }}>{allClients.length}</p>
-              <p style={{ color:TXT3, fontSize:9, fontWeight:700, margin:0 }}>CLIENTS</p>
+              <p style={{ color:'var(--accent)', fontWeight:800, fontSize:16, margin:'0 0 0px' }}>{allClients.length}</p>
+              <p style={{ color:'var(--text-ter)', fontSize:9, fontWeight:700, margin:0 }}>CLIENTS</p>
             </div>
           </div>
 
           {/* Search */}
           <div style={{
             display:'flex', alignItems:'center', gap:8,
-            background:CARD, border:`1px solid ${BORDER}`,
+            background:'var(--card)', border:'1px solid var(--border)',
             borderRadius:10, padding:'9px 12px', marginBottom:8,
+            boxShadow:'var(--shadow-sm)'
           }}>
-            <Search size={13} color={TXT3}/>
+            <Search size={13} color="var(--text-ter)"/>
             <input
               value={search} onChange={e=>setSearch(e.target.value)}
               placeholder="Search by name, phone, email…"
-              style={{ flex:1, background:'transparent', border:'none', outline:'none', color:TXT, fontSize:13, ...F }}/>
+              style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'var(--text-pri)', fontSize:13, ...F }}/>
             {search && (
               <button onClick={() => setSearch('')}
-                style={{ background:'none', border:'none', color:TXT3, cursor:'pointer', padding:0, display:'flex' }}>
+                style={{ background:'none', border:'none', color:'var(--text-ter)', cursor:'pointer', padding:0, display:'flex' }}>
                 <X size={12}/>
               </button>
             )}
@@ -149,9 +142,9 @@ export default function BarberClientList() {
               <button key={k} onClick={() => setSortBy(k)}
                 style={{
                   padding:'5px 11px', borderRadius:20,
-                  border:`1px solid ${sortBy===k?ORANGE:BORDER}`,
-                  background: sortBy===k ? `${ORANGE}12` : 'transparent',
-                  color: sortBy===k ? ORANGE : TXT2,
+                  border:`1px solid ${sortBy===k ? 'var(--accent)' : 'var(--border)'}`,
+                  background: sortBy===k ? 'var(--accent-soft)' : 'transparent',
+                  color: sortBy===k ? 'var(--accent)' : 'var(--text-sec)',
                   fontWeight:sortBy===k ? 700 : 500,
                   fontSize:11, whiteSpace:'nowrap', cursor:'pointer', ...F, flexShrink:0,
                 }}>
@@ -163,21 +156,22 @@ export default function BarberClientList() {
           {/* Client list */}
           {filtered.length === 0 ? (
             <div style={{
-              background:CARD, border:`1px solid ${BORDER}`,
+              background:'var(--card)', border:'1px solid var(--border)',
               borderRadius:13, padding:'28px 16px', textAlign:'center',
+              boxShadow:'var(--shadow-sm)'
             }}>
-              <Users size={20} style={{ color:TXT3, display:'block', margin:'0 auto 7px' }} strokeWidth={1.5}/>
-              <p style={{ color:TXT2, fontSize:13, fontWeight:600, margin:'0 0 3px' }}>
+              <Users size={20} style={{ color:'var(--text-ter)', display:'block', margin:'0 auto 7px' }} strokeWidth={1.5}/>
+              <p style={{ color:'var(--text-sec)', fontSize:13, fontWeight:600, margin:'0 0 3px' }}>
                 {search ? 'No clients found' : 'No clients yet'}
               </p>
-              <p style={{ color:TXT3, fontSize:11, margin:0 }}>
+              <p style={{ color:'var(--text-ter)', fontSize:11, margin:0 }}>
                 {search ? 'Try a different search' : 'Clients appear after their first appointment'}
               </p>
             </div>
           ) : (
             <div style={{
-              background:CARD, border:`1px solid ${BORDER}`,
-              borderRadius:13, overflow:'hidden',
+              background:'var(--card)', border:'1px solid var(--border)',
+              borderRadius:13, overflow:'hidden', boxShadow:'var(--shadow-sm)'
             }}>
               {filtered.map((client, i) => {
                 const topSvc = Object.entries(client.services||{}).sort((a,b)=>b[1]-a[1])[0]
@@ -188,8 +182,8 @@ export default function BarberClientList() {
                     style={{
                       display:'flex', alignItems:'center', gap:11,
                       padding:'11px 14px',
-                      borderBottom: i < filtered.length-1 ? `1px solid ${BORDER}` : 'none',
-                      background:'transparent', border:'none',
+                      borderBottom: i < filtered.length-1 ? '1px solid var(--border)' : 'none',
+                      background:'transparent', borderTop:'none', borderLeft:'none', borderRight:'none',
                       cursor:'pointer', textAlign:'left', ...F, width:'100%',
                     }}>
                     <div style={{ position:'relative' }}>
@@ -198,7 +192,7 @@ export default function BarberClientList() {
                         <div style={{
                           position:'absolute', bottom:-1, right:-1,
                           width:13, height:13, borderRadius:'50%',
-                          background:ORANGE, border:`1.5px solid ${BG}`,
+                          background:'var(--accent)', border:'1.5px solid var(--bg)',
                           display:'flex', alignItems:'center', justifyContent:'center',
                         }}>
                           <span style={{ fontSize:7 }}>⭐</span>
@@ -208,38 +202,38 @@ export default function BarberClientList() {
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:1 }}>
                         <span style={{
-                          color:TXT, fontWeight:700, fontSize:13,
+                          color:'var(--text-pri)', fontWeight:700, fontSize:13,
                           overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
                         }}>{client.name}</span>
                         {isFrequent && (
                           <span style={{
-                            background:`${ORANGE}12`, color:ORANGE,
+                            background:'var(--accent-soft)', color:'var(--accent)',
                             fontSize:8, fontWeight:800, padding:'1px 5px',
                             borderRadius:6, flexShrink:0,
                           }}>Regular</span>
                         )}
                       </div>
                       <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-                        <span style={{ color:TXT2, fontSize:11 }}>{client.visits} visit{client.visits!==1?'s':''}</span>
+                        <span style={{ color:'var(--text-sec)', fontSize:11 }}>{client.visits} visit{client.visits!==1?'s':''}</span>
                         {client.totalSpent > 0 && (
-                          <><span style={{color:TXT3,fontSize:10}}>·</span>
-                          <span style={{color:TXT2,fontSize:11}}>{formatCurrency(client.totalSpent)}</span></>
+                          <><span style={{color:'var(--text-ter)',fontSize:10}}>·</span>
+                          <span style={{color:'var(--text-sec)',fontSize:11}}>{formatCurrency(client.totalSpent)}</span></>
                         )}
                         {topSvc && (
-                          <><span style={{color:TXT3,fontSize:10}}>·</span>
-                          <span style={{color:TXT3,fontSize:10,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{topSvc[0]}</span></>
+                          <><span style={{color:'var(--text-ter)',fontSize:10}}>·</span>
+                          <span style={{color:'var(--text-ter)',fontSize:10,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{topSvc[0]}</span></>
                         )}
                       </div>
                     </div>
                     {client.lastVisit && (
                       <div style={{ textAlign:'right', flexShrink:0 }}>
-                        <p style={{ color:TXT3, fontSize:9, fontWeight:600, margin:0 }}>LAST</p>
-                        <p style={{ color:TXT2, fontSize:10, fontWeight:700, margin:'1px 0 0' }}>
+                        <p style={{ color:'var(--text-ter)', fontSize:9, fontWeight:600, margin:0 }}>LAST</p>
+                        <p style={{ color:'var(--text-sec)', fontSize:10, fontWeight:700, margin:'1px 0 0' }}>
                           {client.lastVisit.slice(5).replace('-','/')}
                         </p>
                       </div>
                     )}
-                    <ChevronRight size={12} color={TXT3} style={{ flexShrink:0 }}/>
+                    <ChevronRight size={12} color="var(--text-ter)" style={{ flexShrink:0 }}/>
                   </button>
                 )
               })}
